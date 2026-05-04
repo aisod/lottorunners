@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LiveMap } from "@/components/live-map";
+import { LiveMapClient } from "@/components/live-map-client";
 import { BottomSheet } from "@/components/bottom-sheet";
 import { ServiceSelector } from "@/components/service-selector";
 import { LocationPicker } from "@/components/location-picker";
@@ -95,7 +95,7 @@ function HomePage() {
       <AppHeader onHistory={() => setShowHistory(true)} />
 
       <div className="absolute inset-0">
-        <LiveMap
+        <LiveMapClient
           userLocation={userLocation}
           runners={runners}
           pickup={pickup?.coord ?? null}
