@@ -2,23 +2,9 @@ import { useEffect, useState } from "react";
 import { useApp } from "@/lib/store";
 import { SERVICES } from "@/lib/services";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
+import { useAddressSearch } from "@/lib/use-address-search";
 import { cn } from "@/lib/utils";
 import type { LatLng } from "@/lib/types";
-
-const SUGGESTIONS: { label: string; offset: [number, number] }[] = [
-  { label: "Maerua Mall", offset: [0.005, 0.008] },
-  { label: "Wernhil Park", offset: [-0.004, -0.006] },
-  { label: "Eros Airport", offset: [-0.012, 0.014] },
-  { label: "Independence Ave", offset: [0.002, -0.004] },
-  { label: "Klein Windhoek", offset: [0.01, 0.012] },
-  { label: "Katutura Hospital", offset: [0.018, -0.018] },
-  { label: "UNAM Main Campus", offset: [0.022, 0.006] },
-  { label: "The Grove Mall", offset: [-0.018, 0.022] },
-];
-
-function offsetCoord(base: LatLng, offset: [number, number]): LatLng {
-  return { lat: base.lat + offset[0], lng: base.lng + offset[1] };
-}
 
 export function LocationPicker() {
   const {
@@ -130,25 +116,11 @@ export function LocationPicker() {
         </button>
       </div>
 
-      <div className="mt-3 max-h-36 space-y-1 overflow-y-auto">
-        {userLocation &&
-          SUGGESTIONS.map((s) => (
-            <button
-              key={s.label}
-              onClick={() => pick(s.label, offsetCoord(userLocation, s.offset))}
-              className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-secondary"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">📍</div>
-              <div className="flex-1">
-                <div className="text-sm font-medium">{s.label}</div>
-                <div className="text-xs text-muted-foreground">Windhoek</div>
-              </div>
-            </button>
-          ))}
-        <p className="px-2 pt-1 text-[11px] text-muted-foreground">
-          Tip: tap anywhere on the map to drop a {field === "pickup" ? "pickup" : "destination"} pin.
-        </p>
-      </div>
+      <AddressSearch
+        near={userLocation}
+        field={field}
+        onPick={(r) => pick(r.shortLabel, r.coord)}
+      />
 
       {selectedService === "errand" && cat && (
         <div className="mt-3 space-y-3">
