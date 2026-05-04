@@ -40,7 +40,7 @@ interface AppState {
   history: TripRequest[];
   pushHistory: (t: TripRequest) => void;
 
-  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number; range?: PriceRange } | null;
+  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number; quote?: PriceQuote } | null;
   reset: () => void;
 }
 
@@ -97,10 +97,8 @@ export const useApp = create<AppState>((set, get) => ({
     const etaMin = Math.max(2, Math.round(SERVICES[selectedService].etaMin + distanceKm * 1.6));
 
     if (selectedService === "errand" && errandCategory) {
-      const range = estimateErrandRange(errandCategory, distanceKm, { basketValue, durationMin });
-      // Use midpoint as the headline number where one is needed.
-      const fare = Math.round((range.low + range.high) / 2);
-      return { fare, distanceKm, etaMin, range };
+      const quote = estimateErrandPrice(errandCategory, distanceKm, { basketValue, durationMin });
+      return { fare: quote.amount, distanceKm, etaMin, quote };
     }
 
     const fare = estimateFare(selectedService, distanceKm);
