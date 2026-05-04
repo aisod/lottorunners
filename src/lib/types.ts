@@ -1,3 +1,5 @@
+import type { ErrandCategoryId } from "./errand-categories";
+
 export type ServiceType = "errand" | "ride" | "delivery" | "truck";
 
 export interface ServiceConfig {
@@ -28,6 +30,7 @@ export interface Runner {
 
 export type RequestStatus =
   | "idle"
+  | "errand_category"
   | "selecting"
   | "estimating"
   | "searching"
@@ -48,6 +51,11 @@ export interface TripRequest {
   destination: LatLng;
   destinationLabel: string;
   errandDescription?: string;
+  errandCategory?: ErrandCategoryId;
+  basketValue?: number;
+  durationMin?: number;
+  fareLow?: number;
+  fareHigh?: number;
   fare: number;
   distanceKm: number;
   etaMin: number;

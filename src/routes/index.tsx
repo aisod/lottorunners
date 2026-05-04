@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { LiveMapClient } from "@/components/live-map-client";
 import { BottomSheet } from "@/components/bottom-sheet";
 import { ServiceSelector } from "@/components/service-selector";
+import { ErrandCategoryPicker } from "@/components/errand-category-picker";
 import { LocationPicker } from "@/components/location-picker";
 import { FareEstimate } from "@/components/fare-estimate";
 import { Searching } from "@/components/searching";
@@ -83,6 +84,7 @@ function HomePage() {
     }
     if (status === "estimating") return <FareEstimate />;
     if (status === "selecting") return <LocationPicker />;
+    if (status === "errand_category") return <ErrandCategoryPicker />;
     return <ServiceSelector />;
   })();
 

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { LatLng, PaymentMethod, RequestStatus, Runner, ServiceType, TripRequest } from "./types";
 import { estimateFare, haversine, SERVICES } from "./services";
+import { estimateErrandRange, type ErrandCategoryId, type PriceRange } from "./errand-categories";
 
 interface AppState {
   userLocation: LatLng | null;
@@ -17,6 +18,15 @@ interface AppState {
   errandDescription: string;
   setErrandDescription: (s: string) => void;
 
+  errandCategory: ErrandCategoryId | null;
+  setErrandCategory: (c: ErrandCategoryId | null) => void;
+
+  basketValue: number;
+  setBasketValue: (n: number) => void;
+
+  durationMin: number;
+  setDurationMin: (n: number) => void;
+
   paymentMethod: PaymentMethod;
   setPaymentMethod: (p: PaymentMethod) => void;
 
@@ -30,7 +40,7 @@ interface AppState {
   history: TripRequest[];
   pushHistory: (t: TripRequest) => void;
 
-  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number } | null;
+  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number; range?: PriceRange } | null;
   reset: () => void;
 }
 
@@ -48,6 +58,15 @@ export const useApp = create<AppState>((set, get) => ({
 
   errandDescription: "",
   setErrandDescription: (s) => set({ errandDescription: s }),
+
+  errandCategory: null,
+  setErrandCategory: (c) => set({ errandCategory: c }),
+
+  basketValue: 0,
+  setBasketValue: (n) => set({ basketValue: n }),
+
+  durationMin: 30,
+  setDurationMin: (n) => set({ durationMin: n }),
 
   paymentMethod: "momo",
   setPaymentMethod: (p) => set({ paymentMethod: p }),
@@ -72,11 +91,19 @@ export const useApp = create<AppState>((set, get) => ({
   pushHistory: (t) => set((st) => ({ history: [t, ...st.history] })),
 
   buildEstimate: () => {
-    const { pickup, destination, selectedService } = get();
+    const { pickup, destination, selectedService, errandCategory, basketValue, durationMin } = get();
     if (!pickup || !destination || !selectedService) return null;
     const distanceKm = haversine(pickup.coord, destination.coord);
-    const fare = estimateFare(selectedService, distanceKm);
     const etaMin = Math.max(2, Math.round(SERVICES[selectedService].etaMin + distanceKm * 1.6));
+
+    if (selectedService === "errand" && errandCategory) {
+      const range = estimateErrandRange(errandCategory, distanceKm, { basketValue, durationMin });
+      // Use midpoint as the headline number where one is needed.
+      const fare = Math.round((range.low + range.high) / 2);
+      return { fare, distanceKm, etaMin, range };
+    }
+
+    const fare = estimateFare(selectedService, distanceKm);
     return { fare, distanceKm, etaMin };
   },
 
@@ -86,6 +113,9 @@ export const useApp = create<AppState>((set, get) => ({
       pickup: null,
       destination: null,
       errandDescription: "",
+      errandCategory: null,
+      basketValue: 0,
+      durationMin: 30,
       paymentMethod: "momo",
       status: "idle",
       activeTrip: null,

@@ -48,7 +48,7 @@ export function ServiceSelector() {
 
       <button
         disabled={!selectedService}
-        onClick={() => setStatus("selecting")}
+        onClick={() => setStatus(selectedService === "errand" ? "errand_category" : "selecting")}
         className={cn(
           "mt-5 w-full rounded-xl py-3.5 text-base font-semibold transition-all",
           selectedService

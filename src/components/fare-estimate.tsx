@@ -1,5 +1,6 @@
 import { useApp } from "@/lib/store";
 import { SERVICES } from "@/lib/services";
+import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
 import { cn } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/types";
 
@@ -18,12 +19,24 @@ export function FareEstimate() {
     setPaymentMethod,
     buildEstimate,
     setStatus,
+    errandCategory,
   } = useApp();
 
   if (!selectedService || !pickup || !destination) return null;
   const svc = SERVICES[selectedService];
+  const cat = selectedService === "errand" && errandCategory ? ERRAND_CATEGORIES[errandCategory] : null;
   const est = buildEstimate();
   if (!est) return null;
+
+  const headline = est.range ? (
+    <div className="mt-1 flex items-baseline gap-1">
+      <span className="text-3xl font-bold tracking-tight">N$ {est.range.low}</span>
+      <span className="text-xl font-semibold opacity-70">–</span>
+      <span className="text-3xl font-bold tracking-tight">{est.range.high}</span>
+    </div>
+  ) : (
+    <div className="mt-1 text-3xl font-bold tracking-tight">N$ {est.fare}</div>
+  );
 
   return (
     <div>
@@ -34,7 +47,7 @@ export function FareEstimate() {
         >
           ←
         </button>
-        <h2 className="text-lg font-bold">Confirm your trip</h2>
+        <h2 className="font-display text-lg font-bold">Confirm your trip</h2>
       </div>
 
       <div
@@ -43,10 +56,15 @@ export function FareEstimate() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs font-medium uppercase tracking-wider opacity-80">{svc.label}</div>
-            <div className="mt-1 text-3xl font-bold tracking-tight">N$ {est.fare}</div>
+            <div className="text-xs font-medium uppercase tracking-wider opacity-80">
+              {cat?.label ?? svc.label}
+            </div>
+            {headline}
+            {est.range && (
+              <div className="mt-1 text-[11px] opacity-80">{est.range.basis}</div>
+            )}
           </div>
-          <div className="text-5xl">{svc.icon}</div>
+          <div className="text-5xl">{cat?.icon ?? svc.icon}</div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
           <div className="rounded-lg bg-white/10 p-2">
@@ -62,6 +80,13 @@ export function FareEstimate() {
             <div className="font-semibold">~{svc.etaMin} min</div>
           </div>
         </div>
+        {est.range && (
+          <p className="mt-3 rounded-lg bg-white/10 p-2 text-[11px] leading-relaxed opacity-90">
+            Final price is settled after the runner finishes — it will land between
+            <span className="font-semibold"> N$ {est.range.low} </span>and
+            <span className="font-semibold"> N$ {est.range.high}</span>.
+          </p>
+        )}
       </div>
 
       <div className="mt-4">
