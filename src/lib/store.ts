@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { LatLng, PaymentMethod, RequestStatus, Runner, ServiceType, TripRequest } from "./types";
 import { estimateFare, haversine, SERVICES } from "./services";
-import { estimateErrandRange, type ErrandCategoryId, type PriceRange } from "./errand-categories";
+import { estimateErrandPrice, type ErrandCategoryId, type PriceQuote } from "./errand-categories";
 
 interface AppState {
   userLocation: LatLng | null;
