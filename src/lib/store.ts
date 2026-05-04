@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { LatLng, PaymentMethod, RequestStatus, Runner, ServiceType, TripRequest } from "./types";
 import { estimateFare, haversine, SERVICES } from "./services";
+import { estimateErrandRange, type ErrandCategoryId, type PriceRange } from "./errand-categories";
 
 interface AppState {
   userLocation: LatLng | null;
@@ -17,6 +18,15 @@ interface AppState {
   errandDescription: string;
   setErrandDescription: (s: string) => void;
 
+  errandCategory: ErrandCategoryId | null;
+  setErrandCategory: (c: ErrandCategoryId | null) => void;
+
+  basketValue: number;
+  setBasketValue: (n: number) => void;
+
+  durationMin: number;
+  setDurationMin: (n: number) => void;
+
   paymentMethod: PaymentMethod;
   setPaymentMethod: (p: PaymentMethod) => void;
 
@@ -30,7 +40,7 @@ interface AppState {
   history: TripRequest[];
   pushHistory: (t: TripRequest) => void;
 
-  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number } | null;
+  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number; range?: PriceRange } | null;
   reset: () => void;
 }
 
@@ -48,6 +58,15 @@ export const useApp = create<AppState>((set, get) => ({
 
   errandDescription: "",
   setErrandDescription: (s) => set({ errandDescription: s }),
+
+  errandCategory: null,
+  setErrandCategory: (c) => set({ errandCategory: c }),
+
+  basketValue: 0,
+  setBasketValue: (n) => set({ basketValue: n }),
+
+  durationMin: 30,
+  setDurationMin: (n) => set({ durationMin: n }),
 
   paymentMethod: "momo",
   setPaymentMethod: (p) => set({ paymentMethod: p }),
