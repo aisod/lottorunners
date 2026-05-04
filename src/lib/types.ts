@@ -30,6 +30,7 @@ export interface Runner {
 
 export type RequestStatus =
   | "idle"
+  | "errand_category"
   | "selecting"
   | "estimating"
   | "searching"
