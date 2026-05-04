@@ -117,6 +117,12 @@ export function FareEstimate() {
       >
         Confirm {svc.label}
       </button>
+      <button
+        onClick={() => useApp.getState().reset()}
+        className="mt-2 w-full text-center text-xs text-muted-foreground hover:text-foreground"
+      >
+        Cancel
+      </button>
     </div>
   );
 }
