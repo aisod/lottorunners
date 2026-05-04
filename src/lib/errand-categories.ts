@@ -7,7 +7,8 @@ export type ErrandCategoryId =
   | "delivery"
   | "queue_sitting"
   | "documents"
-  | "special_runs";
+  | "special_runs"
+  | "other";
 
 export interface ErrandCategory {
   id: ErrandCategoryId;
@@ -87,6 +88,17 @@ export const ERRAND_CATEGORIES: Record<ErrandCategoryId, ErrandCategory> = {
     detailsPlaceholder:
       "e.g. Pay City of Windhoek water bill (account #12345), then bring stamped receipt back home.",
   },
+  other: {
+    id: "other",
+    label: "Other / Custom",
+    tagline: "Tell us what you need",
+    description:
+      "Anything else? Describe the errand and we'll quote a fair price after a runner reviews it.",
+    icon: "✨",
+    pricing: { base: 70, perKm: 8, minRange: 80 },
+    detailsPlaceholder:
+      "e.g. Drop off birthday cake at office reception by 14:00 — fragile, keep upright.",
+  },
 };
 
 export const ERRAND_CATEGORY_ORDER: ErrandCategoryId[] = [
@@ -95,6 +107,7 @@ export const ERRAND_CATEGORY_ORDER: ErrandCategoryId[] = [
   "queue_sitting",
   "documents",
   "special_runs",
+  "other",
 ];
 
 export interface PriceQuote {
