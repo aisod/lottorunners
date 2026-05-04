@@ -84,6 +84,7 @@ function HomePage() {
     }
     if (status === "estimating") return <FareEstimate />;
     if (status === "selecting") return <LocationPicker />;
+    if (status === "errand_category") return <ErrandCategoryPicker />;
     return <ServiceSelector />;
   })();
 
