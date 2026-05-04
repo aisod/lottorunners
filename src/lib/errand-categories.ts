@@ -97,47 +97,43 @@ export const ERRAND_CATEGORY_ORDER: ErrandCategoryId[] = [
   "special_runs",
 ];
 
-export interface PriceRange {
-  low: number;
-  high: number;
-  basis: string; // short human explanation
+export interface PriceQuote {
+  amount: number;   // fixed price in NAD
+  basis: string;    // short human explanation
 }
 
-export function estimateErrandRange(
+export function estimateErrandPrice(
   categoryId: ErrandCategoryId,
   distanceKm: number,
   opts?: { basketValue?: number; durationMin?: number },
-): PriceRange {
+): PriceQuote {
   const cat = ERRAND_CATEGORIES[categoryId];
   const p = cat.pricing;
   const km = Math.max(distanceKm, 0.5);
 
-  let low = p.base;
-  let high = p.base;
+  let total = p.base;
 
   if (p.perKm) {
-    low += p.perKm * km;
-    high += p.perKm * km * 1.25; // traffic/route variance
+    total += p.perKm * km;
   }
 
   if (p.perHalfHour) {
     const halfHours = Math.max(1, Math.ceil((opts?.durationMin ?? 30) / 30));
-    low += p.perHalfHour * halfHours;
-    high += p.perHalfHour * (halfHours + 1); // possible queue overrun
+    total += p.perHalfHour * halfHours;
   }
 
   if (p.pctOfBasket && opts?.basketValue) {
-    low += Math.min(p.pctOfBasket * opts.basketValue, 200);
-    high += Math.min(p.pctOfBasket * opts.basketValue * 1.3, 260);
+    total += Math.min(p.pctOfBasket * opts.basketValue, 200);
   }
 
-  low = Math.max(p.minRange, Math.round(low / 5) * 5);
-  high = Math.max(low + 20, Math.round(high / 5) * 5);
+  // Round to nearest N$5 and enforce floor
+  const amount = Math.max(p.minRange, Math.round(total / 5) * 5);
 
   const bits: string[] = [`Base N$ ${p.base}`];
   if (p.perKm) bits.push(`+ N$ ${p.perKm}/km`);
   if (p.perHalfHour) bits.push(`+ N$ ${p.perHalfHour}/30min`);
   if (p.pctOfBasket) bits.push(`+ ${Math.round(p.pctOfBasket * 100)}% of basket`);
 
-  return { low, high, basis: bits.join(" ") };
+  return { amount, basis: bits.join(" ") };
 }
+
