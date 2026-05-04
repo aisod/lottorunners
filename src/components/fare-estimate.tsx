@@ -28,16 +28,6 @@ export function FareEstimate() {
   const est = buildEstimate();
   if (!est) return null;
 
-  const headline = est.range ? (
-    <div className="mt-1 flex items-baseline gap-1">
-      <span className="text-3xl font-bold tracking-tight">N$ {est.range.low}</span>
-      <span className="text-xl font-semibold opacity-70">–</span>
-      <span className="text-3xl font-bold tracking-tight">{est.range.high}</span>
-    </div>
-  ) : (
-    <div className="mt-1 text-3xl font-bold tracking-tight">N$ {est.fare}</div>
-  );
-
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">
@@ -59,9 +49,9 @@ export function FareEstimate() {
             <div className="text-xs font-medium uppercase tracking-wider opacity-80">
               {cat?.label ?? svc.label}
             </div>
-            {headline}
-            {est.range && (
-              <div className="mt-1 text-[11px] opacity-80">{est.range.basis}</div>
+            <div className="mt-1 text-3xl font-bold tracking-tight">N$ {est.fare}</div>
+            {est.quote && (
+              <div className="mt-1 text-[11px] opacity-80">{est.quote.basis}</div>
             )}
           </div>
           <div className="text-5xl">{cat?.icon ?? svc.icon}</div>
@@ -80,11 +70,9 @@ export function FareEstimate() {
             <div className="font-semibold">~{svc.etaMin} min</div>
           </div>
         </div>
-        {est.range && (
+        {est.quote && (
           <p className="mt-3 rounded-lg bg-white/10 p-2 text-[11px] leading-relaxed opacity-90">
-            Final price is settled after the runner finishes — it will land between
-            <span className="font-semibold"> N$ {est.range.low} </span>and
-            <span className="font-semibold"> N$ {est.range.high}</span>.
+            Fixed price — what you see is what you pay. No surprises.
           </p>
         )}
       </div>
