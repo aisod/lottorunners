@@ -33,10 +33,14 @@ export const Route = createRootRoute({
       { name: "description", content: "Errands, rides, deliveries & trucks on demand. Live map, real-time tracking." },
       { name: "author", content: "Lotto Runners" },
       { property: "og:title", content: "Lotto Runners" },
-      { property: "og:description", content: "Uber-style errands & rides app for Namibia." },
+      { property: "og:description", content: "Errands, rides, deliveries & trucks on demand. Live map, real-time tracking." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Lotto Runners" },
+      { name: "twitter:description", content: "Errands, rides, deliveries & trucks on demand. Live map, real-time tracking." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/rhplFQjOCBP6KivFZfjgla4nf8o2/social-images/social-1777905575009-close-up-delivery-person-giving-parcel-client.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/rhplFQjOCBP6KivFZfjgla4nf8o2/social-images/social-1777905575009-close-up-delivery-person-giving-parcel-client.webp" },
     ],
     links: [
       {
