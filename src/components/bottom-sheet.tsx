@@ -19,7 +19,7 @@ export function BottomSheet({ children, className, fullscreen }: BottomSheetProp
       style={{ background: "var(--gradient-sheet)" }}
     >
       <div className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-muted-foreground/30" />
-      <div className="px-5 pb-6 pt-2">{children}</div>
+      <div className="px-5 pb-24 pt-2">{children}</div>
     </div>
   );
 }
