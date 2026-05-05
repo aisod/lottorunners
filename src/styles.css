@@ -10,7 +10,7 @@
  * Inspired by the brand mark: deep black + vivid runner-blue, bold condensed display.
  * All colors in oklch. Use semantic tokens, never hardcoded values.
  */
-@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&display=swap");
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -58,45 +58,46 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-display: "Archivo Black", "Archivo", system-ui, sans-serif;
-  --font-sans: "Archivo", system-ui, sans-serif;
+  --font-display: "Inter", "Archivo Black", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 1rem;
 
-  /* Surfaces — clean white with a hint of cool */
-  --background: oklch(0.99 0.003 240);
-  --foreground: oklch(0.16 0.02 250);
+  /* Surfaces — Stitch palette: cool off-white with blue tint */
+  --background: oklch(0.98 0.012 270);
+  --foreground: oklch(0.18 0.04 265);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.02 250);
+  --card-foreground: oklch(0.18 0.04 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.02 250);
+  --popover-foreground: oklch(0.18 0.04 265);
 
-  /* Brand — deep black (logo silhouette) */
-  --primary: oklch(0.18 0.02 250);
+  /* Brand — Lotto Runners blue (#005d98) */
+  --primary: oklch(0.48 0.14 248);
   --primary-foreground: oklch(0.99 0.003 240);
-  --primary-glow: oklch(0.3 0.04 250);
+  --primary-glow: oklch(0.55 0.16 245);
 
-  /* Accent — vivid Lotto Runners blue (the briefcase / tie blue) */
-  --accent: oklch(0.62 0.18 240);
+  /* Accent — slightly lighter brand blue (#0076c0) */
+  --accent: oklch(0.56 0.16 245);
   --accent-foreground: oklch(0.99 0.003 240);
 
-  --secondary: oklch(0.96 0.008 240);
-  --secondary-foreground: oklch(0.18 0.02 250);
+  /* Surface containers */
+  --secondary: oklch(0.94 0.022 265);
+  --secondary-foreground: oklch(0.2 0.04 265);
 
-  --muted: oklch(0.96 0.008 240);
-  --muted-foreground: oklch(0.5 0.02 250);
+  --muted: oklch(0.94 0.022 265);
+  --muted-foreground: oklch(0.45 0.025 265);
 
-  --destructive: oklch(0.6 0.22 25);
+  --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0.003 240);
 
   --success: oklch(0.65 0.16 150);
   --success-foreground: oklch(0.99 0.003 240);
 
-  --border: oklch(0.91 0.008 240);
-  --input: oklch(0.93 0.008 240);
-  --ring: oklch(0.62 0.18 240);
+  --border: oklch(0.88 0.018 265);
+  --input: oklch(0.92 0.018 265);
+  --ring: oklch(0.56 0.16 245);
 
   --chart-1: oklch(0.62 0.18 240);
   --chart-2: oklch(0.55 0.18 220);
