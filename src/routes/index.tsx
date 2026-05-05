@@ -127,6 +127,9 @@ function HomePage() {
 
       <BottomSheet>{sheet}</BottomSheet>
 
+      {!activeTrip && status === "idle" && <SOSButton />}
+      {!activeTrip && status === "idle" && <BottomTabBar />}
+
       {showHistory && <HistorySheet onClose={() => setShowHistory(false)} />}
     </div>
   );
