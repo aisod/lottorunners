@@ -1,77 +1,118 @@
 
-# Lotto Runners — "Uber for Errands"
+## Goal
 
-A live-map app where customers request one of four services (Errand, Ride, Delivery, Truck), get matched to the nearest available runner, track them in real time, pay in-app, and rate the service. Includes a Runner app and an Admin dashboard.
+Re-skin the existing customer prototype to match the 8 uploaded Stitch screens. Same flow, same logic — new look, layout and a few small UX additions (saved places, urgency, schedule now/later, persistent bottom tab bar).
 
-## Phased delivery
+## Design system update (`src/styles.css`)
 
-This is a big build. We'll ship it in three phases so you can demo after each one.
+Adopt the Stitch palette (already consistent across all 8 DESIGN.md files):
 
-### Phase 1 — Customer prototype on a real live map
-The flagship demo experience. After this phase you can show investors a complete, polished customer flow.
+- `--background` → `#f9f9ff` (cool off-white)
+- `--card` → `#ffffff`
+- `--secondary` / surface-container → `#e9edff` / `#f1f3ff`
+- `--primary` (brand blue, used for headings, buttons, icons) → `#005d98`
+- `--accent` → `#0076c0`
+- `--border` → `#c0c7d3`
+- `--destructive` → `#ba1a1a` (used for SOS)
+- Headings: switch from `Archivo Black` to a clean modern sans (Stitch screens use Inter / SF-style) — keep Archivo as fallback. Brand wordmark stays bold uppercase blue `LOTTO RUNNERS`.
+- Card radius bumped to `1rem`+; soft tinted shadows.
 
-- **Live map home screen** (Leaflet + OpenStreetMap): full-screen map, asks for browser geolocation, centers on the user; falls back to Windhoek. Animated "pulse" on user location. Simulated nearby runners shown as moving icons (car, motorbike, truck, person on foot) until the backend is wired in Phase 2.
-- **Service selector bottom sheet** (Uber-style): four tiles with icons and short descriptions
-  - Errand Runner (person on foot)
-  - Ride (car)
-  - Delivery (motorbike)
-  - Truck (truck)
-- **Pickup + destination flow**: tap to set pickup, then destination. Address search field with reverse geocoding. Saved/recent locations. For Errand Runner, an extra "Describe your errand" field (e.g. "Pick up groceries from Checkers, pay with the cash I'll send").
-- **Fare estimate screen**: distance/time estimate, price breakdown, payment method selector (MTC MoMo, Card, Cash — mocked), "Confirm request" button.
-- **Searching for runner** animation, then **driver-found card** with photo, name, rating, vehicle, ETA.
-- **Live tracking screen**: runner icon moving toward pickup, then to destination. Status pills (En route → Arrived → On trip → Completed). Call/message buttons (mock).
-- **Rate & pay screen**: 5-star rating, tip option, receipt.
-- Trip history page.
+## Layout shell
 
-### Phase 2 — Real backend, auth, and Runner app
-Replace simulation with a real real-time system, add the runner side.
+New persistent **bottom tab bar** (`src/components/bottom-tab-bar.tsx`) with Home / Activity / Wallet / Profile. Always visible except during active trip tracking.
 
-- **Lovable Cloud** for database, auth, storage, and realtime.
-- **Auth**: email/password + Google sign-in. Two account types — Customer and Runner — chosen at signup. Runner signup collects vehicle type, license plate, photo upload.
-- **Database** (key tables): `profiles`, `user_roles` (customer / runner / admin, in a separate table for security), `runners` (vehicle, status, current location), `service_requests` (type, pickup, destination, errand description, status, fare), `trip_events` (status updates), `ratings`, `payments`.
-- **Live runner locations**: the Runner app pushes GPS updates; the Customer app subscribes via Supabase Realtime so the runner icon moves on the map for real.
-- **Matching**: when a customer confirms, the system finds the nearest available runner of the correct vehicle type and sends them the request.
-- **Runner app** (separate routes, same codebase):
-  - Online/Offline toggle (publishes location only when online)
-  - Incoming request card with accept/decline + 15s timer
-  - Active job screen with navigation hand-off, status buttons (Arrived / Picked up / Completed)
-  - Earnings summary, job history
-- **Customer ↔ runner matching loop** end-to-end on real data.
+New routes (file-based, TanStack):
+- `src/routes/activity.tsx` — reuses existing trip history UI as a full page
+- `src/routes/wallet.tsx` — simple wallet stub (balance + top-up button + recent transactions placeholder)
+- `src/routes/profile.tsx` — name, phone, saved places, sign out
+- `src/routes/auth.verify.tsx` — OTP verify screen (screen 2). Phone-entry step and verify step. Local-only (no backend); on success sets a flag in `useApp` and routes to `/`.
 
-### Phase 3 — Admin dashboard
-Operational control for the team.
+Header (`app-header.tsx`) restyled: white bar, hamburger left, centered blue `LOTTO RUNNERS` wordmark, bell + avatar (logo) right.
 
-- Live ops map: every active runner and trip on one map, color-coded by status.
-- Tables with filters & search: Users, Runners (with approve/suspend), Trips, Payments, Ratings.
-- KPIs: active runners, requests/hour, completion rate, avg ETA, revenue.
-- Runner verification queue (review uploaded documents).
-- Manual dispatch override (reassign a stuck request).
+## Home (`src/routes/index.tsx` + `service-selector.tsx`)
 
-## Visual & UX direction
+Match screen s0:
+- Map fills top.
+- Bottom sheet with 4 service tiles in a row (Errand / Taxi / Delivery / Truck) — tinted square cards, selected one filled solid blue.
+- Red circular **SOS** floating button overlapping the rightmost tile.
+- Saved-place row: "Home — 123 Independence Ave, Windhoek" tappable → prefills pickup.
+- Persistent bottom tab bar.
 
-- Uber-inspired layout (full-bleed map, bottom sheet for actions) but neutral palette until you share the Lotto Runners brand. Once you upload your logo and colors, I'll theme the whole app.
-- Mobile-first, but works on desktop for the admin dashboard.
-- Smooth bottom-sheet transitions, skeleton loaders, optimistic UI.
+## Errand sub-flow
 
-## Technical notes (for reference)
+**`errand-category-picker.tsx`** restyled to match s4: full page with search bar, "What do you need?" heading, vertical list of 5 large cards (icon-circle + title + description). Add Pharmacy Runs and Bill Payments to `errand-categories.ts` (adjusts the existing 5).
 
-- Frontend: TanStack Start + React, Tailwind, shadcn/ui, Leaflet for maps.
-- Backend: Lovable Cloud (Supabase) — Postgres + RLS, Auth, Realtime channels for live location, Storage for runner photos/docs.
-- Roles stored in a dedicated `user_roles` table with a `has_role()` security-definer function (never on profiles — prevents privilege escalation).
-- Payments are **mocked** in this build (MoMo / card / cash UI only). Real MTC MoMo and card processing for Namibia is a Phase 4 conversation — it requires a payment partner and merchant onboarding outside Lovable's built-in providers.
-- Map provider: starting with Leaflet + OpenStreetMap (free, no key). Easy swap to Mapbox later for a more polished look once branding is set.
+**New `errand-details.tsx`** (replaces the errand-specific block currently inside `location-picker.tsx`) matching s5:
+- Hero image strip (lotto runners logo art)
+- Store Preference input (optional)
+- Shopping List textarea
+- Urgency: Normal / Urgent toggle
+- Budget Estimate N$ input
+- "Review Request" primary button → continues to fare estimate
 
-## What I'd like from you along the way
+For non-shopping categories, the same template adapts labels (e.g., Queue Sitting shows "Where" + "Estimated wait time" pills 30/60/90/120 instead of budget).
 
-1. **Now**: approve this plan so I can start Phase 1.
-2. **Before Phase 1 finishes**: drop your Lotto Runners logo + brand colors into the chat so I can theme it.
-3. **Before Phase 2**: confirm you want Lovable Cloud enabled (I'll prompt you).
-4. **Phase 4 (later)**: we'll plan real MoMo/card payment integration separately.
+## Taxi / Delivery / Truck flow
 
-## Out of scope for now
+`location-picker.tsx` restyled and **`ride-options.tsx`** new (screen s1):
+- Compact pickup/destination card at top
+- "Choose a ride" + N options pill
+- Vertical cards: icon-tile, name, subtitle, ETA "X min away", price right-aligned, optional struck-through original price, blue selected state with "SELECTED" pill
+- Wallet row card
+- "Lotto Verified Security" + estimated total footer
+- Solid blue full-width "Confirm Selection" CTA
 
-- Real money movement (MoMo, card processing) — mocked UI only.
-- Native iOS/Android apps — this is a responsive web app that feels native on mobile. Wrapping it as a native app via Capacitor is a future step.
-- SMS/push notifications — can be added once a Twilio/messaging provider is chosen.
+Rides catalog (in `services.ts`): Standard (N$45), XL (N$85), Women Only (N$50), Corporate (N$120). Same pattern for Delivery (Standard / Express / Bulk) and Truck (1-ton / 4-ton).
 
-Approve this and I'll start building Phase 1 immediately.
+## Fare estimate (`fare-estimate.tsx`)
+
+Match s7:
+- Hero image card at top
+- "Schedule for" Now / Later toggle (Later = future enhancement, disabled with "Coming soon")
+- Fare Breakdown card: Base / Distance (with km) / Platform fee / Total in blue
+- Wallet card with Change link
+- Solid blue "Confirm & Request Runner"
+
+## Searching (`searching.tsx`)
+
+Match s6:
+- Concentric blue rings around centered crosshair circle
+- "Finding your Runner…" pill
+- Bottom sheet "Nearby Runners" with horizontal scroll of small runner cards (avatar / name / 4.9★ / N min)
+- "Cancel Request" outlined button
+
+## Auth (OTP) — screen s2
+
+New `src/routes/auth.verify.tsx`: centered logo, big "Verify your account" title, masked phone, 6 separate digit input boxes, blue "Verify →" button, resend countdown, "Need help?" footer. No real SMS — accept any 6 digits in the prototype and gate the home page behind it (skippable via a "Continue as guest" link to keep the demo frictionless).
+
+## Files
+
+**New**
+- `src/components/bottom-tab-bar.tsx`
+- `src/components/errand-details.tsx`
+- `src/components/ride-options.tsx`
+- `src/components/sos-button.tsx`
+- `src/routes/activity.tsx`
+- `src/routes/wallet.tsx`
+- `src/routes/profile.tsx`
+- `src/routes/auth.verify.tsx`
+
+**Edited**
+- `src/styles.css` (new palette)
+- `src/components/app-header.tsx`
+- `src/components/service-selector.tsx`
+- `src/components/errand-category-picker.tsx`
+- `src/components/location-picker.tsx` (errand block extracted)
+- `src/components/fare-estimate.tsx`
+- `src/components/searching.tsx`
+- `src/lib/errand-categories.ts` (add pharmacy, bill payments)
+- `src/lib/services.ts` (add ride/delivery/truck variants + prices)
+- `src/lib/store.ts` (savedPlaces, urgency, scheduleMode, authVerified)
+- `src/routes/index.tsx` (mount bottom tab bar, SOS, saved places)
+
+## Out of scope (unless you say otherwise)
+
+- Real auth / SMS provider
+- Real wallet top-up / payments
+- Maps inside ride-selection screen (Stitch screen shows a faded map; we'll keep the bottom sheet over the live Leaflet map)
+- "Schedule for Later" date picker (button stub only)

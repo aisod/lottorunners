@@ -10,6 +10,8 @@ import { Searching } from "@/components/searching";
 import { TripTracking } from "@/components/trip-tracking";
 import { AppHeader } from "@/components/app-header";
 import { HistorySheet } from "@/components/history-sheet";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { SOSButton } from "@/components/sos-button";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { useSimulatedRunners } from "@/lib/use-simulated-runners";
 import { useApp } from "@/lib/store";
@@ -124,6 +126,9 @@ function HomePage() {
       )}
 
       <BottomSheet>{sheet}</BottomSheet>
+
+      {!activeTrip && status === "idle" && <SOSButton />}
+      {!activeTrip && status === "idle" && <BottomTabBar />}
 
       {showHistory && <HistorySheet onClose={() => setShowHistory(false)} />}
     </div>
