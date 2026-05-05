@@ -82,26 +82,56 @@ export function Searching({ runners }: SearchingProps) {
   ]);
 
   const svc = selectedService ? SERVICES[selectedService] : null;
+  const nearby = runners.slice(0, 6);
 
   return (
-    <div className="py-2 text-center">
-      <div className="relative mx-auto mb-4 flex h-24 w-24 items-center justify-center">
-        <div className="absolute inset-0 animate-ping rounded-full bg-accent/40" />
-        <div className="absolute inset-2 animate-ping rounded-full bg-accent/30 [animation-delay:200ms]" />
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-accent text-3xl shadow-[var(--shadow-glow)]">
-          {svc?.icon}
+    <div className="py-2">
+      <div className="relative mx-auto mb-6 flex h-44 w-44 items-center justify-center">
+        <div className="absolute inset-0 animate-ping rounded-full border-2 border-primary/20" />
+        <div className="absolute inset-4 animate-ping rounded-full border-2 border-primary/30 [animation-delay:200ms]" />
+        <div className="absolute inset-10 animate-ping rounded-full border-2 border-primary/40 [animation-delay:400ms]" />
+        <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_-4px_oklch(0.48_0.14_248/0.5)] ring-4 ring-card">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          </svg>
         </div>
       </div>
-      <h2 className="text-xl font-bold">Finding the closest runner…</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Matching you with a verified {svc?.label.toLowerCase()} nearby
-      </p>
+
+      <div className="mx-auto mb-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-card px-4 py-3 text-center shadow-sm">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+        <span className="text-base font-bold">Finding your Runner…</span>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-bold">Nearby Runners</h3>
+        <p className="text-xs text-muted-foreground">Connecting you with the closest available.</p>
+        <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
+          {nearby.map((r) => (
+            <div key={r.id} className="flex shrink-0 items-center gap-3 rounded-2xl border border-border bg-card p-3 pr-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary font-bold text-primary">
+                {r.name.charAt(0)}
+              </div>
+              <div>
+                <div className="text-sm font-bold leading-tight">{r.name}</div>
+                <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-primary">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15 8.5 22 9.3 17 14 18.2 21 12 17.8 5.8 21 7 14 2 9.3 9 8.5 12 2"/></svg>
+                  {r.rating.toFixed(1)} · {Math.max(1, Math.round(haversine(r.position, pickup?.coord ?? r.position) * 2))} min
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <button
         onClick={reset}
-        className="mt-5 w-full rounded-xl border border-border bg-card py-3 text-sm font-semibold hover:bg-secondary"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold hover:bg-secondary"
       >
-        Cancel request
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        Cancel Request
       </button>
+      {svc ? null : null}
     </div>
   );
 }
