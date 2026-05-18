@@ -104,7 +104,7 @@ export function FareEstimate() {
         </svg>
       </button>
       <button
-        onClick={() => useApp.getState().reset()}
+        onClick={() => useCustomerApp.getState().reset()}
         className="mt-2 w-full text-center text-xs text-muted-foreground hover:text-foreground"
       >
         Cancel
