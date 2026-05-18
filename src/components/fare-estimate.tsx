@@ -1,4 +1,4 @@
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ export function FareEstimate() {
     buildEstimate,
     setStatus,
     errandCategory,
-  } = useApp();
+  } = useCustomerApp();
 
   if (!selectedService || !pickup || !destination) return null;
   const svc = SERVICES[selectedService];

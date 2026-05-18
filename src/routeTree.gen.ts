@@ -10,19 +10,146 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as SubscriptionPackagesRouteImport } from './routes/subscription-packages'
+import { Route as SplashRouteImport } from './routes/splash'
+import { Route as SavedAddressesRouteImport } from './routes/saved-addresses'
+import { Route as RunnerRouteImport } from './routes/runner'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PaymentMethodsRouteImport } from './routes/payment-methods'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as CustomerRouteImport } from './routes/customer'
+import { Route as BusinessRouteImport } from './routes/business'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RunnerSupportHelpRouteImport } from './routes/runner.support-help'
+import { Route as RunnerSettingsRouteImport } from './routes/runner.settings'
+import { Route as RunnerServiceSelectionRouteImport } from './routes/runner.service-selection'
+import { Route as RunnerRateCustomerRouteImport } from './routes/runner.rate-customer'
+import { Route as RunnerPerformanceRouteImport } from './routes/runner.performance'
+import { Route as RunnerPayoutDetailsRouteImport } from './routes/runner.payout-details'
+import { Route as RunnerIncomingJobAlertRouteImport } from './routes/runner.incoming-job-alert'
+import { Route as RunnerEarningsRouteImport } from './routes/runner.earnings'
+import { Route as RunnerDashboardRouteImport } from './routes/runner.dashboard'
+import { Route as RunnerActivityHistoryRouteImport } from './routes/runner.activity-history'
+import { Route as RunnerActiveJobRouteImport } from './routes/runner.active-job'
+import { Route as RunnerAccessRouteImport } from './routes/runner.access'
+import { Route as CustomerWelcomeRouteImport } from './routes/customer.welcome'
+import { Route as CustomerWalletRouteImport } from './routes/customer.wallet'
+import { Route as CustomerVerifyRouteImport } from './routes/customer.verify'
+import { Route as CustomerTruckSizeRouteImport } from './routes/customer.truck-size'
+import { Route as CustomerTrackingRunnerRouteImport } from './routes/customer.tracking-runner'
+import { Route as CustomerSubscriptionPackagesRouteImport } from './routes/customer.subscription-packages'
+import { Route as CustomerSigninRouteImport } from './routes/customer.signin'
+import { Route as CustomerSavedAddressesRouteImport } from './routes/customer.saved-addresses'
+import { Route as CustomerReviewScheduleRouteImport } from './routes/customer.review-schedule'
+import { Route as CustomerRateRunnerRouteImport } from './routes/customer.rate-runner'
+import { Route as CustomerProfileSetupRouteImport } from './routes/customer.profile-setup'
+import { Route as CustomerProfileRouteImport } from './routes/customer.profile'
+import { Route as CustomerPensionerRouteImport } from './routes/customer.pensioner'
+import { Route as CustomerPaymentMethodsRouteImport } from './routes/customer.payment-methods'
+import { Route as CustomerOnboardingLoginRouteImport } from './routes/customer.onboarding-login'
+import { Route as CustomerMovingDetailsRouteImport } from './routes/customer.moving-details'
+import { Route as CustomerMatchingRunnerRouteImport } from './routes/customer.matching-runner'
+import { Route as CustomerLiveJobTrackingRouteImport } from './routes/customer.live-job-tracking'
+import { Route as CustomerHomeRouteImport } from './routes/customer.home'
+import { Route as CustomerErrandTaskRequestRouteImport } from './routes/customer.errand-task-request'
+import { Route as CustomerErrandDetailsRouteImport } from './routes/customer.errand-details'
+import { Route as CustomerDeliveryRequestRouteImport } from './routes/customer.delivery-request'
+import { Route as CustomerChooseServiceRouteImport } from './routes/customer.choose-service'
+import { Route as CustomerChooseErrandTypeRouteImport } from './routes/customer.choose-errand-type'
+import { Route as CustomerActivityRouteImport } from './routes/customer.activity'
+import { Route as BusinessTeamRouteImport } from './routes/business.team'
+import { Route as BusinessSpendingAnalyticsRouteImport } from './routes/business.spending-analytics'
+import { Route as BusinessSettingsRouteImport } from './routes/business.settings'
+import { Route as BusinessPermissionsRouteImport } from './routes/business.permissions'
+import { Route as BusinessInvoicingRouteImport } from './routes/business.invoicing'
+import { Route as BusinessDashboardRouteImport } from './routes/business.dashboard'
+import { Route as BusinessBulkReviewRouteImport } from './routes/business.bulk-review'
+import { Route as BusinessBulkRequestRouteImport } from './routes/business.bulk-request'
+import { Route as BusinessBulkImportRouteImport } from './routes/business.bulk-import'
+import { Route as AuthVerifyPhoneRouteImport } from './routes/auth.verify-phone'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminServicePricingRouteImport } from './routes/admin.service-pricing'
+import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
+import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
+import { Route as AdminJobsRouteImport } from './routes/admin.jobs'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as RunnerOnboardingVerificationRouteImport } from './routes/runner.onboarding.verification'
+import { Route as RunnerOnboardingVehicleRouteImport } from './routes/runner.onboarding.vehicle'
+import { Route as RunnerOnboardingTrainingRouteImport } from './routes/runner.onboarding.training'
+import { Route as RunnerOnboardingDocumentsRouteImport } from './routes/runner.onboarding.documents'
+import { Route as RunnerOnboardingBankingRouteImport } from './routes/runner.onboarding.banking'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubscriptionPackagesRoute = SubscriptionPackagesRouteImport.update({
+  id: '/subscription-packages',
+  path: '/subscription-packages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplashRoute = SplashRouteImport.update({
+  id: '/splash',
+  path: '/splash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedAddressesRoute = SavedAddressesRouteImport.update({
+  id: '/saved-addresses',
+  path: '/saved-addresses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RunnerRoute = RunnerRouteImport.update({
+  id: '/runner',
+  path: '/runner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentMethodsRoute = PaymentMethodsRouteImport.update({
+  id: '/payment-methods',
+  path: '/payment-methods',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LogoutRoute = LogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerRoute = CustomerRouteImport.update({
+  id: '/customer',
+  path: '/customer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessRoute = BusinessRouteImport.update({
+  id: '/business',
+  path: '/business',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivityRoute = ActivityRouteImport.update({
@@ -35,48 +162,820 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunnerSupportHelpRoute = RunnerSupportHelpRouteImport.update({
+  id: '/support-help',
+  path: '/support-help',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerSettingsRoute = RunnerSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerServiceSelectionRoute = RunnerServiceSelectionRouteImport.update({
+  id: '/service-selection',
+  path: '/service-selection',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerRateCustomerRoute = RunnerRateCustomerRouteImport.update({
+  id: '/rate-customer',
+  path: '/rate-customer',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerPerformanceRoute = RunnerPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerPayoutDetailsRoute = RunnerPayoutDetailsRouteImport.update({
+  id: '/payout-details',
+  path: '/payout-details',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerIncomingJobAlertRoute = RunnerIncomingJobAlertRouteImport.update({
+  id: '/incoming-job-alert',
+  path: '/incoming-job-alert',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerEarningsRoute = RunnerEarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerDashboardRoute = RunnerDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerActivityHistoryRoute = RunnerActivityHistoryRouteImport.update({
+  id: '/activity-history',
+  path: '/activity-history',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerActiveJobRoute = RunnerActiveJobRouteImport.update({
+  id: '/active-job',
+  path: '/active-job',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerAccessRoute = RunnerAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const CustomerWelcomeRoute = CustomerWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerWalletRoute = CustomerWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerVerifyRoute = CustomerVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerTruckSizeRoute = CustomerTruckSizeRouteImport.update({
+  id: '/truck-size',
+  path: '/truck-size',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerTrackingRunnerRoute = CustomerTrackingRunnerRouteImport.update({
+  id: '/tracking-runner',
+  path: '/tracking-runner',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerSubscriptionPackagesRoute =
+  CustomerSubscriptionPackagesRouteImport.update({
+    id: '/subscription-packages',
+    path: '/subscription-packages',
+    getParentRoute: () => CustomerRoute,
+  } as any)
+const CustomerSigninRoute = CustomerSigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerSavedAddressesRoute = CustomerSavedAddressesRouteImport.update({
+  id: '/saved-addresses',
+  path: '/saved-addresses',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerReviewScheduleRoute = CustomerReviewScheduleRouteImport.update({
+  id: '/review-schedule',
+  path: '/review-schedule',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerRateRunnerRoute = CustomerRateRunnerRouteImport.update({
+  id: '/rate-runner',
+  path: '/rate-runner',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerProfileSetupRoute = CustomerProfileSetupRouteImport.update({
+  id: '/profile-setup',
+  path: '/profile-setup',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerProfileRoute = CustomerProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerPensionerRoute = CustomerPensionerRouteImport.update({
+  id: '/pensioner',
+  path: '/pensioner',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerPaymentMethodsRoute = CustomerPaymentMethodsRouteImport.update({
+  id: '/payment-methods',
+  path: '/payment-methods',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerOnboardingLoginRoute = CustomerOnboardingLoginRouteImport.update({
+  id: '/onboarding-login',
+  path: '/onboarding-login',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerMovingDetailsRoute = CustomerMovingDetailsRouteImport.update({
+  id: '/moving-details',
+  path: '/moving-details',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerMatchingRunnerRoute = CustomerMatchingRunnerRouteImport.update({
+  id: '/matching-runner',
+  path: '/matching-runner',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerLiveJobTrackingRoute = CustomerLiveJobTrackingRouteImport.update({
+  id: '/live-job-tracking',
+  path: '/live-job-tracking',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerHomeRoute = CustomerHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerErrandTaskRequestRoute =
+  CustomerErrandTaskRequestRouteImport.update({
+    id: '/errand-task-request',
+    path: '/errand-task-request',
+    getParentRoute: () => CustomerRoute,
+  } as any)
+const CustomerErrandDetailsRoute = CustomerErrandDetailsRouteImport.update({
+  id: '/errand-details',
+  path: '/errand-details',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerDeliveryRequestRoute = CustomerDeliveryRequestRouteImport.update({
+  id: '/delivery-request',
+  path: '/delivery-request',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerChooseServiceRoute = CustomerChooseServiceRouteImport.update({
+  id: '/choose-service',
+  path: '/choose-service',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerChooseErrandTypeRoute =
+  CustomerChooseErrandTypeRouteImport.update({
+    id: '/choose-errand-type',
+    path: '/choose-errand-type',
+    getParentRoute: () => CustomerRoute,
+  } as any)
+const CustomerActivityRoute = CustomerActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const BusinessTeamRoute = BusinessTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessSpendingAnalyticsRoute =
+  BusinessSpendingAnalyticsRouteImport.update({
+    id: '/spending-analytics',
+    path: '/spending-analytics',
+    getParentRoute: () => BusinessRoute,
+  } as any)
+const BusinessSettingsRoute = BusinessSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessPermissionsRoute = BusinessPermissionsRouteImport.update({
+  id: '/permissions',
+  path: '/permissions',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessInvoicingRoute = BusinessInvoicingRouteImport.update({
+  id: '/invoicing',
+  path: '/invoicing',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessDashboardRoute = BusinessDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessBulkReviewRoute = BusinessBulkReviewRouteImport.update({
+  id: '/bulk-review',
+  path: '/bulk-review',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessBulkRequestRoute = BusinessBulkRequestRouteImport.update({
+  id: '/bulk-request',
+  path: '/bulk-request',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const BusinessBulkImportRoute = BusinessBulkImportRouteImport.update({
+  id: '/bulk-import',
+  path: '/bulk-import',
+  getParentRoute: () => BusinessRoute,
+} as any)
+const AuthVerifyPhoneRoute = AuthVerifyPhoneRouteImport.update({
+  id: '/auth/verify-phone',
+  path: '/auth/verify-phone',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: '/auth/verify',
   path: '/auth/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminServicePricingRoute = AdminServicePricingRouteImport.update({
+  id: '/service-pricing',
+  path: '/service-pricing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOverviewRoute = AdminOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminJobsRoute = AdminJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const RunnerOnboardingVerificationRoute =
+  RunnerOnboardingVerificationRouteImport.update({
+    id: '/onboarding/verification',
+    path: '/onboarding/verification',
+    getParentRoute: () => RunnerRoute,
+  } as any)
+const RunnerOnboardingVehicleRoute = RunnerOnboardingVehicleRouteImport.update({
+  id: '/onboarding/vehicle',
+  path: '/onboarding/vehicle',
+  getParentRoute: () => RunnerRoute,
+} as any)
+const RunnerOnboardingTrainingRoute =
+  RunnerOnboardingTrainingRouteImport.update({
+    id: '/onboarding/training',
+    path: '/onboarding/training',
+    getParentRoute: () => RunnerRoute,
+  } as any)
+const RunnerOnboardingDocumentsRoute =
+  RunnerOnboardingDocumentsRouteImport.update({
+    id: '/onboarding/documents',
+    path: '/onboarding/documents',
+    getParentRoute: () => RunnerRoute,
+  } as any)
+const RunnerOnboardingBankingRoute = RunnerOnboardingBankingRouteImport.update({
+  id: '/onboarding/banking',
+  path: '/onboarding/banking',
+  getParentRoute: () => RunnerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/business': typeof BusinessRouteWithChildren
+  '/customer': typeof CustomerRouteWithChildren
+  '/help': typeof HelpRoute
+  '/logout': typeof LogoutRoute
+  '/notifications': typeof NotificationsRoute
+  '/payment-methods': typeof PaymentMethodsRoute
   '/profile': typeof ProfileRoute
+  '/runner': typeof RunnerRouteWithChildren
+  '/saved-addresses': typeof SavedAddressesRoute
+  '/splash': typeof SplashRoute
+  '/subscription-packages': typeof SubscriptionPackagesRoute
   '/wallet': typeof WalletRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/jobs': typeof AdminJobsRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/service-pricing': typeof AdminServicePricingRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/auth/verify-phone': typeof AuthVerifyPhoneRoute
+  '/business/bulk-import': typeof BusinessBulkImportRoute
+  '/business/bulk-request': typeof BusinessBulkRequestRoute
+  '/business/bulk-review': typeof BusinessBulkReviewRoute
+  '/business/dashboard': typeof BusinessDashboardRoute
+  '/business/invoicing': typeof BusinessInvoicingRoute
+  '/business/permissions': typeof BusinessPermissionsRoute
+  '/business/settings': typeof BusinessSettingsRoute
+  '/business/spending-analytics': typeof BusinessSpendingAnalyticsRoute
+  '/business/team': typeof BusinessTeamRoute
+  '/customer/activity': typeof CustomerActivityRoute
+  '/customer/choose-errand-type': typeof CustomerChooseErrandTypeRoute
+  '/customer/choose-service': typeof CustomerChooseServiceRoute
+  '/customer/delivery-request': typeof CustomerDeliveryRequestRoute
+  '/customer/errand-details': typeof CustomerErrandDetailsRoute
+  '/customer/errand-task-request': typeof CustomerErrandTaskRequestRoute
+  '/customer/home': typeof CustomerHomeRoute
+  '/customer/live-job-tracking': typeof CustomerLiveJobTrackingRoute
+  '/customer/matching-runner': typeof CustomerMatchingRunnerRoute
+  '/customer/moving-details': typeof CustomerMovingDetailsRoute
+  '/customer/onboarding-login': typeof CustomerOnboardingLoginRoute
+  '/customer/payment-methods': typeof CustomerPaymentMethodsRoute
+  '/customer/pensioner': typeof CustomerPensionerRoute
+  '/customer/profile': typeof CustomerProfileRoute
+  '/customer/profile-setup': typeof CustomerProfileSetupRoute
+  '/customer/rate-runner': typeof CustomerRateRunnerRoute
+  '/customer/review-schedule': typeof CustomerReviewScheduleRoute
+  '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
+  '/customer/signin': typeof CustomerSigninRoute
+  '/customer/subscription-packages': typeof CustomerSubscriptionPackagesRoute
+  '/customer/tracking-runner': typeof CustomerTrackingRunnerRoute
+  '/customer/truck-size': typeof CustomerTruckSizeRoute
+  '/customer/verify': typeof CustomerVerifyRoute
+  '/customer/wallet': typeof CustomerWalletRoute
+  '/customer/welcome': typeof CustomerWelcomeRoute
+  '/runner/access': typeof RunnerAccessRoute
+  '/runner/active-job': typeof RunnerActiveJobRoute
+  '/runner/activity-history': typeof RunnerActivityHistoryRoute
+  '/runner/dashboard': typeof RunnerDashboardRoute
+  '/runner/earnings': typeof RunnerEarningsRoute
+  '/runner/incoming-job-alert': typeof RunnerIncomingJobAlertRoute
+  '/runner/payout-details': typeof RunnerPayoutDetailsRoute
+  '/runner/performance': typeof RunnerPerformanceRoute
+  '/runner/rate-customer': typeof RunnerRateCustomerRoute
+  '/runner/service-selection': typeof RunnerServiceSelectionRoute
+  '/runner/settings': typeof RunnerSettingsRoute
+  '/runner/support-help': typeof RunnerSupportHelpRoute
+  '/runner/onboarding/banking': typeof RunnerOnboardingBankingRoute
+  '/runner/onboarding/documents': typeof RunnerOnboardingDocumentsRoute
+  '/runner/onboarding/training': typeof RunnerOnboardingTrainingRoute
+  '/runner/onboarding/vehicle': typeof RunnerOnboardingVehicleRoute
+  '/runner/onboarding/verification': typeof RunnerOnboardingVerificationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/business': typeof BusinessRouteWithChildren
+  '/customer': typeof CustomerRouteWithChildren
+  '/help': typeof HelpRoute
+  '/logout': typeof LogoutRoute
+  '/notifications': typeof NotificationsRoute
+  '/payment-methods': typeof PaymentMethodsRoute
   '/profile': typeof ProfileRoute
+  '/runner': typeof RunnerRouteWithChildren
+  '/saved-addresses': typeof SavedAddressesRoute
+  '/splash': typeof SplashRoute
+  '/subscription-packages': typeof SubscriptionPackagesRoute
   '/wallet': typeof WalletRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/jobs': typeof AdminJobsRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/service-pricing': typeof AdminServicePricingRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/auth/verify-phone': typeof AuthVerifyPhoneRoute
+  '/business/bulk-import': typeof BusinessBulkImportRoute
+  '/business/bulk-request': typeof BusinessBulkRequestRoute
+  '/business/bulk-review': typeof BusinessBulkReviewRoute
+  '/business/dashboard': typeof BusinessDashboardRoute
+  '/business/invoicing': typeof BusinessInvoicingRoute
+  '/business/permissions': typeof BusinessPermissionsRoute
+  '/business/settings': typeof BusinessSettingsRoute
+  '/business/spending-analytics': typeof BusinessSpendingAnalyticsRoute
+  '/business/team': typeof BusinessTeamRoute
+  '/customer/activity': typeof CustomerActivityRoute
+  '/customer/choose-errand-type': typeof CustomerChooseErrandTypeRoute
+  '/customer/choose-service': typeof CustomerChooseServiceRoute
+  '/customer/delivery-request': typeof CustomerDeliveryRequestRoute
+  '/customer/errand-details': typeof CustomerErrandDetailsRoute
+  '/customer/errand-task-request': typeof CustomerErrandTaskRequestRoute
+  '/customer/home': typeof CustomerHomeRoute
+  '/customer/live-job-tracking': typeof CustomerLiveJobTrackingRoute
+  '/customer/matching-runner': typeof CustomerMatchingRunnerRoute
+  '/customer/moving-details': typeof CustomerMovingDetailsRoute
+  '/customer/onboarding-login': typeof CustomerOnboardingLoginRoute
+  '/customer/payment-methods': typeof CustomerPaymentMethodsRoute
+  '/customer/pensioner': typeof CustomerPensionerRoute
+  '/customer/profile': typeof CustomerProfileRoute
+  '/customer/profile-setup': typeof CustomerProfileSetupRoute
+  '/customer/rate-runner': typeof CustomerRateRunnerRoute
+  '/customer/review-schedule': typeof CustomerReviewScheduleRoute
+  '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
+  '/customer/signin': typeof CustomerSigninRoute
+  '/customer/subscription-packages': typeof CustomerSubscriptionPackagesRoute
+  '/customer/tracking-runner': typeof CustomerTrackingRunnerRoute
+  '/customer/truck-size': typeof CustomerTruckSizeRoute
+  '/customer/verify': typeof CustomerVerifyRoute
+  '/customer/wallet': typeof CustomerWalletRoute
+  '/customer/welcome': typeof CustomerWelcomeRoute
+  '/runner/access': typeof RunnerAccessRoute
+  '/runner/active-job': typeof RunnerActiveJobRoute
+  '/runner/activity-history': typeof RunnerActivityHistoryRoute
+  '/runner/dashboard': typeof RunnerDashboardRoute
+  '/runner/earnings': typeof RunnerEarningsRoute
+  '/runner/incoming-job-alert': typeof RunnerIncomingJobAlertRoute
+  '/runner/payout-details': typeof RunnerPayoutDetailsRoute
+  '/runner/performance': typeof RunnerPerformanceRoute
+  '/runner/rate-customer': typeof RunnerRateCustomerRoute
+  '/runner/service-selection': typeof RunnerServiceSelectionRoute
+  '/runner/settings': typeof RunnerSettingsRoute
+  '/runner/support-help': typeof RunnerSupportHelpRoute
+  '/runner/onboarding/banking': typeof RunnerOnboardingBankingRoute
+  '/runner/onboarding/documents': typeof RunnerOnboardingDocumentsRoute
+  '/runner/onboarding/training': typeof RunnerOnboardingTrainingRoute
+  '/runner/onboarding/vehicle': typeof RunnerOnboardingVehicleRoute
+  '/runner/onboarding/verification': typeof RunnerOnboardingVerificationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/business': typeof BusinessRouteWithChildren
+  '/customer': typeof CustomerRouteWithChildren
+  '/help': typeof HelpRoute
+  '/logout': typeof LogoutRoute
+  '/notifications': typeof NotificationsRoute
+  '/payment-methods': typeof PaymentMethodsRoute
   '/profile': typeof ProfileRoute
+  '/runner': typeof RunnerRouteWithChildren
+  '/saved-addresses': typeof SavedAddressesRoute
+  '/splash': typeof SplashRoute
+  '/subscription-packages': typeof SubscriptionPackagesRoute
   '/wallet': typeof WalletRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/jobs': typeof AdminJobsRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/service-pricing': typeof AdminServicePricingRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/auth/verify-phone': typeof AuthVerifyPhoneRoute
+  '/business/bulk-import': typeof BusinessBulkImportRoute
+  '/business/bulk-request': typeof BusinessBulkRequestRoute
+  '/business/bulk-review': typeof BusinessBulkReviewRoute
+  '/business/dashboard': typeof BusinessDashboardRoute
+  '/business/invoicing': typeof BusinessInvoicingRoute
+  '/business/permissions': typeof BusinessPermissionsRoute
+  '/business/settings': typeof BusinessSettingsRoute
+  '/business/spending-analytics': typeof BusinessSpendingAnalyticsRoute
+  '/business/team': typeof BusinessTeamRoute
+  '/customer/activity': typeof CustomerActivityRoute
+  '/customer/choose-errand-type': typeof CustomerChooseErrandTypeRoute
+  '/customer/choose-service': typeof CustomerChooseServiceRoute
+  '/customer/delivery-request': typeof CustomerDeliveryRequestRoute
+  '/customer/errand-details': typeof CustomerErrandDetailsRoute
+  '/customer/errand-task-request': typeof CustomerErrandTaskRequestRoute
+  '/customer/home': typeof CustomerHomeRoute
+  '/customer/live-job-tracking': typeof CustomerLiveJobTrackingRoute
+  '/customer/matching-runner': typeof CustomerMatchingRunnerRoute
+  '/customer/moving-details': typeof CustomerMovingDetailsRoute
+  '/customer/onboarding-login': typeof CustomerOnboardingLoginRoute
+  '/customer/payment-methods': typeof CustomerPaymentMethodsRoute
+  '/customer/pensioner': typeof CustomerPensionerRoute
+  '/customer/profile': typeof CustomerProfileRoute
+  '/customer/profile-setup': typeof CustomerProfileSetupRoute
+  '/customer/rate-runner': typeof CustomerRateRunnerRoute
+  '/customer/review-schedule': typeof CustomerReviewScheduleRoute
+  '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
+  '/customer/signin': typeof CustomerSigninRoute
+  '/customer/subscription-packages': typeof CustomerSubscriptionPackagesRoute
+  '/customer/tracking-runner': typeof CustomerTrackingRunnerRoute
+  '/customer/truck-size': typeof CustomerTruckSizeRoute
+  '/customer/verify': typeof CustomerVerifyRoute
+  '/customer/wallet': typeof CustomerWalletRoute
+  '/customer/welcome': typeof CustomerWelcomeRoute
+  '/runner/access': typeof RunnerAccessRoute
+  '/runner/active-job': typeof RunnerActiveJobRoute
+  '/runner/activity-history': typeof RunnerActivityHistoryRoute
+  '/runner/dashboard': typeof RunnerDashboardRoute
+  '/runner/earnings': typeof RunnerEarningsRoute
+  '/runner/incoming-job-alert': typeof RunnerIncomingJobAlertRoute
+  '/runner/payout-details': typeof RunnerPayoutDetailsRoute
+  '/runner/performance': typeof RunnerPerformanceRoute
+  '/runner/rate-customer': typeof RunnerRateCustomerRoute
+  '/runner/service-selection': typeof RunnerServiceSelectionRoute
+  '/runner/settings': typeof RunnerSettingsRoute
+  '/runner/support-help': typeof RunnerSupportHelpRoute
+  '/runner/onboarding/banking': typeof RunnerOnboardingBankingRoute
+  '/runner/onboarding/documents': typeof RunnerOnboardingDocumentsRoute
+  '/runner/onboarding/training': typeof RunnerOnboardingTrainingRoute
+  '/runner/onboarding/vehicle': typeof RunnerOnboardingVehicleRoute
+  '/runner/onboarding/verification': typeof RunnerOnboardingVerificationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/activity' | '/profile' | '/wallet' | '/auth/verify'
+  fullPaths:
+    | '/'
+    | '/activity'
+    | '/admin'
+    | '/business'
+    | '/customer'
+    | '/help'
+    | '/logout'
+    | '/notifications'
+    | '/payment-methods'
+    | '/profile'
+    | '/runner'
+    | '/saved-addresses'
+    | '/splash'
+    | '/subscription-packages'
+    | '/wallet'
+    | '/admin/analytics'
+    | '/admin/dashboard'
+    | '/admin/jobs'
+    | '/admin/overview'
+    | '/admin/payments'
+    | '/admin/service-pricing'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/users'
+    | '/auth/verify'
+    | '/auth/verify-phone'
+    | '/business/bulk-import'
+    | '/business/bulk-request'
+    | '/business/bulk-review'
+    | '/business/dashboard'
+    | '/business/invoicing'
+    | '/business/permissions'
+    | '/business/settings'
+    | '/business/spending-analytics'
+    | '/business/team'
+    | '/customer/activity'
+    | '/customer/choose-errand-type'
+    | '/customer/choose-service'
+    | '/customer/delivery-request'
+    | '/customer/errand-details'
+    | '/customer/errand-task-request'
+    | '/customer/home'
+    | '/customer/live-job-tracking'
+    | '/customer/matching-runner'
+    | '/customer/moving-details'
+    | '/customer/onboarding-login'
+    | '/customer/payment-methods'
+    | '/customer/pensioner'
+    | '/customer/profile'
+    | '/customer/profile-setup'
+    | '/customer/rate-runner'
+    | '/customer/review-schedule'
+    | '/customer/saved-addresses'
+    | '/customer/signin'
+    | '/customer/subscription-packages'
+    | '/customer/tracking-runner'
+    | '/customer/truck-size'
+    | '/customer/verify'
+    | '/customer/wallet'
+    | '/customer/welcome'
+    | '/runner/access'
+    | '/runner/active-job'
+    | '/runner/activity-history'
+    | '/runner/dashboard'
+    | '/runner/earnings'
+    | '/runner/incoming-job-alert'
+    | '/runner/payout-details'
+    | '/runner/performance'
+    | '/runner/rate-customer'
+    | '/runner/service-selection'
+    | '/runner/settings'
+    | '/runner/support-help'
+    | '/runner/onboarding/banking'
+    | '/runner/onboarding/documents'
+    | '/runner/onboarding/training'
+    | '/runner/onboarding/vehicle'
+    | '/runner/onboarding/verification'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/activity' | '/profile' | '/wallet' | '/auth/verify'
-  id: '__root__' | '/' | '/activity' | '/profile' | '/wallet' | '/auth/verify'
+  to:
+    | '/'
+    | '/activity'
+    | '/admin'
+    | '/business'
+    | '/customer'
+    | '/help'
+    | '/logout'
+    | '/notifications'
+    | '/payment-methods'
+    | '/profile'
+    | '/runner'
+    | '/saved-addresses'
+    | '/splash'
+    | '/subscription-packages'
+    | '/wallet'
+    | '/admin/analytics'
+    | '/admin/dashboard'
+    | '/admin/jobs'
+    | '/admin/overview'
+    | '/admin/payments'
+    | '/admin/service-pricing'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/users'
+    | '/auth/verify'
+    | '/auth/verify-phone'
+    | '/business/bulk-import'
+    | '/business/bulk-request'
+    | '/business/bulk-review'
+    | '/business/dashboard'
+    | '/business/invoicing'
+    | '/business/permissions'
+    | '/business/settings'
+    | '/business/spending-analytics'
+    | '/business/team'
+    | '/customer/activity'
+    | '/customer/choose-errand-type'
+    | '/customer/choose-service'
+    | '/customer/delivery-request'
+    | '/customer/errand-details'
+    | '/customer/errand-task-request'
+    | '/customer/home'
+    | '/customer/live-job-tracking'
+    | '/customer/matching-runner'
+    | '/customer/moving-details'
+    | '/customer/onboarding-login'
+    | '/customer/payment-methods'
+    | '/customer/pensioner'
+    | '/customer/profile'
+    | '/customer/profile-setup'
+    | '/customer/rate-runner'
+    | '/customer/review-schedule'
+    | '/customer/saved-addresses'
+    | '/customer/signin'
+    | '/customer/subscription-packages'
+    | '/customer/tracking-runner'
+    | '/customer/truck-size'
+    | '/customer/verify'
+    | '/customer/wallet'
+    | '/customer/welcome'
+    | '/runner/access'
+    | '/runner/active-job'
+    | '/runner/activity-history'
+    | '/runner/dashboard'
+    | '/runner/earnings'
+    | '/runner/incoming-job-alert'
+    | '/runner/payout-details'
+    | '/runner/performance'
+    | '/runner/rate-customer'
+    | '/runner/service-selection'
+    | '/runner/settings'
+    | '/runner/support-help'
+    | '/runner/onboarding/banking'
+    | '/runner/onboarding/documents'
+    | '/runner/onboarding/training'
+    | '/runner/onboarding/vehicle'
+    | '/runner/onboarding/verification'
+  id:
+    | '__root__'
+    | '/'
+    | '/activity'
+    | '/admin'
+    | '/business'
+    | '/customer'
+    | '/help'
+    | '/logout'
+    | '/notifications'
+    | '/payment-methods'
+    | '/profile'
+    | '/runner'
+    | '/saved-addresses'
+    | '/splash'
+    | '/subscription-packages'
+    | '/wallet'
+    | '/admin/analytics'
+    | '/admin/dashboard'
+    | '/admin/jobs'
+    | '/admin/overview'
+    | '/admin/payments'
+    | '/admin/service-pricing'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/users'
+    | '/auth/verify'
+    | '/auth/verify-phone'
+    | '/business/bulk-import'
+    | '/business/bulk-request'
+    | '/business/bulk-review'
+    | '/business/dashboard'
+    | '/business/invoicing'
+    | '/business/permissions'
+    | '/business/settings'
+    | '/business/spending-analytics'
+    | '/business/team'
+    | '/customer/activity'
+    | '/customer/choose-errand-type'
+    | '/customer/choose-service'
+    | '/customer/delivery-request'
+    | '/customer/errand-details'
+    | '/customer/errand-task-request'
+    | '/customer/home'
+    | '/customer/live-job-tracking'
+    | '/customer/matching-runner'
+    | '/customer/moving-details'
+    | '/customer/onboarding-login'
+    | '/customer/payment-methods'
+    | '/customer/pensioner'
+    | '/customer/profile'
+    | '/customer/profile-setup'
+    | '/customer/rate-runner'
+    | '/customer/review-schedule'
+    | '/customer/saved-addresses'
+    | '/customer/signin'
+    | '/customer/subscription-packages'
+    | '/customer/tracking-runner'
+    | '/customer/truck-size'
+    | '/customer/verify'
+    | '/customer/wallet'
+    | '/customer/welcome'
+    | '/runner/access'
+    | '/runner/active-job'
+    | '/runner/activity-history'
+    | '/runner/dashboard'
+    | '/runner/earnings'
+    | '/runner/incoming-job-alert'
+    | '/runner/payout-details'
+    | '/runner/performance'
+    | '/runner/rate-customer'
+    | '/runner/service-selection'
+    | '/runner/settings'
+    | '/runner/support-help'
+    | '/runner/onboarding/banking'
+    | '/runner/onboarding/documents'
+    | '/runner/onboarding/training'
+    | '/runner/onboarding/vehicle'
+    | '/runner/onboarding/verification'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  BusinessRoute: typeof BusinessRouteWithChildren
+  CustomerRoute: typeof CustomerRouteWithChildren
+  HelpRoute: typeof HelpRoute
+  LogoutRoute: typeof LogoutRoute
+  NotificationsRoute: typeof NotificationsRoute
+  PaymentMethodsRoute: typeof PaymentMethodsRoute
   ProfileRoute: typeof ProfileRoute
+  RunnerRoute: typeof RunnerRouteWithChildren
+  SavedAddressesRoute: typeof SavedAddressesRoute
+  SplashRoute: typeof SplashRoute
+  SubscriptionPackagesRoute: typeof SubscriptionPackagesRoute
   WalletRoute: typeof WalletRoute
   AuthVerifyRoute: typeof AuthVerifyRoute
+  AuthVerifyPhoneRoute: typeof AuthVerifyPhoneRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -88,11 +987,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subscription-packages': {
+      id: '/subscription-packages'
+      path: '/subscription-packages'
+      fullPath: '/subscription-packages'
+      preLoaderRoute: typeof SubscriptionPackagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/splash': {
+      id: '/splash'
+      path: '/splash'
+      fullPath: '/splash'
+      preLoaderRoute: typeof SplashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved-addresses': {
+      id: '/saved-addresses'
+      path: '/saved-addresses'
+      fullPath: '/saved-addresses'
+      preLoaderRoute: typeof SavedAddressesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runner': {
+      id: '/runner'
+      path: '/runner'
+      fullPath: '/runner'
+      preLoaderRoute: typeof RunnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-methods': {
+      id: '/payment-methods'
+      path: '/payment-methods'
+      fullPath: '/payment-methods'
+      preLoaderRoute: typeof PaymentMethodsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/logout': {
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer': {
+      id: '/customer'
+      path: '/customer'
+      fullPath: '/customer'
+      preLoaderRoute: typeof CustomerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business': {
+      id: '/business'
+      path: '/business'
+      fullPath: '/business'
+      preLoaderRoute: typeof BusinessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activity': {
@@ -109,6 +1085,335 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/runner/support-help': {
+      id: '/runner/support-help'
+      path: '/support-help'
+      fullPath: '/runner/support-help'
+      preLoaderRoute: typeof RunnerSupportHelpRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/settings': {
+      id: '/runner/settings'
+      path: '/settings'
+      fullPath: '/runner/settings'
+      preLoaderRoute: typeof RunnerSettingsRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/service-selection': {
+      id: '/runner/service-selection'
+      path: '/service-selection'
+      fullPath: '/runner/service-selection'
+      preLoaderRoute: typeof RunnerServiceSelectionRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/rate-customer': {
+      id: '/runner/rate-customer'
+      path: '/rate-customer'
+      fullPath: '/runner/rate-customer'
+      preLoaderRoute: typeof RunnerRateCustomerRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/performance': {
+      id: '/runner/performance'
+      path: '/performance'
+      fullPath: '/runner/performance'
+      preLoaderRoute: typeof RunnerPerformanceRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/payout-details': {
+      id: '/runner/payout-details'
+      path: '/payout-details'
+      fullPath: '/runner/payout-details'
+      preLoaderRoute: typeof RunnerPayoutDetailsRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/incoming-job-alert': {
+      id: '/runner/incoming-job-alert'
+      path: '/incoming-job-alert'
+      fullPath: '/runner/incoming-job-alert'
+      preLoaderRoute: typeof RunnerIncomingJobAlertRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/earnings': {
+      id: '/runner/earnings'
+      path: '/earnings'
+      fullPath: '/runner/earnings'
+      preLoaderRoute: typeof RunnerEarningsRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/dashboard': {
+      id: '/runner/dashboard'
+      path: '/dashboard'
+      fullPath: '/runner/dashboard'
+      preLoaderRoute: typeof RunnerDashboardRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/activity-history': {
+      id: '/runner/activity-history'
+      path: '/activity-history'
+      fullPath: '/runner/activity-history'
+      preLoaderRoute: typeof RunnerActivityHistoryRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/active-job': {
+      id: '/runner/active-job'
+      path: '/active-job'
+      fullPath: '/runner/active-job'
+      preLoaderRoute: typeof RunnerActiveJobRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/access': {
+      id: '/runner/access'
+      path: '/access'
+      fullPath: '/runner/access'
+      preLoaderRoute: typeof RunnerAccessRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/customer/welcome': {
+      id: '/customer/welcome'
+      path: '/welcome'
+      fullPath: '/customer/welcome'
+      preLoaderRoute: typeof CustomerWelcomeRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/wallet': {
+      id: '/customer/wallet'
+      path: '/wallet'
+      fullPath: '/customer/wallet'
+      preLoaderRoute: typeof CustomerWalletRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/verify': {
+      id: '/customer/verify'
+      path: '/verify'
+      fullPath: '/customer/verify'
+      preLoaderRoute: typeof CustomerVerifyRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/truck-size': {
+      id: '/customer/truck-size'
+      path: '/truck-size'
+      fullPath: '/customer/truck-size'
+      preLoaderRoute: typeof CustomerTruckSizeRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/tracking-runner': {
+      id: '/customer/tracking-runner'
+      path: '/tracking-runner'
+      fullPath: '/customer/tracking-runner'
+      preLoaderRoute: typeof CustomerTrackingRunnerRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/subscription-packages': {
+      id: '/customer/subscription-packages'
+      path: '/subscription-packages'
+      fullPath: '/customer/subscription-packages'
+      preLoaderRoute: typeof CustomerSubscriptionPackagesRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/signin': {
+      id: '/customer/signin'
+      path: '/signin'
+      fullPath: '/customer/signin'
+      preLoaderRoute: typeof CustomerSigninRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/saved-addresses': {
+      id: '/customer/saved-addresses'
+      path: '/saved-addresses'
+      fullPath: '/customer/saved-addresses'
+      preLoaderRoute: typeof CustomerSavedAddressesRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/review-schedule': {
+      id: '/customer/review-schedule'
+      path: '/review-schedule'
+      fullPath: '/customer/review-schedule'
+      preLoaderRoute: typeof CustomerReviewScheduleRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/rate-runner': {
+      id: '/customer/rate-runner'
+      path: '/rate-runner'
+      fullPath: '/customer/rate-runner'
+      preLoaderRoute: typeof CustomerRateRunnerRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/profile-setup': {
+      id: '/customer/profile-setup'
+      path: '/profile-setup'
+      fullPath: '/customer/profile-setup'
+      preLoaderRoute: typeof CustomerProfileSetupRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/profile': {
+      id: '/customer/profile'
+      path: '/profile'
+      fullPath: '/customer/profile'
+      preLoaderRoute: typeof CustomerProfileRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/pensioner': {
+      id: '/customer/pensioner'
+      path: '/pensioner'
+      fullPath: '/customer/pensioner'
+      preLoaderRoute: typeof CustomerPensionerRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/payment-methods': {
+      id: '/customer/payment-methods'
+      path: '/payment-methods'
+      fullPath: '/customer/payment-methods'
+      preLoaderRoute: typeof CustomerPaymentMethodsRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/onboarding-login': {
+      id: '/customer/onboarding-login'
+      path: '/onboarding-login'
+      fullPath: '/customer/onboarding-login'
+      preLoaderRoute: typeof CustomerOnboardingLoginRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/moving-details': {
+      id: '/customer/moving-details'
+      path: '/moving-details'
+      fullPath: '/customer/moving-details'
+      preLoaderRoute: typeof CustomerMovingDetailsRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/matching-runner': {
+      id: '/customer/matching-runner'
+      path: '/matching-runner'
+      fullPath: '/customer/matching-runner'
+      preLoaderRoute: typeof CustomerMatchingRunnerRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/live-job-tracking': {
+      id: '/customer/live-job-tracking'
+      path: '/live-job-tracking'
+      fullPath: '/customer/live-job-tracking'
+      preLoaderRoute: typeof CustomerLiveJobTrackingRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/home': {
+      id: '/customer/home'
+      path: '/home'
+      fullPath: '/customer/home'
+      preLoaderRoute: typeof CustomerHomeRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/errand-task-request': {
+      id: '/customer/errand-task-request'
+      path: '/errand-task-request'
+      fullPath: '/customer/errand-task-request'
+      preLoaderRoute: typeof CustomerErrandTaskRequestRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/errand-details': {
+      id: '/customer/errand-details'
+      path: '/errand-details'
+      fullPath: '/customer/errand-details'
+      preLoaderRoute: typeof CustomerErrandDetailsRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/delivery-request': {
+      id: '/customer/delivery-request'
+      path: '/delivery-request'
+      fullPath: '/customer/delivery-request'
+      preLoaderRoute: typeof CustomerDeliveryRequestRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/choose-service': {
+      id: '/customer/choose-service'
+      path: '/choose-service'
+      fullPath: '/customer/choose-service'
+      preLoaderRoute: typeof CustomerChooseServiceRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/choose-errand-type': {
+      id: '/customer/choose-errand-type'
+      path: '/choose-errand-type'
+      fullPath: '/customer/choose-errand-type'
+      preLoaderRoute: typeof CustomerChooseErrandTypeRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/activity': {
+      id: '/customer/activity'
+      path: '/activity'
+      fullPath: '/customer/activity'
+      preLoaderRoute: typeof CustomerActivityRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/business/team': {
+      id: '/business/team'
+      path: '/team'
+      fullPath: '/business/team'
+      preLoaderRoute: typeof BusinessTeamRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/spending-analytics': {
+      id: '/business/spending-analytics'
+      path: '/spending-analytics'
+      fullPath: '/business/spending-analytics'
+      preLoaderRoute: typeof BusinessSpendingAnalyticsRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/settings': {
+      id: '/business/settings'
+      path: '/settings'
+      fullPath: '/business/settings'
+      preLoaderRoute: typeof BusinessSettingsRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/permissions': {
+      id: '/business/permissions'
+      path: '/permissions'
+      fullPath: '/business/permissions'
+      preLoaderRoute: typeof BusinessPermissionsRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/invoicing': {
+      id: '/business/invoicing'
+      path: '/invoicing'
+      fullPath: '/business/invoicing'
+      preLoaderRoute: typeof BusinessInvoicingRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/dashboard': {
+      id: '/business/dashboard'
+      path: '/dashboard'
+      fullPath: '/business/dashboard'
+      preLoaderRoute: typeof BusinessDashboardRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/bulk-review': {
+      id: '/business/bulk-review'
+      path: '/bulk-review'
+      fullPath: '/business/bulk-review'
+      preLoaderRoute: typeof BusinessBulkReviewRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/bulk-request': {
+      id: '/business/bulk-request'
+      path: '/bulk-request'
+      fullPath: '/business/bulk-request'
+      preLoaderRoute: typeof BusinessBulkRequestRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/business/bulk-import': {
+      id: '/business/bulk-import'
+      path: '/bulk-import'
+      fullPath: '/business/bulk-import'
+      preLoaderRoute: typeof BusinessBulkImportRouteImport
+      parentRoute: typeof BusinessRoute
+    }
+    '/auth/verify-phone': {
+      id: '/auth/verify-phone'
+      path: '/auth/verify-phone'
+      fullPath: '/auth/verify-phone'
+      preLoaderRoute: typeof AuthVerifyPhoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/verify': {
       id: '/auth/verify'
       path: '/auth/verify'
@@ -116,16 +1421,292 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/service-pricing': {
+      id: '/admin/service-pricing'
+      path: '/service-pricing'
+      fullPath: '/admin/service-pricing'
+      preLoaderRoute: typeof AdminServicePricingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/overview': {
+      id: '/admin/overview'
+      path: '/overview'
+      fullPath: '/admin/overview'
+      preLoaderRoute: typeof AdminOverviewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/jobs': {
+      id: '/admin/jobs'
+      path: '/jobs'
+      fullPath: '/admin/jobs'
+      preLoaderRoute: typeof AdminJobsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/runner/onboarding/verification': {
+      id: '/runner/onboarding/verification'
+      path: '/onboarding/verification'
+      fullPath: '/runner/onboarding/verification'
+      preLoaderRoute: typeof RunnerOnboardingVerificationRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/onboarding/vehicle': {
+      id: '/runner/onboarding/vehicle'
+      path: '/onboarding/vehicle'
+      fullPath: '/runner/onboarding/vehicle'
+      preLoaderRoute: typeof RunnerOnboardingVehicleRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/onboarding/training': {
+      id: '/runner/onboarding/training'
+      path: '/onboarding/training'
+      fullPath: '/runner/onboarding/training'
+      preLoaderRoute: typeof RunnerOnboardingTrainingRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/onboarding/documents': {
+      id: '/runner/onboarding/documents'
+      path: '/onboarding/documents'
+      fullPath: '/runner/onboarding/documents'
+      preLoaderRoute: typeof RunnerOnboardingDocumentsRouteImport
+      parentRoute: typeof RunnerRoute
+    }
+    '/runner/onboarding/banking': {
+      id: '/runner/onboarding/banking'
+      path: '/onboarding/banking'
+      fullPath: '/runner/onboarding/banking'
+      preLoaderRoute: typeof RunnerOnboardingBankingRouteImport
+      parentRoute: typeof RunnerRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminJobsRoute: typeof AdminJobsRoute
+  AdminOverviewRoute: typeof AdminOverviewRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminServicePricingRoute: typeof AdminServicePricingRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminJobsRoute: AdminJobsRoute,
+  AdminOverviewRoute: AdminOverviewRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminServicePricingRoute: AdminServicePricingRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSupportRoute: AdminSupportRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface BusinessRouteChildren {
+  BusinessBulkImportRoute: typeof BusinessBulkImportRoute
+  BusinessBulkRequestRoute: typeof BusinessBulkRequestRoute
+  BusinessBulkReviewRoute: typeof BusinessBulkReviewRoute
+  BusinessDashboardRoute: typeof BusinessDashboardRoute
+  BusinessInvoicingRoute: typeof BusinessInvoicingRoute
+  BusinessPermissionsRoute: typeof BusinessPermissionsRoute
+  BusinessSettingsRoute: typeof BusinessSettingsRoute
+  BusinessSpendingAnalyticsRoute: typeof BusinessSpendingAnalyticsRoute
+  BusinessTeamRoute: typeof BusinessTeamRoute
+}
+
+const BusinessRouteChildren: BusinessRouteChildren = {
+  BusinessBulkImportRoute: BusinessBulkImportRoute,
+  BusinessBulkRequestRoute: BusinessBulkRequestRoute,
+  BusinessBulkReviewRoute: BusinessBulkReviewRoute,
+  BusinessDashboardRoute: BusinessDashboardRoute,
+  BusinessInvoicingRoute: BusinessInvoicingRoute,
+  BusinessPermissionsRoute: BusinessPermissionsRoute,
+  BusinessSettingsRoute: BusinessSettingsRoute,
+  BusinessSpendingAnalyticsRoute: BusinessSpendingAnalyticsRoute,
+  BusinessTeamRoute: BusinessTeamRoute,
+}
+
+const BusinessRouteWithChildren = BusinessRoute._addFileChildren(
+  BusinessRouteChildren,
+)
+
+interface CustomerRouteChildren {
+  CustomerActivityRoute: typeof CustomerActivityRoute
+  CustomerChooseErrandTypeRoute: typeof CustomerChooseErrandTypeRoute
+  CustomerChooseServiceRoute: typeof CustomerChooseServiceRoute
+  CustomerDeliveryRequestRoute: typeof CustomerDeliveryRequestRoute
+  CustomerErrandDetailsRoute: typeof CustomerErrandDetailsRoute
+  CustomerErrandTaskRequestRoute: typeof CustomerErrandTaskRequestRoute
+  CustomerHomeRoute: typeof CustomerHomeRoute
+  CustomerLiveJobTrackingRoute: typeof CustomerLiveJobTrackingRoute
+  CustomerMatchingRunnerRoute: typeof CustomerMatchingRunnerRoute
+  CustomerMovingDetailsRoute: typeof CustomerMovingDetailsRoute
+  CustomerOnboardingLoginRoute: typeof CustomerOnboardingLoginRoute
+  CustomerPaymentMethodsRoute: typeof CustomerPaymentMethodsRoute
+  CustomerPensionerRoute: typeof CustomerPensionerRoute
+  CustomerProfileRoute: typeof CustomerProfileRoute
+  CustomerProfileSetupRoute: typeof CustomerProfileSetupRoute
+  CustomerRateRunnerRoute: typeof CustomerRateRunnerRoute
+  CustomerReviewScheduleRoute: typeof CustomerReviewScheduleRoute
+  CustomerSavedAddressesRoute: typeof CustomerSavedAddressesRoute
+  CustomerSigninRoute: typeof CustomerSigninRoute
+  CustomerSubscriptionPackagesRoute: typeof CustomerSubscriptionPackagesRoute
+  CustomerTrackingRunnerRoute: typeof CustomerTrackingRunnerRoute
+  CustomerTruckSizeRoute: typeof CustomerTruckSizeRoute
+  CustomerVerifyRoute: typeof CustomerVerifyRoute
+  CustomerWalletRoute: typeof CustomerWalletRoute
+  CustomerWelcomeRoute: typeof CustomerWelcomeRoute
+}
+
+const CustomerRouteChildren: CustomerRouteChildren = {
+  CustomerActivityRoute: CustomerActivityRoute,
+  CustomerChooseErrandTypeRoute: CustomerChooseErrandTypeRoute,
+  CustomerChooseServiceRoute: CustomerChooseServiceRoute,
+  CustomerDeliveryRequestRoute: CustomerDeliveryRequestRoute,
+  CustomerErrandDetailsRoute: CustomerErrandDetailsRoute,
+  CustomerErrandTaskRequestRoute: CustomerErrandTaskRequestRoute,
+  CustomerHomeRoute: CustomerHomeRoute,
+  CustomerLiveJobTrackingRoute: CustomerLiveJobTrackingRoute,
+  CustomerMatchingRunnerRoute: CustomerMatchingRunnerRoute,
+  CustomerMovingDetailsRoute: CustomerMovingDetailsRoute,
+  CustomerOnboardingLoginRoute: CustomerOnboardingLoginRoute,
+  CustomerPaymentMethodsRoute: CustomerPaymentMethodsRoute,
+  CustomerPensionerRoute: CustomerPensionerRoute,
+  CustomerProfileRoute: CustomerProfileRoute,
+  CustomerProfileSetupRoute: CustomerProfileSetupRoute,
+  CustomerRateRunnerRoute: CustomerRateRunnerRoute,
+  CustomerReviewScheduleRoute: CustomerReviewScheduleRoute,
+  CustomerSavedAddressesRoute: CustomerSavedAddressesRoute,
+  CustomerSigninRoute: CustomerSigninRoute,
+  CustomerSubscriptionPackagesRoute: CustomerSubscriptionPackagesRoute,
+  CustomerTrackingRunnerRoute: CustomerTrackingRunnerRoute,
+  CustomerTruckSizeRoute: CustomerTruckSizeRoute,
+  CustomerVerifyRoute: CustomerVerifyRoute,
+  CustomerWalletRoute: CustomerWalletRoute,
+  CustomerWelcomeRoute: CustomerWelcomeRoute,
+}
+
+const CustomerRouteWithChildren = CustomerRoute._addFileChildren(
+  CustomerRouteChildren,
+)
+
+interface RunnerRouteChildren {
+  RunnerAccessRoute: typeof RunnerAccessRoute
+  RunnerActiveJobRoute: typeof RunnerActiveJobRoute
+  RunnerActivityHistoryRoute: typeof RunnerActivityHistoryRoute
+  RunnerDashboardRoute: typeof RunnerDashboardRoute
+  RunnerEarningsRoute: typeof RunnerEarningsRoute
+  RunnerIncomingJobAlertRoute: typeof RunnerIncomingJobAlertRoute
+  RunnerPayoutDetailsRoute: typeof RunnerPayoutDetailsRoute
+  RunnerPerformanceRoute: typeof RunnerPerformanceRoute
+  RunnerRateCustomerRoute: typeof RunnerRateCustomerRoute
+  RunnerServiceSelectionRoute: typeof RunnerServiceSelectionRoute
+  RunnerSettingsRoute: typeof RunnerSettingsRoute
+  RunnerSupportHelpRoute: typeof RunnerSupportHelpRoute
+  RunnerOnboardingBankingRoute: typeof RunnerOnboardingBankingRoute
+  RunnerOnboardingDocumentsRoute: typeof RunnerOnboardingDocumentsRoute
+  RunnerOnboardingTrainingRoute: typeof RunnerOnboardingTrainingRoute
+  RunnerOnboardingVehicleRoute: typeof RunnerOnboardingVehicleRoute
+  RunnerOnboardingVerificationRoute: typeof RunnerOnboardingVerificationRoute
+}
+
+const RunnerRouteChildren: RunnerRouteChildren = {
+  RunnerAccessRoute: RunnerAccessRoute,
+  RunnerActiveJobRoute: RunnerActiveJobRoute,
+  RunnerActivityHistoryRoute: RunnerActivityHistoryRoute,
+  RunnerDashboardRoute: RunnerDashboardRoute,
+  RunnerEarningsRoute: RunnerEarningsRoute,
+  RunnerIncomingJobAlertRoute: RunnerIncomingJobAlertRoute,
+  RunnerPayoutDetailsRoute: RunnerPayoutDetailsRoute,
+  RunnerPerformanceRoute: RunnerPerformanceRoute,
+  RunnerRateCustomerRoute: RunnerRateCustomerRoute,
+  RunnerServiceSelectionRoute: RunnerServiceSelectionRoute,
+  RunnerSettingsRoute: RunnerSettingsRoute,
+  RunnerSupportHelpRoute: RunnerSupportHelpRoute,
+  RunnerOnboardingBankingRoute: RunnerOnboardingBankingRoute,
+  RunnerOnboardingDocumentsRoute: RunnerOnboardingDocumentsRoute,
+  RunnerOnboardingTrainingRoute: RunnerOnboardingTrainingRoute,
+  RunnerOnboardingVehicleRoute: RunnerOnboardingVehicleRoute,
+  RunnerOnboardingVerificationRoute: RunnerOnboardingVerificationRoute,
+}
+
+const RunnerRouteWithChildren =
+  RunnerRoute._addFileChildren(RunnerRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
+  AdminRoute: AdminRouteWithChildren,
+  BusinessRoute: BusinessRouteWithChildren,
+  CustomerRoute: CustomerRouteWithChildren,
+  HelpRoute: HelpRoute,
+  LogoutRoute: LogoutRoute,
+  NotificationsRoute: NotificationsRoute,
+  PaymentMethodsRoute: PaymentMethodsRoute,
   ProfileRoute: ProfileRoute,
+  RunnerRoute: RunnerRouteWithChildren,
+  SavedAddressesRoute: SavedAddressesRoute,
+  SplashRoute: SplashRoute,
+  SubscriptionPackagesRoute: SubscriptionPackagesRoute,
   WalletRoute: WalletRoute,
   AuthVerifyRoute: AuthVerifyRoute,
+  AuthVerifyPhoneRoute: AuthVerifyPhoneRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

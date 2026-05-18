@@ -1,8 +1,8 @@
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 
 export function HistorySheet({ onClose }: { onClose: () => void }) {
-  const history = useApp((s) => s.history);
+  const history = useCustomerApp((s) => s.history);
 
   return (
     <div className="absolute inset-0 z-[1100] flex flex-col bg-background">

@@ -1,24 +1,21 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useApp } from "@/lib/store";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { CustomerPageShell } from "@/components/customer-page-shell";
 
 export const Route = createFileRoute("/activity")({
-  head: () => ({
-    meta: [
-      { title: "Activity — Lotto Runners" },
-      { name: "description", content: "Your past trips and errands." },
-    ],
-  }),
-  component: ActivityPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/customer/activity" });
+  },
 });
 
-function ActivityPage() {
-  const history = useApp((s) => s.history);
+export function CustomerActivityPage() {
+  const history = useCustomerApp((s) => s.history);
   return (
-    <div className="min-h-dvh bg-background pb-24">
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-4 py-3">
-        <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-secondary">
+    <CustomerPageShell width="md" variant="plain" tabBar className="pb-24">
+      <header className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6">
+        <Link to="/customer/home" className="flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-secondary">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </Link>
         <h1 className="flex-1 text-center font-display text-lg font-bold text-primary">Activity</h1>
@@ -46,6 +43,11 @@ function ActivityPage() {
                         <span className="font-bold text-primary">N$ {t.fare}</span>
                       </div>
                       <div className="truncate text-xs text-muted-foreground">{t.pickupLabel} → {t.destinationLabel}</div>
+                      {t.scheduledAt ? (
+                        <p className="mt-1 text-[11px] font-medium text-primary">
+                          Scheduled: {new Date(t.scheduledAt).toLocaleString()}
+                        </p>
+                      ) : null}
                       <div className="mt-1 text-[11px] text-muted-foreground">{new Date(t.createdAt).toLocaleString()}</div>
                     </div>
                   </div>
@@ -57,6 +59,7 @@ function ActivityPage() {
       </div>
 
       <BottomTabBar />
-    </div>
+    </CustomerPageShell>
   );
 }
+

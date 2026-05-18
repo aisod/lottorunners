@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   {
-    to: "/",
+    to: "/customer/home",
     label: "Home",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -13,7 +13,7 @@ const TABS = [
     ),
   },
   {
-    to: "/activity",
+    to: "/customer/activity",
     label: "Activity",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -23,7 +23,7 @@ const TABS = [
     ),
   },
   {
-    to: "/wallet",
+    to: "/customer/wallet",
     label: "Wallet",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -33,7 +33,7 @@ const TABS = [
     ),
   },
   {
-    to: "/profile",
+    to: "/customer/profile",
     label: "Profile",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -48,10 +48,24 @@ export function BottomTabBar() {
   const location = useLocation();
   const path = location.pathname;
 
+  const activeFor = (to: string) => {
+    if (to === "/customer/profile") {
+      return (
+        path === "/customer/profile" ||
+        path === "/customer/saved-addresses" ||
+        path === "/customer/subscription-packages"
+      );
+    }
+    if (to === "/customer/wallet") {
+      return path === "/customer/wallet" || path === "/customer/payment-methods";
+    }
+    return path === to;
+  };
+
   return (
-    <nav className="pointer-events-auto fixed inset-x-0 bottom-0 z-[1200] mx-auto flex max-w-xl items-stretch justify-around border-t border-border bg-card px-2 pb-3 pt-2 shadow-[0_-8px_24px_-12px_oklch(0.18_0.04_265/0.15)]">
+    <nav className="pointer-events-auto fixed inset-x-0 bottom-0 z-[1200] mx-auto flex w-full max-w-xl items-stretch justify-around border-t border-border bg-card px-2 pb-3 pt-2 shadow-[0_-8px_24px_-12px_oklch(0.18_0.04_265/0.15)] lg:max-w-2xl">
       {TABS.map((t) => {
-        const active = path === t.to;
+        const active = activeFor(t.to);
         return (
           <Link
             key={t.to}

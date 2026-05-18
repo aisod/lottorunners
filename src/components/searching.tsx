@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 import { haversine } from "@/lib/services";
 import type { Runner, TripRequest } from "@/lib/types";
@@ -22,7 +22,7 @@ export function Searching({ runners }: SearchingProps) {
     setStatus,
     setActiveTrip,
     reset,
-  } = useApp();
+  } = useCustomerApp();
 
   useEffect(() => {
     if (!pickup || !destination || !selectedService) return;

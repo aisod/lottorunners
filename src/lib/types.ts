@@ -2,6 +2,9 @@ import type { ErrandCategoryId } from "./errand-categories";
 
 export type ServiceType = "errand" | "ride" | "delivery" | "truck";
 
+/** Truck / moving flow — matches Stitch “Select Truck Size” tiers. */
+export type TruckSizeId = "small" | "medium" | "large";
+
 export interface ServiceConfig {
   id: ServiceType;
   label: string;
@@ -43,6 +46,8 @@ export type RequestStatus =
 
 export type PaymentMethod = "momo" | "card" | "cash";
 
+export type ScheduleMode = "now" | "later";
+
 export interface TripRequest {
   id: string;
   service: ServiceType;
@@ -64,4 +69,5 @@ export interface TripRequest {
   status: RequestStatus;
   rating?: number;
   createdAt: number;
+  scheduledAt?: number;
 }

@@ -1,22 +1,28 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import logo from "@/assets/lotto-runners-logo.png";
+import {
+  clearPendingAuth,
+  getPendingAuthRole,
+  setAuthSession,
+} from "@/lib/auth-session";
+import {
+  getRoleHomePath,
+  setCustomerOnboarded,
+} from "@/lib/store";
 
 export const Route = createFileRoute("/auth/verify")({
-  head: () => ({
-    meta: [
-      { title: "Verify your account — Lotto Runners" },
-      { name: "description", content: "Enter the 6-digit code we sent to your phone." },
-    ],
-  }),
-  component: VerifyPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/customer/verify" });
+  },
 });
 
-function VerifyPage() {
+export function CustomerVerifyPage() {
   const nav = useNavigate();
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [seconds, setSeconds] = useState(54);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+  const loginRole = getPendingAuthRole() ?? "customer";
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -43,7 +49,8 @@ function VerifyPage() {
 
       <h1 className="mt-6 text-center text-3xl font-black tracking-tight">Verify your account</h1>
       <p className="mt-2 text-center text-sm text-muted-foreground">
-        We've sent a 6-digit code to <span className="font-semibold text-foreground">+264 81 ••• ••••</span>
+        We&apos;ve sent a 6-digit code to{" "}
+        <span className="font-semibold text-foreground">+264 81 ••• ••••</span>
       </p>
 
       <div className="mt-8 w-full max-w-sm rounded-3xl border border-border bg-card p-5">
@@ -66,7 +73,11 @@ function VerifyPage() {
 
         <button
           disabled={!valid}
-          onClick={() => nav({ to: "/" })}
+          onClick={() => {
+            setAuthSession(loginRole);
+            clearPendingAuth();
+            nav({ to: getRoleHomePath(loginRole === "admin" ? "customer" : loginRole) });
+          }}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground transition-opacity disabled:opacity-50"
         >
           Verify
@@ -83,9 +94,19 @@ function VerifyPage() {
         </p>
       </div>
 
-      <button onClick={() => nav({ to: "/" })} className="mt-6 text-center text-sm text-muted-foreground hover:text-foreground">
-        Continue as guest →
-      </button>
+      {loginRole === "customer" ? (
+        <button
+          onClick={() => {
+            clearPendingAuth();
+            setAuthSession("customer");
+            setCustomerOnboarded(true);
+            nav({ to: "/customer/home" });
+          }}
+          className="mt-6 text-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          Continue as guest →
+        </button>
+      ) : null}
     </div>
   );
 }

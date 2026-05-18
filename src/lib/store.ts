@@ -1,121 +1,228 @@
-import { create } from "zustand";
-import type { LatLng, PaymentMethod, RequestStatus, Runner, ServiceType, TripRequest } from "./types";
-import { estimateFare, haversine, SERVICES } from "./services";
-import { estimateErrandPrice, type ErrandCategoryId, type PriceQuote } from "./errand-categories";
+import {
+  clearAuthSession,
+  getAuthSession,
+  getAuthenticatedRole,
+  persistAuthSession,
+  setAuthSession,
+} from "./auth-session";
+import {
+  getRunnerOnboardingStatus,
+  getStoredUser,
+  migrateLegacyRunnerAccount,
+  syncRunnerDeviceStateFromUser,
+} from "./runner-account";
+import { clearRunnerOnline } from "./runner-workflow";
 
-interface AppState {
-  userLocation: LatLng | null;
-  setUserLocation: (l: LatLng) => void;
+const USERS_KEY = "lr-users-v1";
 
-  selectedService: ServiceType | null;
-  setSelectedService: (s: ServiceType | null) => void;
+export type AppRole = "customer" | "runner" | "business" | "admin";
+export type RunnerStage =
+  | "service-selection"
+  | "documents"
+  | "vehicle"
+  | "banking"
+  | "training"
+  | "verification"
+  | "dashboard";
 
-  pickup: { coord: LatLng; label: string } | null;
-  destination: { coord: LatLng; label: string } | null;
-  setPickup: (p: { coord: LatLng; label: string } | null) => void;
-  setDestination: (d: { coord: LatLng; label: string } | null) => void;
+const ONBOARDED_KEY = "lr-onboarded";
+const RUNNER_STAGE_KEY = "lr-runner-stage";
+const RUNNER_ACCESS_KEY = "lr-runner-access";
+const RUNNER_APPROVED_KEY = "lr-runner-approved";
 
-  errandDescription: string;
-  setErrandDescription: (s: string) => void;
-
-  errandCategory: ErrandCategoryId | null;
-  setErrandCategory: (c: ErrandCategoryId | null) => void;
-
-  basketValue: number;
-  setBasketValue: (n: number) => void;
-
-  durationMin: number;
-  setDurationMin: (n: number) => void;
-
-  paymentMethod: PaymentMethod;
-  setPaymentMethod: (p: PaymentMethod) => void;
-
-  status: RequestStatus;
-  setStatus: (s: RequestStatus) => void;
-
-  activeTrip: TripRequest | null;
-  setActiveTrip: (t: TripRequest | null) => void;
-  updateRunnerPosition: (pos: LatLng) => void;
-
-  history: TripRequest[];
-  pushHistory: (t: TripRequest) => void;
-
-  buildEstimate: () => { fare: number; distanceKm: number; etaMin: number; quote?: PriceQuote } | null;
-  reset: () => void;
+function isRunnerStage(value: string | null): value is RunnerStage {
+  return (
+    value === "service-selection" ||
+    value === "documents" ||
+    value === "vehicle" ||
+    value === "banking" ||
+    value === "training" ||
+    value === "verification" ||
+    value === "dashboard"
+  );
 }
 
-export const useApp = create<AppState>((set, get) => ({
-  userLocation: null,
-  setUserLocation: (l) => set({ userLocation: l }),
+export function getStoredRole(): AppRole | null {
+  return getAuthenticatedRole();
+}
 
-  selectedService: null,
-  setSelectedService: (s) => set({ selectedService: s }),
+export function setStoredRole(role: AppRole): void {
+  setAuthSession(role);
+}
 
-  pickup: null,
-  destination: null,
-  setPickup: (p) => set({ pickup: p }),
-  setDestination: (d) => set({ destination: d }),
+export function clearStoredRole(): void {
+  clearAuthSession();
+}
 
-  errandDescription: "",
-  setErrandDescription: (s) => set({ errandDescription: s }),
+export function getStoredRunnerStage(): RunnerStage | null {
+  if (typeof window === "undefined") return null;
+  const value = window.localStorage.getItem(RUNNER_STAGE_KEY);
+  return isRunnerStage(value) ? value : null;
+}
 
-  errandCategory: null,
-  setErrandCategory: (c) => set({ errandCategory: c }),
+export function setStoredRunnerStage(stage: RunnerStage): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(RUNNER_STAGE_KEY, stage);
+}
 
-  basketValue: 0,
-  setBasketValue: (n) => set({ basketValue: n }),
+export function clearStoredRunnerStage(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(RUNNER_STAGE_KEY);
+}
 
-  durationMin: 30,
-  setDurationMin: (n) => set({ durationMin: n }),
+export function hasRunnerAccess(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(RUNNER_ACCESS_KEY) === "true";
+}
 
-  paymentMethod: "momo",
-  setPaymentMethod: (p) => set({ paymentMethod: p }),
+export function setRunnerAccess(access: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(RUNNER_ACCESS_KEY, access ? "true" : "false");
+}
 
-  status: "idle",
-  setStatus: (s) => set({ status: s }),
+export function isRunnerApproved(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(RUNNER_APPROVED_KEY) === "true";
+}
 
-  activeTrip: null,
-  setActiveTrip: (t) => set({ activeTrip: t }),
-  updateRunnerPosition: (pos) =>
-    set((st) => {
-      if (!st.activeTrip || !st.activeTrip.runner) return st;
-      return {
-        activeTrip: {
-          ...st.activeTrip,
-          runner: { ...st.activeTrip.runner, position: pos },
-        },
-      };
-    }),
+export function setRunnerApproved(approved: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(RUNNER_APPROVED_KEY, approved ? "true" : "false");
+}
 
-  history: [],
-  pushHistory: (t) => set((st) => ({ history: [t, ...st.history] })),
+export function isCustomerOnboarded(): boolean {
+  if (typeof window === "undefined") return false;
 
-  buildEstimate: () => {
-    const { pickup, destination, selectedService, errandCategory, basketValue, durationMin } = get();
-    if (!pickup || !destination || !selectedService) return null;
-    const distanceKm = haversine(pickup.coord, destination.coord);
-    const etaMin = Math.max(2, Math.round(SERVICES[selectedService].etaMin + distanceKm * 1.6));
+  const session = getAuthSession();
+  if (!session) return false;
 
-    if (selectedService === "errand" && errandCategory) {
-      const quote = estimateErrandPrice(errandCategory, distanceKm, { basketValue, durationMin });
-      return { fare: quote.amount, distanceKm, etaMin, quote };
-    }
+  const raw = window.localStorage.getItem(USERS_KEY);
+  if (!raw) return false;
 
-    const fare = estimateFare(selectedService, distanceKm);
-    return { fare, distanceKm, etaMin };
-  },
+  try {
+    const users = JSON.parse(raw) as { email: string; displayName?: string }[];
+    const user = users.find((entry) => entry.email === session.email);
+    if (user?.displayName?.trim()) return true;
 
-  reset: () =>
-    set({
-      selectedService: null,
-      pickup: null,
-      destination: null,
-      errandDescription: "",
-      errandCategory: null,
-      basketValue: 0,
-      durationMin: 30,
-      paymentMethod: "momo",
-      status: "idle",
-      activeTrip: null,
-    }),
-}));
+    const legacyName = window.localStorage.getItem("lr-profile-name")?.trim();
+    return Boolean(legacyName);
+  } catch {
+    return false;
+  }
+}
+
+export function setCustomerOnboarded(onboarded: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ONBOARDED_KEY, onboarded ? "true" : "false");
+}
+
+export function getRunnerOnboardingPath(stage = getStoredRunnerStage()): string {
+  switch (stage) {
+    case "documents":
+      return "/runner/onboarding/documents";
+    case "vehicle":
+      return "/runner/onboarding/vehicle";
+    case "banking":
+      return "/runner/onboarding/banking";
+    case "training":
+      return "/runner/onboarding/training";
+    case "verification":
+      return "/runner/onboarding/verification";
+    case "service-selection":
+    default:
+      return "/runner/service-selection";
+  }
+}
+
+export function getRunnerHomePath(): string {
+  const session = getAuthSession();
+  if (session?.email) {
+    migrateLegacyRunnerAccount(session.email);
+  }
+
+  const user = getStoredUser(session?.email);
+  if (!user?.roles.includes("runner")) {
+    return "/runner/service-selection";
+  }
+
+  const status = getRunnerOnboardingStatus(session?.email);
+
+  switch (status) {
+    case "not_started":
+      return "/runner/service-selection";
+    case "in_progress":
+      return getRunnerOnboardingPath(user.runnerStage ?? getStoredRunnerStage() ?? "service-selection");
+    case "pending_verification":
+    case "approved":
+      return "/runner/dashboard";
+  }
+}
+
+export function hasRunnerConsoleAccess(_stage = getStoredRunnerStage()): boolean {
+  const status = getRunnerOnboardingStatus();
+  return status === "pending_verification" || status === "approved";
+}
+
+export function isRunnerFullyApproved(): boolean {
+  return getRunnerOnboardingStatus() === "approved";
+}
+
+export function getRoleHomePath(role: AppRole): string {
+  switch (role) {
+    case "customer":
+      return isCustomerOnboarded() ? "/customer/home" : "/customer/profile-setup";
+    case "runner":
+      return getRunnerHomePath();
+    case "business":
+      return "/business/dashboard";
+    case "admin":
+      return "/admin/overview";
+  }
+}
+
+export function getPrototypeRoleHomePath(role: AppRole): string {
+  switch (role) {
+    case "customer":
+      return "/customer/home";
+    case "runner":
+      return "/runner/dashboard";
+    case "business":
+      return "/business/dashboard";
+    case "admin":
+      return "/admin/overview";
+  }
+}
+
+export function applyRoleSetup(role: AppRole): void {
+  if (role !== "runner") return;
+  const session = getAuthSession();
+  if (!session?.email) return;
+  migrateLegacyRunnerAccount(session.email);
+  syncRunnerDeviceStateFromUser(getStoredUser(session.email));
+}
+
+export function bootstrapRoleForPrototype(role: AppRole): void {
+  const session = getAuthSession();
+  if (session) {
+    persistAuthSession({ ...session, activeRole: role });
+  } else {
+    setAuthSession(role);
+  }
+
+  if (role === "customer" || role === "business") {
+    setCustomerOnboarded(true);
+  }
+
+  if (role === "runner") {
+    setRunnerAccess(true);
+    setRunnerApproved(true);
+    setStoredRunnerStage("dashboard");
+  }
+}
+
+export function clearPrototypeRoleState(): void {
+  setRunnerAccess(false);
+  setRunnerApproved(false);
+  clearStoredRunnerStage();
+  clearRunnerOnline();
+}

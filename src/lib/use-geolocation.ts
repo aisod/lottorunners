@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LatLng } from "@/lib/types";
-import { WINDHOEK } from "@/lib/map-icons";
+import { WINDHOEK } from "@/lib/geo-defaults";
 
 interface GeoState {
   location: LatLng | null;

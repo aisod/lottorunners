@@ -1,4 +1,14 @@
-import type { ServiceConfig, ServiceType } from "./types";
+import type { ServiceConfig, ServiceType, TruckSizeId } from "./types";
+
+/** Base dispatch fees by truck class (NAD). Per-km still uses `SERVICES.truck.perKm`. */
+export const TRUCK_SIZE_BASE_NAD: Record<TruckSizeId, number> = {
+  small: 250,
+  medium: 850,
+  large: 1950,
+};
+
+export const TRUCK_LABOUR_FEE_NAD = 150;
+export const TRUCK_EXTRA_HELPER_FEE_NAD = 80;
 
 export const SERVICES: Record<ServiceType, ServiceConfig> = {
   errand: {

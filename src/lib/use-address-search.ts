@@ -26,7 +26,7 @@ export function useAddressSearch(query: string, near: LatLng | null) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const q = query.trim();
+    const q = (query ?? "").trim();
     if (q.length < 3) {
       setResults([]);
       setLoading(false);

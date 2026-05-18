@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
 import { useAddressSearch } from "@/lib/use-address-search";
@@ -23,7 +23,7 @@ export function LocationPicker() {
     setDurationMin,
     setStatus,
     reset,
-  } = useApp();
+  } = useCustomerApp();
 
   const [field, setField] = useState<"pickup" | "destination">(pickup ? "destination" : "pickup");
 
@@ -35,10 +35,11 @@ export function LocationPicker() {
 
   const svc = selectedService ? SERVICES[selectedService] : null;
   const cat = selectedService === "errand" && errandCategory ? ERRAND_CATEGORIES[errandCategory] : null;
+  const normalizedErrandDescription = (errandDescription ?? "").trim();
 
   const detailsValid =
     selectedService !== "errand" ||
-    (errandDescription.trim().length > 3 &&
+    (normalizedErrandDescription.length > 3 &&
       (!cat?.needsBasketValue || basketValue > 0) &&
       (!cat?.needsDuration || durationMin > 0));
 

@@ -1,5 +1,6 @@
+import { useNavigate } from "@tanstack/react-router";
 import { SERVICE_ORDER, SERVICES } from "@/lib/services";
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { cn } from "@/lib/utils";
 import type { ServiceType } from "@/lib/types";
 
@@ -36,57 +37,55 @@ const ICONS: Record<ServiceType, React.ReactNode> = {
 };
 
 export function ServiceSelector() {
-  const { selectedService, setSelectedService, setStatus, pickup, setPickup, userLocation } = useApp();
+  const navigate = useNavigate();
+  const { selectedService, setSelectedService, setStatus } = useCustomerApp();
 
   const choose = (id: ServiceType) => {
     setSelectedService(id);
-    setStatus(id === "errand" ? "errand_category" : "selecting");
+
+    if (id === "errand") {
+      setStatus("idle");
+      navigate({ to: "/customer/choose-errand-type" });
+      return;
+    }
+
+    if (id === "truck") {
+      setStatus("idle");
+      navigate({ to: "/customer/truck-size" });
+      return;
+    }
+
+    if (id === "delivery") {
+      setStatus("idle");
+      navigate({ to: "/customer/delivery-request" });
+      return;
+    }
+
+    setStatus("idle");
+    navigate({ to: "/customer/choose-service" });
   };
 
   return (
-    <div>
-      <div className="-mx-1 flex items-stretch gap-2">
-        {SERVICE_ORDER.map((id) => {
-          const svc = SERVICES[id];
-          const active = selectedService === id;
-          return (
-            <button
-              key={id}
-              onClick={() => choose(id)}
-              className={cn(
-                "group flex flex-1 flex-col items-center gap-2 rounded-2xl py-4 transition-all",
-                active
-                  ? "bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_oklch(0.48_0.14_248/0.6)]"
-                  : "bg-secondary text-primary hover:bg-secondary/70",
-              )}
-            >
-              <div className="flex h-7 items-center justify-center">{ICONS[id]}</div>
-              <span className="text-[11px] font-bold uppercase tracking-wider">{svc.label.split(" ")[0]}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        onClick={() => {
-          if (userLocation) setPickup({ coord: userLocation, label: "Home — 123 Independence Ave, Windhoek" });
-        }}
-        className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition-colors hover:bg-secondary/40"
-      >
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold leading-tight">{pickup?.label.startsWith("Home") ? "Home" : "Home"}</div>
-          <div className="truncate text-xs text-muted-foreground">123 Independence Ave, Windhoek</div>
-        </div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </button>
+    <div className="-mx-1 flex items-stretch gap-2">
+      {SERVICE_ORDER.map((id) => {
+        const svc = SERVICES[id];
+        const active = selectedService === id;
+        return (
+          <button
+            key={id}
+            onClick={() => choose(id)}
+            className={cn(
+              "group flex flex-1 flex-col items-center gap-2 rounded-2xl py-4 transition-all",
+              active
+                ? "bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_oklch(0.48_0.14_248/0.6)]"
+                : "bg-secondary text-primary hover:bg-secondary/70",
+            )}
+          >
+            <div className="flex h-7 items-center justify-center">{ICONS[id]}</div>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{svc.label.split(" ")[0]}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

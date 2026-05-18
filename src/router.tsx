@@ -54,9 +54,16 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   );
 }
 
+function viteBasepath(): string | undefined {
+  const raw = import.meta.env.BASE_URL ?? "/";
+  if (raw === "/" || raw === "") return undefined;
+  return raw.endsWith("/") ? raw.slice(0, -1) : raw;
+}
+
 export const getRouter = () => {
   const router = createRouter({
     routeTree,
+    basepath: viteBasepath(),
     context: {},
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,

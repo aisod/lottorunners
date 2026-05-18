@@ -1,21 +1,19 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
+import { CustomerPageShell } from "@/components/customer-page-shell";
+import { formatWalletBalance } from "@/lib/customer-wallet";
 
 export const Route = createFileRoute("/wallet")({
-  head: () => ({
-    meta: [
-      { title: "Wallet — Lotto Runners" },
-      { name: "description", content: "Your Lotto Runners wallet balance and transactions." },
-    ],
-  }),
-  component: WalletPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/customer/wallet" });
+  },
 });
 
-function WalletPage() {
+export function CustomerWalletPage() {
   return (
-    <div className="min-h-dvh bg-background pb-24">
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-4 py-3">
-        <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-secondary">
+    <CustomerPageShell width="md" variant="plain" tabBar className="pb-24">
+      <header className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6">
+        <Link to="/customer/home" className="flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-secondary">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </Link>
         <h1 className="flex-1 text-center font-display text-lg font-bold text-primary">Wallet</h1>
@@ -23,12 +21,24 @@ function WalletPage() {
       </header>
 
       <div className="p-4">
-        <div className="rounded-3xl bg-primary p-6 text-primary-foreground shadow-[0_10px_30px_-10px_oklch(0.48_0.14_248/0.6)]">
+        <div className="rounded-3xl bg-primary p-6 text-primary-foreground shadow-[0_10px_30px_-10px_oklch(0.546_0.15_258/0.45)]">
           <div className="text-xs font-medium uppercase tracking-wider opacity-80">Balance</div>
-          <div className="mt-1 text-4xl font-black">N$ 450.00</div>
+          <div className="mt-1 text-4xl font-black">{formatWalletBalance()}</div>
           <div className="mt-4 flex gap-2">
-            <button className="flex-1 rounded-xl bg-card py-2.5 text-sm font-bold text-primary">+ Top up</button>
-            <button className="flex-1 rounded-xl border border-primary-foreground/30 py-2.5 text-sm font-semibold">Send</button>
+            <button
+              type="button"
+              className="flex-1 rounded-xl bg-card py-2.5 text-sm font-bold text-primary"
+              onClick={() => window.alert("Top up via MTC MoMo is simulated in this demo.")}
+            >
+              + Top up
+            </button>
+            <button
+              type="button"
+              className="flex-1 rounded-xl border border-primary-foreground/30 py-2.5 text-sm font-semibold"
+              onClick={() => window.alert("Send money is coming soon in this demo.")}
+            >
+              Send
+            </button>
           </div>
         </div>
 
@@ -53,6 +63,6 @@ function WalletPage() {
       </div>
 
       <BottomTabBar />
-    </div>
+    </CustomerPageShell>
   );
 }

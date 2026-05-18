@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { ERRAND_CATEGORIES, ERRAND_CATEGORY_ORDER } from "@/lib/errand-categories";
 
 const CAT_ICONS: Record<string, React.ReactNode> = {
@@ -25,6 +25,12 @@ const CAT_ICONS: Record<string, React.ReactNode> = {
       <polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="14" y2="17" />
     </svg>
   ),
+  pharmacy_runs: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a2 2 0 0 0-.5 1.5V20l4-.5a2 2 0 0 0 1.5-.5Z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  ),
   special_runs: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="12 2 15 8.5 22 9.3 17 14 18.2 21 12 17.8 5.8 21 7 14 2 9.3 9 8.5 12 2" />
@@ -38,12 +44,12 @@ const CAT_ICONS: Record<string, React.ReactNode> = {
 };
 
 export function ErrandCategoryPicker() {
-  const { setErrandCategory, setSelectedService, reset } = useApp();
+  const { setErrandCategory, setSelectedService, reset } = useCustomerApp();
   const [q, setQ] = useState("");
 
   const filtered = ERRAND_CATEGORY_ORDER.filter((id) => {
     const c = ERRAND_CATEGORIES[id];
-    const s = q.toLowerCase().trim();
+    const s = (q ?? "").toLowerCase().trim();
     if (!s) return true;
     return c.label.toLowerCase().includes(s) || c.description.toLowerCase().includes(s);
   });

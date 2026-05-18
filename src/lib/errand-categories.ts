@@ -7,6 +7,7 @@ export type ErrandCategoryId =
   | "delivery"
   | "queue_sitting"
   | "documents"
+  | "pharmacy_runs"
   | "special_runs"
   | "other";
 
@@ -77,6 +78,17 @@ export const ERRAND_CATEGORIES: Record<ErrandCategoryId, ErrandCategory> = {
     detailsPlaceholder:
       "e.g. NATIS — renew vehicle license disc, plate N123-456WB. Papers in sealed envelope.",
   },
+  pharmacy_runs: {
+    id: "pharmacy_runs",
+    label: "Pharmacy Runs",
+    tagline: "Rx and OTC pickup",
+    description:
+      "Prescription collection and over-the-counter medication delivery from pharmacies across Windhoek.",
+    icon: "💊",
+    pricing: { base: 55, perKm: 9, minRange: 65 },
+    detailsPlaceholder:
+      "e.g. Clicks Maerua — chronic medication for Maria K., script photo attached in chat.",
+  },
   special_runs: {
     id: "special_runs",
     label: "Special Runs",
@@ -106,9 +118,31 @@ export const ERRAND_CATEGORY_ORDER: ErrandCategoryId[] = [
   "delivery",
   "queue_sitting",
   "documents",
+  "pharmacy_runs",
   "special_runs",
   "other",
 ];
+
+/** Subset and display titles aligned with the Stitch “choose errand type” screen. */
+export const CHOOSE_ERRAND_TYPE_ORDER: ErrandCategoryId[] = [
+  "personal_shopper",
+  "queue_sitting",
+  "documents",
+  "pharmacy_runs",
+  "special_runs",
+];
+
+export const CHOOSE_ERRAND_TYPE_LABELS: Partial<Record<ErrandCategoryId, string>> = {
+  special_runs: "Bill Payments",
+};
+
+export const CHOOSE_ERRAND_TYPE_DESCRIPTIONS: Partial<Record<ErrandCategoryId, string>> = {
+  personal_shopper: "Groceries, gifts, or specific items picked up and delivered.",
+  queue_sitting: "We hold your spot in line at banks, clinics, or government offices.",
+  documents: "Secure pickup, submission, or stamping of important paperwork.",
+  pharmacy_runs: "Prescription collection and over-the-counter medication delivery.",
+  special_runs: "In-person municipal, utility, or agency bill payments handled for you.",
+};
 
 export interface PriceQuote {
   amount: number;   // fixed price in NAD

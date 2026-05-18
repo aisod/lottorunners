@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from "react-leaflet";
 import type { Map as LMap } from "leaflet";
-import { pinIcon, runnerMarkerIcon, userMarkerIcon, WINDHOEK } from "@/lib/map-icons";
+import { WINDHOEK } from "@/lib/geo-defaults";
+import { pinIcon, runnerMarkerIcon, userMarkerIcon } from "@/lib/map-icons";
 import type { LatLng, Runner } from "@/lib/types";
 
 interface LiveMapProps {

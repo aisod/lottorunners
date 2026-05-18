@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useApp } from "@/lib/store";
+import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES, haversine } from "@/lib/services";
 import type { LatLng } from "@/lib/types";
 
@@ -9,7 +9,7 @@ function lerp(a: LatLng, b: LatLng, t: number): LatLng {
 
 export function TripTracking() {
   const { activeTrip, status, setStatus, updateRunnerPosition, pushHistory, setActiveTrip } =
-    useApp();
+    useCustomerApp();
   const tickRef = useRef(0);
 
   // Animate runner: matched -> en_route -> arrived -> on_trip -> completed
@@ -158,7 +158,7 @@ export function TripTracking() {
 }
 
 function RatePay({ onDone }: { onDone: () => void }) {
-  const { activeTrip } = useApp();
+  const { activeTrip } = useCustomerApp();
   if (!activeTrip || !activeTrip.runner) return null;
   const svc = SERVICES[activeTrip.service];
 
@@ -203,7 +203,7 @@ function RatePay({ onDone }: { onDone: () => void }) {
 }
 
 function RatingStars() {
-  const { activeTrip, setActiveTrip } = useApp();
+  const { activeTrip, setActiveTrip } = useCustomerApp();
   const value = activeTrip?.rating ?? 0;
   return (
     <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-center">
