@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      marketplace_jobs: {
+        Row: {
+          id: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          display_name: string | null
+          documents: Json
+          email: string
+          id: string
+          phone: string | null
+          primary_role: string | null
+          roles: string[]
+          runner_stage: string | null
+          runner_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          display_name?: string | null
+          documents?: Json
+          email: string
+          id: string
+          phone?: string | null
+          primary_role?: string | null
+          roles?: string[]
+          runner_stage?: string | null
+          runner_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          display_name?: string | null
+          documents?: Json
+          email?: string
+          id?: string
+          phone?: string | null
+          primary_role?: string | null
+          roles?: string[]
+          runner_stage?: string | null
+          runner_status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
