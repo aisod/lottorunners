@@ -29,14 +29,13 @@ function CustomerSignInPage() {
 
   const signIn = () => {
     setError(null);
-    const result = loginUser({ email, password });
-
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-
-    navigate({ to: result.homePath });
+    void loginUser({ email, password }).then((result) => {
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      navigate({ to: result.homePath });
+    });
   };
 
   return (

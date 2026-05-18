@@ -1,11 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ListTodo, ShoppingBasket, Store, Zap } from "lucide-react";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { ListTodo, ShoppingBasket, Store } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CustomerFixedFooter, CustomerPageShell } from "@/components/customer-page-shell";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
 import { validateErrandDetailsStep } from "@/lib/booking-validation";
+import { goBackOrFallback } from "@/lib/customer-navigation";
 import { useCustomerApp } from "@/lib/customer-store";
 
 export const Route = createFileRoute("/customer/errand-details")({
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/customer/errand-details")({
 
 function CustomerErrandDetailsPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const {
     errandCategory,
     errandDescription,
@@ -27,23 +29,29 @@ function CustomerErrandDetailsPage() {
     setStatus,
     ensureRoute,
     setSelectedService,
+    restoreHomeUi,
   } = useCustomerApp();
 
-  const [urgency, setUrgency] = useState<"normal" | "urgent">("normal");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const cat = errandCategory ? ERRAND_CATEGORIES[errandCategory] : null;
 
   useEffect(() => {
-    if (!errandCategory) {
+    if (!errandCategory || !cat) {
       navigate({ to: "/customer/choose-errand-type", replace: true });
     }
-  }, [errandCategory, navigate]);
+  }, [errandCategory, cat, navigate]);
+
+  const goBack = () => {
+    restoreHomeUi();
+    goBackOrFallback(router.history, () => navigate({ to: "/customer/home" }));
+  };
 
   if (!errandCategory || !cat) {
     return (
       <CustomerPageShell width="md" variant="plain">
-        <div className="flex min-h-[40dvh] flex-col items-center justify-center gap-3">
+        <CustomerFlowHeader title="Errand Services" onBack={goBack} />
+        <div className="flex min-h-[40dvh] flex-col items-center justify-center gap-3 py-12">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-muted border-t-primary" />
           <p className="text-sm text-muted-foreground">Loading errand details…</p>
         </div>
@@ -53,19 +61,16 @@ function CustomerErrandDetailsPage() {
 
   return (
     <CustomerPageShell width="md" variant="plain" className="pb-28">
-      <CustomerFlowHeader title="Errand Services" bleed onBack={() => navigate({ to: "/customer/choose-errand-type" })} />
+      <CustomerFlowHeader title="Errand Services" onBack={goBack} />
 
       <main className="space-y-5 py-5">
-        <section className="overflow-hidden rounded-xl border bg-card">
-          <div className="h-44 bg-[linear-gradient(135deg,oklch(0.92_0.04_258),oklch(0.72_0.14_258))] p-5 text-primary-foreground">
-            <p className="text-sm font-medium opacity-90">Errand Runner</p>
-            <h2 className="mt-1 text-2xl font-bold">{cat.label}</h2>
-            <p className="mt-2 max-w-sm text-sm opacity-90">{cat.tagline}. Add specifics below so a runner can quote and complete the job.</p>
-          </div>
+        <section>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">{cat.label}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{cat.description}</p>
         </section>
 
-        <section className="space-y-4 rounded-xl border bg-card p-4">
-          <label className="block text-sm font-semibold">Store Preference</label>
+        <section className="space-y-4 rounded-xl border border-border bg-card p-4">
+          <label className="block text-sm font-semibold">Store preference (optional)</label>
           <div className="relative">
             <Store className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -76,7 +81,7 @@ function CustomerErrandDetailsPage() {
             />
           </div>
 
-          <label className="block pt-1 text-sm font-semibold">Shopping List</label>
+          <label className="block pt-1 text-sm font-semibold">Task details</label>
           <div className="relative">
             <ListTodo className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
             <textarea
@@ -86,26 +91,9 @@ function CustomerErrandDetailsPage() {
               placeholder={cat.detailsPlaceholder}
             />
           </div>
+          {errors.description ? <p className="text-sm text-destructive">{errors.description}</p> : null}
 
-          <label className="block pt-1 text-sm font-semibold">Urgency</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setUrgency("normal")}
-              className={`rounded-lg border px-4 py-3 text-sm font-semibold ${urgency === "normal" ? "border-primary bg-secondary text-primary" : "border-border"}`}
-            >
-              Normal
-            </button>
-            <button
-              type="button"
-              onClick={() => setUrgency("urgent")}
-              className={`rounded-lg border px-4 py-3 text-sm font-semibold ${urgency === "urgent" ? "border-destructive bg-destructive/10 text-destructive" : "border-border"}`}
-            >
-              <span className="inline-flex items-center gap-1"><Zap className="h-4 w-4" /> Urgent</span>
-            </button>
-          </div>
-
-          <label className="block pt-1 text-sm font-semibold">Budget Estimate (N$)</label>
+          <label className="block pt-1 text-sm font-semibold">Budget estimate (N$)</label>
           <div className="relative">
             <ShoppingBasket className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -117,6 +105,7 @@ function CustomerErrandDetailsPage() {
               placeholder="0.00"
             />
           </div>
+          {errors.budget ? <p className="text-sm text-destructive">{errors.budget}</p> : null}
 
           <label className="block pt-1 text-sm font-semibold">Expected duration (minutes)</label>
           <input
@@ -131,7 +120,7 @@ function CustomerErrandDetailsPage() {
       </main>
 
       <CustomerFixedFooter width="md">
-        {Object.keys(errors).length > 0 ? (
+        {Object.keys(errors).length > 0 && !errors.description && !errors.budget ? (
           <p className="mb-2 text-sm text-destructive">{Object.values(errors)[0]}</p>
         ) : null}
         <Button

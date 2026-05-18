@@ -8,13 +8,21 @@ import {
   MessageCircle,
   Navigation,
   Package2,
+  Phone,
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LiveMapClient } from "@/components/live-map-client";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { Button } from "@/components/ui/button";
-import { advanceRunnerJobStatus, getCurrentRunnerId, getRunnerActiveJob } from "@/lib/jobs-service";
+import { openPhoneCall, openPhoneSms } from "@/lib/contact-actions";
+import {
+  advanceRunnerJobStatus,
+  getCurrentRunnerId,
+  getRunnerActiveJob,
+  setJobProofPhoto,
+} from "@/lib/jobs-service";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 import { SERVICES } from "@/lib/services";
 import type { MarketplaceJobStatus } from "@/lib/jobs-types";
@@ -62,7 +70,7 @@ function RunnerActiveJobPage() {
   const nearbyRunners = useSimulatedRunners(userLocation, 1);
   const activeRunner = nearbyRunners[0] ?? null;
   const [jobPhase, setJobPhase] = useState<RunnerPhase>("arrived");
-  const [proofPhotoName, setProofPhotoName] = useState<string | null>(null);
+  const proofUpload = useFileUpload(`job-proof/${resolvedJobId || "active"}`);
   const [showDestinationPreview, setShowDestinationPreview] = useState(false);
 
   useEffect(() => {
@@ -72,7 +80,7 @@ function RunnerActiveJobPage() {
     }
     if (!job) return;
     if (job.status === "completed") {
-      navigate({ to: "/runner/rate-customer", replace: true });
+      navigate({ to: "/runner/rate-customer", search: { jobId: job.id }, replace: true });
       return;
     }
     if (job.status === "pending" || job.status === "cancelled") {
@@ -112,15 +120,24 @@ function RunnerActiveJobPage() {
       primaryAction: "complete",
       cards: [
         { label: "TASK", value: serviceLabel, icon: Package2 },
-        { label: "PROOF", value: proofPhotoName ? "Photo ready" : "Add proof", icon: Camera },
+        { label: "PROOF", value: proofUpload.remoteUrl ? "Photo ready" : "Add proof", icon: Camera },
       ],
       showProof: true,
     },
   }[jobPhase];
 
+  const customerPhone = job?.customerPhone;
+
   const openCustomerChat = () => {
-    if (typeof window === "undefined") return;
-    window.alert(`Message ${job?.customerName ?? "customer"} (chat coming soon).`);
+    if (!openPhoneSms(customerPhone)) {
+      window.alert("Customer phone number is not available for this job.");
+    }
+  };
+
+  const callCustomer = () => {
+    if (!openPhoneCall(customerPhone)) {
+      window.alert("Customer phone number is not available for this job.");
+    }
   };
 
   const handlePrimaryAction = () => {
@@ -136,7 +153,7 @@ function RunnerActiveJobPage() {
       if (!updated || updated.status === current.status) break;
       current = updated;
     }
-    navigate({ to: "/runner/rate-customer" });
+    navigate({ to: "/runner/rate-customer", search: { jobId: current?.id ?? job.id } });
   };
 
   if (!job) {
@@ -233,7 +250,10 @@ function RunnerActiveJobPage() {
                 <p className="text-base text-muted-foreground">Order #{job.id.slice(-8)}</p>
               </div>
             </div>
-            <CustomerQuickAction label="Chat" icon={MessageCircle} onClick={openCustomerChat} />
+            <div className="flex items-center gap-3">
+              <CustomerQuickAction label="Chat" icon={MessageCircle} onClick={openCustomerChat} disabled={!customerPhone} />
+              <CustomerQuickAction label="Call" icon={Phone} onClick={callCustomer} disabled={!customerPhone} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -249,13 +269,29 @@ function RunnerActiveJobPage() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(event) => setProofPhotoName(event.target.files?.[0]?.name ?? null)}
+                capture="environment"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file || !job || !runnerId) return;
+                  void proofUpload.upload(file).then((result) => {
+                    if (result.ok) setJobProofPhoto(job.id, runnerId, result.publicUrl);
+                  });
+                }}
               />
+
+              {proofUpload.previewUrl || job.proofPhotoUrl ? (
+                <img
+                  src={proofUpload.previewUrl ?? job.proofPhotoUrl}
+                  alt="Delivery proof"
+                  className="mb-3 max-h-40 w-full rounded-lg object-cover"
+                />
+              ) : null}
 
               <button
                 type="button"
+                disabled={proofUpload.uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 text-left"
+                className="flex w-full items-center justify-between gap-3 text-left disabled:opacity-60"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -263,11 +299,20 @@ function RunnerActiveJobPage() {
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Proof</p>
-                    <p className="text-sm font-semibold text-foreground">{proofPhotoName ? proofPhotoName : "Add proof photo"}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {proofUpload.uploading
+                        ? "Uploading…"
+                        : proofUpload.remoteUrl || job.proofPhotoUrl
+                          ? "Photo saved"
+                          : "Add proof photo"}
+                    </p>
                   </div>
                 </div>
-                <span className="text-sm font-semibold text-primary">{proofPhotoName ? "Change" : "Upload"}</span>
+                <span className="text-sm font-semibold text-primary">
+                  {proofUpload.remoteUrl || job.proofPhotoUrl ? "Change" : "Upload"}
+                </span>
               </button>
+              {proofUpload.error ? <p className="mt-2 text-sm text-destructive">{proofUpload.error}</p> : null}
             </div>
           ) : null}
 
@@ -289,16 +334,19 @@ function CustomerQuickAction({
   icon: Icon,
   label,
   onClick,
+  disabled,
 }: {
   icon: typeof MessageCircle;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-1 text-sm font-semibold text-primary transition hover:scale-[0.98]"
+      disabled={disabled}
+      className="flex flex-col items-center gap-1 text-sm font-semibold text-primary transition hover:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary">
         <Icon className="h-5 w-5" />

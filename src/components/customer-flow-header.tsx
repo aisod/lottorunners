@@ -12,6 +12,7 @@ type CustomerFlowHeaderProps = {
   trailing?: ReactNode;
   backLabel?: string;
   className?: string;
+  bleed?: boolean;
 };
 
 export function CustomerFlowHeader({
@@ -21,9 +22,10 @@ export function CustomerFlowHeader({
   trailing,
   backLabel = "Go back",
   className,
+  bleed,
 }: CustomerFlowHeaderProps) {
   return (
-    <CustomerStickyHeader width={width} className={cn("bg-card/95", className)}>
+    <CustomerStickyHeader width={width} bleed={bleed} className={cn("bg-card/95", className)}>
       <Button
         variant="ghost"
         size="icon"

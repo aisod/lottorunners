@@ -157,7 +157,8 @@ export default defineConfig({
   ],
   vite: {
     server: {
-      host: "localhost",
+      // Listen on all interfaces so phones on the same Wi‑Fi can open http://<laptop-ip>:8080
+      host: true,
       port: 8080,
       strictPort: true,
     },

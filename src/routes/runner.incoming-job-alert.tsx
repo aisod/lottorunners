@@ -53,12 +53,13 @@ function RunnerIncomingJobAlertPage() {
       return;
     }
     const runnerName = getUserDisplayName(runnerId) ?? "Runner";
-    const updated = acceptJob(job.id, runnerId, runnerName);
-    if (!updated) {
-      setError("Could not accept this job. It may have been taken already.");
-      return;
-    }
-    navigate({ to: "/runner/active-job", search: { jobId: job.id } });
+    void acceptJob(job.id, runnerId, runnerName).then((updated) => {
+      if (!updated) {
+        setError("Could not accept this job. It may have been taken already.");
+        return;
+      }
+      navigate({ to: "/runner/active-job", search: { jobId: job.id } });
+    });
   };
 
   const handleDecline = () => {

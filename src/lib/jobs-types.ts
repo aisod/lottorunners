@@ -16,8 +16,10 @@ export interface MarketplaceJob {
   id: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string;
   runnerId?: string;
   runnerName?: string;
+  runnerPhone?: string;
   serviceType: ServiceType;
   subType?: string;
   pickupAddress: string;
@@ -38,6 +40,8 @@ export interface MarketplaceJob {
   acceptedAt?: number;
   completedAt?: number;
   rating?: number;
+  runnerRating?: number;
+  proofPhotoUrl?: string;
   errandCategory?: ErrandCategoryId;
 }
 

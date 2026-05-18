@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { BriefcaseBusiness, Clock3, ShieldAlert } from "lucide-react";
+import { BriefcaseBusiness, ShieldAlert } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { LiveMapClient } from "@/components/live-map-client";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { Button } from "@/components/ui/button";
+import { getCurrentRunnerId, getRunnerActiveJob, listJobsForRunner } from "@/lib/jobs-service";
 import { usePendingJobs } from "@/lib/use-marketplace-job";
 import {
   getRunnerBankDetails,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/runner-workflow";
 import { SERVICES } from "@/lib/services";
 import { approveRunnerAccount, getRunnerOnboardingStatus } from "@/lib/runner-account";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { setStoredRunnerStage } from "@/lib/store";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { useSimulatedRunners } from "@/lib/use-simulated-runners";
@@ -30,6 +32,13 @@ function RunnerDashboardPage() {
 
   const pendingJobs = usePendingJobs();
   const nextJob = pendingJobs[0] ?? null;
+  const runnerId = getCurrentRunnerId();
+  const activeJob = runnerId ? getRunnerActiveJob(runnerId) : null;
+  const recentCompleted = runnerId
+    ? listJobsForRunner(runnerId)
+        .filter((job) => job.status === "completed")
+        .slice(0, 3)
+    : [];
 
   const setOnline = (next: boolean) => {
     setOnlineState(next);
@@ -68,7 +77,11 @@ function RunnerDashboardPage() {
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
             <div className="flex gap-3">
               <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-              <VerificationPendingBanner navigate={navigate} onDemoApprove={handleDemoApprove} />
+              <VerificationPendingBanner
+                navigate={navigate}
+                onDemoApprove={handleDemoApprove}
+                showDemoApprove={!isSupabaseConfigured()}
+              />
             </div>
           </section>
         ) : null}
@@ -210,10 +223,20 @@ function RunnerDashboardPage() {
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Button asChild variant="outline">
-                <Link to="/runner/incoming-job-alert">Open job alert</Link>
+                <Link
+                  to="/runner/incoming-job-alert"
+                  search={nextJob ? { jobId: nextJob.id } : {}}
+                >
+                  Open job alert
+                </Link>
               </Button>
-              <Button asChild>
-                <Link to="/runner/active-job">Open active job</Link>
+              <Button asChild disabled={!activeJob}>
+                <Link
+                  to="/runner/active-job"
+                  search={activeJob ? { jobId: activeJob.id } : {}}
+                >
+                  Open active job
+                </Link>
               </Button>
             </div>
           </section>
@@ -226,8 +249,21 @@ function RunnerDashboardPage() {
               </Button>
             </div>
             <div className="space-y-3">
-              <ActivityRow icon={<Clock3 className="h-5 w-5" />} title="Document delivery" time="Completed • 14:15" amount="N$ 85.00" />
-              <ActivityRow icon={<BriefcaseBusiness className="h-5 w-5" />} title="Taxi ride" time="Completed • 13:45" amount="N$ 120.00" />
+              {recentCompleted.length > 0 ? (
+                recentCompleted.map((job) => (
+                  <ActivityRow
+                    key={job.id}
+                    icon={<BriefcaseBusiness className="h-5 w-5" />}
+                    title={SERVICES[job.serviceType].label}
+                    time={`Completed · ${new Date(job.completedAt ?? job.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                    amount={`N$ ${job.estimatedFare.toFixed(2)}`}
+                  />
+                ))
+              ) : (
+                <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
+                  Completed jobs from shared marketplace requests will appear here.
+                </p>
+              )}
             </div>
           </section>
         </div>
@@ -300,9 +336,11 @@ function ActivityRow({ icon, title, time, amount }: { icon: ReactNode; title: st
 function VerificationPendingBanner({
   navigate,
   onDemoApprove,
+  showDemoApprove,
 }: {
   navigate: ReturnType<typeof useNavigate>;
   onDemoApprove: () => void;
+  showDemoApprove: boolean;
 }) {
   return (
     <div>
@@ -310,7 +348,7 @@ function VerificationPendingBanner({
       <p className="mt-1 text-sm text-amber-900/80">
         Your profile is under review. You can check your status here anytime. Going online and accepting jobs will unlock once you are approved.
       </p>
-      <VerificationBannerActions navigate={navigate} onDemoApprove={onDemoApprove} />
+      <VerificationBannerActions navigate={navigate} onDemoApprove={onDemoApprove} showDemoApprove={showDemoApprove} />
     </div>
   );
 }
@@ -318,20 +356,24 @@ function VerificationPendingBanner({
 function VerificationBannerActions({
   navigate,
   onDemoApprove,
+  showDemoApprove,
 }: {
   navigate: ReturnType<typeof useNavigate>;
   onDemoApprove: () => void;
+  showDemoApprove: boolean;
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
-        onClick={onDemoApprove}
-      >
-        Demo Approve Runner
-      </Button>
+      {showDemoApprove ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
+          onClick={onDemoApprove}
+        >
+          Demo Approve Runner
+        </Button>
+      ) : null}
       <Button variant="link" className="h-auto p-0 text-amber-950" onClick={() => navigate({ to: "/runner/onboarding/verification" })}>
         View verification details
       </Button>

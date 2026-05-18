@@ -7,6 +7,7 @@ import { LiveMapClient } from "@/components/live-map-client";
 import { Button } from "@/components/ui/button";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { useSimulatedRunners } from "@/lib/use-simulated-runners";
+import { openPhoneCall, openPhoneSms } from "@/lib/contact-actions";
 import { jobStatusLabel } from "@/lib/jobs-service";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 import { useCustomerApp } from "@/lib/customer-store";
@@ -59,6 +60,19 @@ function CustomerTrackingRunnerPage() {
 
   const serviceLabel = job ? SERVICES[job.serviceType].label : "Service";
   const statusText = job ? jobStatusLabel(job.status) : "Runner en route";
+  const runnerPhone = job?.runnerPhone;
+
+  const messageRunner = () => {
+    if (!openPhoneSms(runnerPhone)) {
+      window.alert("Runner phone number is not available yet.");
+    }
+  };
+
+  const callRunner = () => {
+    if (!openPhoneCall(runnerPhone)) {
+      window.alert("Runner phone number is not available yet.");
+    }
+  };
 
   return (
     <div className="relative h-dvh overflow-hidden bg-background">
@@ -121,7 +135,8 @@ function CustomerTrackingRunnerPage() {
                 variant="secondary"
                 size="icon"
                 aria-label="Message runner"
-                onClick={() => window.alert("Opening chat with Johannes N. (demo)")}
+                disabled={!runnerPhone}
+                onClick={messageRunner}
               >
                 <MessageCircle className="h-4 w-4" />
               </Button>
@@ -129,7 +144,8 @@ function CustomerTrackingRunnerPage() {
                 variant="secondary"
                 size="icon"
                 aria-label="Call runner"
-                onClick={() => window.alert("Calling Johannes N. at +264 81 123 4567 (demo)")}
+                disabled={!runnerPhone}
+                onClick={callRunner}
               >
                 <Phone className="h-4 w-4" />
               </Button>

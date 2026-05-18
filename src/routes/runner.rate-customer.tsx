@@ -3,21 +3,26 @@ import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { Button } from "@/components/ui/button";
-import { clearRunnerJobStatus } from "@/lib/runner-workflow";
+import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 
 export const Route = createFileRoute("/runner/rate-customer")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    jobId: typeof search.jobId === "string" ? search.jobId : "",
+  }),
   component: RunnerRateCustomerPage,
 });
 
 function RunnerRateCustomerPage() {
   const navigate = useNavigate();
+  const { jobId } = Route.useSearch();
+  const job = useMarketplaceJob(jobId || null);
   const [rating, setRating] = useState(5);
   const [note, setNote] = useState("");
 
   return (
     <div className="min-h-dvh bg-background pb-24">
       <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b bg-background px-5">
-        <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/runner/active-job" })}>
+        <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/runner/dashboard" })}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold text-primary">Rate Your Customer</h1>
@@ -25,7 +30,9 @@ function RunnerRateCustomerPage() {
 
       <main className="mx-auto max-w-md space-y-6 px-5 py-8">
         <section className="rounded-xl border bg-card p-5 text-center">
-          <p className="text-sm text-muted-foreground">Order #RN-29402 completed</p>
+          <p className="text-sm text-muted-foreground">
+            Order #{job?.id.slice(-8) ?? "—"} completed · {job?.customerName ?? "Customer"}
+          </p>
           <h2 className="mt-1 text-2xl font-bold">How was this customer?</h2>
           <div className="mt-5 flex items-center justify-center gap-2">
             {[1, 2, 3, 4, 5].map((value) => (
@@ -56,7 +63,7 @@ function RunnerRateCustomerPage() {
         <Button
           className="h-12 w-full text-base"
           onClick={() => {
-            clearRunnerJobStatus();
+            void note;
             navigate({ to: "/runner/dashboard" });
           }}
         >

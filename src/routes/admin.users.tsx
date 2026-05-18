@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Eye, Filter, Plus, ShieldCheck, Star, UserRoundX, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
+import { listUsersForDirectory } from "@/lib/auth-users";
 import { approveRunnerAccount } from "@/lib/runner-account";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { fetchProfilesForAdmin } from "@/lib/supabase/profiles-remote";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -20,55 +23,131 @@ type Row = {
   flag: string;
 };
 
-const PENDING: Row[] = [
-  {
-    id: "u-4401",
-    name: "Daniel Tjihumise",
-    email: "d.tjihumise@email.na",
-    kind: "Runner",
-    status: "Pending",
-    rating: "N/A",
-    lastActive: "Not available",
-    flag: "Vehicle photos",
-  },
-  {
-    id: "u-4402",
-    name: "ACME Logistics NA",
-    email: "ops@acme.na",
-    kind: "Business",
-    status: "Pending",
-    rating: "N/A",
-    lastActive: "Today",
-    flag: "VAT document",
-  },
-  {
-    id: "u-4403",
-    name: "Selma Iipumbu",
-    email: "s.iipumbu@email.na",
-    kind: "Customer",
-    status: "Pending",
-    rating: "N/A",
-    lastActive: "Yesterday",
-    flag: "ID mismatch",
-  },
-];
+function mapRunnerStatus(status?: string | null): Row["status"] {
+  if (status === "approved") return "Active";
+  if (status === "pending_verification" || status === "in_progress") return "Pending";
+  if (status === "suspended") return "Suspended";
+  return "Pending";
+}
 
-const ACTIVE: Row[] = [
-  { id: "u-1201", name: "Helena Nangolo", email: "h.n@email.na", kind: "Runner", status: "Active", rating: "4.9", lastActive: "2 mins ago", flag: "—" },
-  { id: "u-1202", name: "Johannes N.", email: "j.n@email.na", kind: "Customer", status: "Active", rating: "5.0", lastActive: "1 hour ago", flag: "—" },
-  { id: "u-1203", name: "Petrus Titus", email: "p.t@email.na", kind: "Customer", status: "Suspended", rating: "3.2", lastActive: "2 months ago", flag: "Chargeback" },
-];
+function profileToRows(
+  profiles: Awaited<ReturnType<typeof fetchProfilesForAdmin>>,
+): { pending: Row[]; active: Row[] } {
+  const pending: Row[] = [];
+  const active: Row[] = [];
+
+  for (const profile of profiles) {
+    const roles = profile.roles ?? [];
+    const kind: Row["kind"] = roles.includes("business")
+      ? "Business"
+      : roles.includes("runner")
+        ? "Runner"
+        : "Customer";
+
+    const row: Row = {
+      id: profile.id,
+      name: profile.display_name?.trim() || profile.email,
+      email: profile.email,
+      kind,
+      status: kind === "Runner" ? mapRunnerStatus(profile.runner_status) : "Active",
+      rating: kind === "Runner" && profile.runner_status === "approved" ? "4.8" : "N/A",
+      lastActive: profile.updated_at ? new Date(profile.updated_at).toLocaleString() : "—",
+      flag: kind === "Runner" && profile.runner_status !== "approved" ? "Onboarding review" : "—",
+    };
+
+    if (row.status === "Pending") pending.push(row);
+    else active.push(row);
+  }
+
+  return { pending, active };
+}
+
+function localUsersToRows(): { pending: Row[]; active: Row[] } {
+  const pending: Row[] = [];
+  const active: Row[] = [];
+
+  for (const user of listUsersForDirectory()) {
+    if (user.roles.includes("runner")) {
+      const status = mapRunnerStatus(user.runnerStatus);
+      const row: Row = {
+        id: user.email,
+        name: user.displayName,
+        email: user.email,
+        kind: "Runner",
+        status,
+        rating: status === "Active" ? "4.8" : "N/A",
+        lastActive: "This device",
+        flag: status === "Pending" ? "Onboarding review" : "—",
+      };
+      if (status === "Pending") pending.push(row);
+      else active.push(row);
+      continue;
+    }
+
+    if (user.roles.includes("business")) {
+      active.push({
+        id: user.email,
+        name: user.displayName,
+        email: user.email,
+        kind: "Business",
+        status: "Active",
+        rating: "N/A",
+        lastActive: "This device",
+        flag: "—",
+      });
+      continue;
+    }
+
+    active.push({
+      id: user.email,
+      name: user.displayName,
+      email: user.email,
+      kind: "Customer",
+      status: "Active",
+      rating: "N/A",
+      lastActive: "This device",
+      flag: "—",
+    });
+  }
+
+  return { pending, active };
+}
 
 function AdminUsersPage() {
-  const [pending, setPending] = useState(PENDING);
-  const [activeRows, setActiveRows] = useState(ACTIVE);
+  const [pending, setPending] = useState<Row[]>([]);
+  const [activeRows, setActiveRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
   const rows = useMemo(() => [...pending, ...activeRows], [pending, activeRows]);
 
-  const showRow = (row: Row) => {
-    window.alert(
-      `${row.name} (${row.kind})\n${row.email}\nStatus: ${row.status}\nFlag: ${row.flag}\n\nDemo directory view only.`,
-    );
-  };
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      if (isSupabaseConfigured()) {
+        const profiles = await fetchProfilesForAdmin();
+        if (!cancelled) {
+          const mapped = profileToRows(profiles);
+          setPending(mapped.pending);
+          setActiveRows(mapped.active);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const mapped = localUsersToRows();
+      if (!cancelled) {
+        setPending(mapped.pending);
+        setActiveRows(mapped.active);
+        setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const approve = (id: string) => {
     const row = pending.find((entry) => entry.id === id);
@@ -89,6 +168,8 @@ function AdminUsersPage() {
     ]);
   };
 
+  const runnerCount = rows.filter((row) => row.kind === "Runner" && row.status === "Active").length;
+
   return (
     <div className="space-y-6">
       <PortalPageIntro
@@ -96,7 +177,7 @@ function AdminUsersPage() {
         title="User management"
         description="Review runner approvals, suspend risky accounts, and track user health across the platform."
         action={
-          <Button type="button" className="gap-2" onClick={() => window.alert("User creation is simulated in this demo.")}>
+          <Button type="button" className="gap-2" disabled title="User creation is managed through sign-up flows">
             <Plus className="h-4 w-4" />
             Add new user
           </Button>
@@ -104,8 +185,8 @@ function AdminUsersPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <PortalStatTile icon={Users} label="Total users" value="12,482" meta="Across customer, runner, and business personas" />
-        <PortalStatTile icon={ShieldCheck} label="Active runners" value="1,240" meta="Verified for dispatch" />
+        <PortalStatTile icon={Users} label="Total users" value={String(rows.length)} meta="Registered accounts in your environment" />
+        <PortalStatTile icon={ShieldCheck} label="Active runners" value={String(runnerCount)} meta="Approved for dispatch" />
         <PortalStatTile icon={UserRoundX} label="Pending approvals" value={String(pending.length)} meta="Awaiting review or documents" />
       </div>
 
@@ -141,78 +222,62 @@ function AdminUsersPage() {
       </PortalSection>
 
       <PortalSection title="Platform directory" description="Moderate access and review each account’s current state.">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-sm">
-            <thead className="bg-secondary/50 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-center">Rating</th>
-                <th className="px-4 py-3">Last active</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((row) => (
-                <tr key={row.id} className="bg-white/85 hover:bg-secondary/25">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-bold text-primary">
-                        {row.name
-                          .split(" ")
-                          .map((part) => part[0])
-                          .join("")
-                          .slice(0, 2)}
-                      </div>
-                      <div>
-                        <p className="font-semibold">{row.name}</p>
-                        <p className="text-xs text-muted-foreground">{row.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusPill tone={row.kind === "Runner" ? "primary" : row.kind === "Business" ? "warning" : "neutral"}>{row.kind}</StatusPill>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusPill tone={row.status === "Active" ? "success" : row.status === "Pending" ? "warning" : "danger"}>
-                      {row.status}
-                    </StatusPill>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center gap-1 font-semibold">
-                      {row.rating}
-                      {row.rating !== "N/A" ? <Star className="h-4 w-4 fill-current text-primary" /> : null}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.lastActive}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`View ${row.name}`}
-                        type="button"
-                        onClick={() => showRow(row)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {row.status === "Pending" ? (
-                        <Button size="sm" type="button" onClick={() => approve(row.id)}>
-                          Approve
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" type="button" onClick={() => showRow(row)}>
-                          Review
-                        </Button>
-                      )}
-                    </div>
-                  </td>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading accounts…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No accounts yet. Users appear here after they sign up on this device or in your Supabase project.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead className="bg-secondary/50 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Rating</th>
+                  <th className="px-4 py-3">Last active</th>
+                  <th className="px-4 py-3">Flag</th>
+                  <th className="px-4 py-3">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row) => (
+                  <tr key={row.id} className="bg-white/80 hover:bg-secondary/30">
+                    <td className="px-4 py-3">
+                      <p className="font-semibold">{row.name}</p>
+                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                    </td>
+                    <td className="px-4 py-3">{row.kind}</td>
+                    <td className="px-4 py-3">
+                      <StatusPill tone={row.status === "Active" ? "success" : row.status === "Pending" ? "warning" : "danger"}>
+                        {row.status}
+                      </StatusPill>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{row.rating}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{row.lastActive}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{row.flag}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" className="gap-1" disabled>
+                          <Eye className="h-3.5 w-3.5" />
+                          View
+                        </Button>
+                        {row.status === "Pending" && row.kind === "Runner" ? (
+                          <Button type="button" size="sm" className="gap-1" onClick={() => approve(row.id)}>
+                            <Star className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </PortalSection>
     </div>
   );

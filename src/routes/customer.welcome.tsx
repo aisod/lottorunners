@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, Phone } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/lotto-runners-logo.png";
 import { AuthField } from "@/components/auth-field";
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/customer/welcome")({
 function CustomerWelcomePage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [wantRunner, setWantRunner] = useState(false);
@@ -43,20 +44,20 @@ function CustomerWelcomePage() {
 
   const signUp = () => {
     setError(null);
-    const result = registerUser({
+    void registerUser({
       email,
+      phone,
       password,
       confirmPassword,
       wantRunner,
       wantBusiness,
+    }).then((result) => {
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      navigate({ to: result.homePath });
     });
-
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-
-    navigate({ to: result.homePath });
   };
 
   return (
@@ -79,6 +80,15 @@ function CustomerWelcomePage() {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+              />
+              <AuthField
+                id="signup-phone"
+                icon={Phone}
+                label="Mobile number"
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
               />
               <AuthField
                 id="signup-password"

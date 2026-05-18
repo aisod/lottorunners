@@ -1,32 +1,44 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, BadgeCheck, Bell, Car, CheckCircle2, FileText, HelpCircle, UserRound } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RunnerOnboardingProgress } from "@/components/runner-onboarding-progress";
 import { Button } from "@/components/ui/button";
+import { getAuthSession } from "@/lib/auth-session";
+import { getSupabaseUserId } from "@/lib/auth-users";
 import { persistRunnerOnboardingStage } from "@/lib/runner-account";
+import {
+  readLocalRunnerDocuments,
+  writeLocalRunnerDocuments,
+  type RunnerDocumentKey,
+  type RunnerDocumentUrls,
+} from "@/lib/runner-documents";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { mergeRemoteDocuments } from "@/lib/supabase/profiles-remote";
+import { readFileAsDataUrl, uploadUserFile } from "@/lib/supabase/storage";
 
 export const Route = createFileRoute("/runner/onboarding/documents")({
   component: RunnerOnboardingDocumentsPage,
 });
 
-type DocKey = "profilePhoto" | "nationalId" | "license" | "insurance";
-
 function RunnerOnboardingDocumentsPage() {
   const navigate = useNavigate();
+  const session = getAuthSession();
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const idInputRef = useRef<HTMLInputElement | null>(null);
   const licenseInputRef = useRef<HTMLInputElement | null>(null);
   const insuranceInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [uploaded, setUploaded] = useState<Record<DocKey, boolean>>({
-    profilePhoto: false,
-    nationalId: false,
-    license: true,
-    insurance: false,
-  });
+  const [urls, setUrls] = useState<RunnerDocumentUrls>({});
+  const [uploadingKey, setUploadingKey] = useState<RunnerDocumentKey | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const triggerUpload = (key: DocKey) => {
-    const map: Record<DocKey, React.RefObject<HTMLInputElement | null>> = {
+  useEffect(() => {
+    if (!session?.email) return;
+    setUrls(readLocalRunnerDocuments(session.email));
+  }, [session?.email]);
+
+  const triggerUpload = (key: RunnerDocumentKey) => {
+    const map: Record<RunnerDocumentKey, React.RefObject<HTMLInputElement | null>> = {
       profilePhoto: profilePhotoInputRef,
       nationalId: idInputRef,
       license: licenseInputRef,
@@ -35,8 +47,51 @@ function RunnerOnboardingDocumentsPage() {
     map[key].current?.click();
   };
 
-  const onFilePicked = (key: DocKey) => {
-    setUploaded((current) => ({ ...current, [key]: true }));
+  const saveDocumentUrl = async (key: RunnerDocumentKey, publicUrl: string) => {
+    if (!session?.email) return;
+
+    const next = writeLocalRunnerDocuments(session.email, { [key]: publicUrl });
+    setUrls(next);
+
+    const userId = await getSupabaseUserId();
+    if (userId) {
+      await mergeRemoteDocuments(userId, { [key]: publicUrl });
+    }
+  };
+
+  const onFilePicked = async (key: RunnerDocumentKey, file: File | undefined) => {
+    if (!file || !session?.email) return;
+
+    setUploadError(null);
+    setUploadingKey(key);
+
+    try {
+      let publicUrl: string;
+
+      if (isSupabaseConfigured()) {
+        const result = await uploadUserFile(file, `runner-documents/${key}`);
+        if (!result.ok) {
+          setUploadError(result.error);
+          return;
+        }
+        publicUrl = result.publicUrl;
+      } else {
+        publicUrl = await readFileAsDataUrl(file);
+      }
+
+      await saveDocumentUrl(key, publicUrl);
+    } catch (cause) {
+      setUploadError(cause instanceof Error ? cause.message : "Upload failed.");
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
+  const uploaded = {
+    profilePhoto: Boolean(urls.profilePhoto),
+    nationalId: Boolean(urls.nationalId),
+    license: Boolean(urls.license),
+    insurance: Boolean(urls.insurance),
   };
 
   const canSubmit =
@@ -52,10 +107,14 @@ function RunnerOnboardingDocumentsPage() {
           <h1 className="text-lg font-bold text-primary">Runner setup</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" type="button" aria-label="Notifications" disabled>
             <Bell className="h-5 w-5" />
           </Button>
-          <div className="h-9 w-9 rounded-full bg-secondary" />
+          {urls.profilePhoto ? (
+            <img src={urls.profilePhoto} alt="" className="h-9 w-9 rounded-full object-cover" />
+          ) : (
+            <div className="h-9 w-9 rounded-full bg-secondary" />
+          )}
         </div>
       </header>
 
@@ -68,6 +127,12 @@ function RunnerOnboardingDocumentsPage() {
         </div>
 
         <RunnerOnboardingProgress current="documents" />
+
+        {uploadError ? (
+          <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {uploadError}
+          </p>
+        ) : null}
 
         <section className="flex flex-col gap-4 rounded-xl border bg-card p-5 md:flex-row md:items-center">
           <div className="flex-1 space-y-3">
@@ -88,9 +153,13 @@ function RunnerOnboardingDocumentsPage() {
             </ul>
           </div>
           <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border bg-secondary/40 md:w-64">
-            <BadgeCheck className="h-14 w-14 text-muted-foreground/40" />
+            {urls.profilePhoto ? (
+              <img src={urls.profilePhoto} alt="Profile preview" className="h-full w-full object-cover" />
+            ) : (
+              <BadgeCheck className="h-14 w-14 text-muted-foreground/40" />
+            )}
             <div className="absolute bottom-2 left-2 right-2 rounded-md border bg-background/90 px-2 py-1 text-center text-xs font-medium text-primary">
-              Sample photography view
+              {urls.profilePhoto ? "Profile photo uploaded" : "Sample photography view"}
             </div>
           </div>
         </section>
@@ -101,11 +170,31 @@ function RunnerOnboardingDocumentsPage() {
           accept="image/*"
           capture="user"
           className="hidden"
-          onChange={() => onFilePicked("profilePhoto")}
+          onChange={(event) => void onFilePicked("profilePhoto", event.target.files?.[0])}
         />
-        <input ref={idInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={() => onFilePicked("nationalId")} />
-        <input ref={licenseInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={() => onFilePicked("license")} />
-        <input ref={insuranceInputRef} type="file" accept="image/*" className="hidden" onChange={() => onFilePicked("insurance")} />
+        <input
+          ref={idInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(event) => void onFilePicked("nationalId", event.target.files?.[0])}
+        />
+        <input
+          ref={licenseInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(event) => void onFilePicked("license", event.target.files?.[0])}
+        />
+        <input
+          ref={insuranceInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => void onFilePicked("insurance", event.target.files?.[0])}
+        />
 
         <section className="space-y-3">
           <DocumentRow
@@ -113,7 +202,9 @@ function RunnerOnboardingDocumentsPage() {
             subtitle="Shown on your runner profile and customer-facing job card"
             icon={<UserRound className="h-7 w-7" />}
             status={uploaded.profilePhoto ? "uploaded" : "required"}
-            primaryLabel={uploaded.profilePhoto ? "Replace" : "Upload"}
+            primaryLabel={uploadingKey === "profilePhoto" ? "Uploading…" : uploaded.profilePhoto ? "Replace" : "Upload"}
+            previewUrl={urls.profilePhoto}
+            disabled={uploadingKey !== null}
             onPrimary={() => triggerUpload("profilePhoto")}
           />
           <DocumentRow
@@ -121,7 +212,9 @@ function RunnerOnboardingDocumentsPage() {
             subtitle="Front and back required"
             icon={<BadgeCheck className="h-7 w-7" />}
             status={uploaded.nationalId ? "uploaded" : "required"}
-            primaryLabel={uploaded.nationalId ? "Replace" : "Upload"}
+            primaryLabel={uploadingKey === "nationalId" ? "Uploading…" : uploaded.nationalId ? "Replace" : "Upload"}
+            previewUrl={urls.nationalId}
+            disabled={uploadingKey !== null}
             onPrimary={() => triggerUpload("nationalId")}
           />
           <DocumentRow
@@ -129,7 +222,9 @@ function RunnerOnboardingDocumentsPage() {
             subtitle="Must be valid and current"
             icon={<Car className="h-7 w-7" />}
             status={uploaded.license ? "uploaded" : "required"}
-            primaryLabel={uploaded.license ? "Replace" : "Upload"}
+            primaryLabel={uploadingKey === "license" ? "Uploading…" : uploaded.license ? "Replace" : "Upload"}
+            previewUrl={urls.license}
+            disabled={uploadingKey !== null}
             onPrimary={() => triggerUpload("license")}
           />
           <DocumentRow
@@ -137,7 +232,9 @@ function RunnerOnboardingDocumentsPage() {
             subtitle="Policy showing you as a covered driver"
             icon={<FileText className="h-7 w-7" />}
             status={uploaded.insurance ? "uploaded" : "required"}
-            primaryLabel={uploaded.insurance ? "Replace" : "Upload"}
+            primaryLabel={uploadingKey === "insurance" ? "Uploading…" : uploaded.insurance ? "Replace" : "Upload"}
+            previewUrl={urls.insurance}
+            disabled={uploadingKey !== null}
             onPrimary={() => triggerUpload("insurance")}
           />
         </section>
@@ -152,7 +249,7 @@ function RunnerOnboardingDocumentsPage() {
         <div className="mx-auto w-full max-w-4xl">
           <Button
             className="h-12 w-full text-base"
-            disabled={!canSubmit}
+            disabled={!canSubmit || uploadingKey !== null}
             onClick={() => {
               persistRunnerOnboardingStage("vehicle");
               navigate({ to: "/runner/onboarding/vehicle" });
@@ -173,6 +270,8 @@ function DocumentRow({
   icon,
   status,
   primaryLabel,
+  previewUrl,
+  disabled,
   onPrimary,
 }: {
   title: string;
@@ -180,6 +279,8 @@ function DocumentRow({
   icon: ReactNode;
   status: "required" | "uploaded";
   primaryLabel: string;
+  previewUrl?: string;
+  disabled?: boolean;
   onPrimary: () => void;
 }) {
   return (
@@ -190,6 +291,9 @@ function DocumentRow({
           <div>
             <h4 className="font-semibold">{title}</h4>
             <p className="text-xs text-muted-foreground">{subtitle}</p>
+            {previewUrl ? (
+              <img src={previewUrl} alt="" className="mt-2 max-h-24 rounded-lg border object-cover" />
+            ) : null}
           </div>
         </div>
         <div className="flex w-full items-center gap-3 sm:w-auto">
@@ -201,7 +305,13 @@ function DocumentRow({
               Uploaded
             </span>
           )}
-          <Button type="button" variant={status === "uploaded" ? "outline" : "default"} className="flex-1 sm:flex-none" onClick={onPrimary}>
+          <Button
+            type="button"
+            variant={status === "uploaded" ? "outline" : "default"}
+            className="flex-1 sm:flex-none"
+            disabled={disabled}
+            onClick={onPrimary}
+          >
             {primaryLabel}
           </Button>
         </div>

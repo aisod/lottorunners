@@ -1,3 +1,4 @@
+import { syncCurrentUserProfileToRemote } from "./auth-users";
 import { getAuthSession } from "./auth-session";
 import type { RunnerStage } from "./store";
 import {
@@ -135,6 +136,10 @@ export function approveRunnerAccount(email?: string): void {
   if (!user) return;
 
   syncRunnerDeviceStateFromUser(user);
+  void syncCurrentUserProfileToRemote({
+    runnerStatus: user.runnerStatus,
+    runnerStage: user.runnerStage,
+  });
 }
 
 /** Called when onboarding is finished (verification → home). Auto-approves for demo. */

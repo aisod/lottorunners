@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
+import { SyncStatusBanner } from "@/components/sync-status-banner";
+import { initPlatformSync } from "@/lib/platform-sync";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -99,6 +101,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   useEffect(() => {
     void import("../register-pwa");
+    void initPlatformSync();
   }, []);
-  return <Outlet />;
+  return (
+    <>
+      <SyncStatusBanner />
+      <Outlet />
+    </>
+  );
 }

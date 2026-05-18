@@ -28,7 +28,8 @@ function RunnerOnboardingVerificationPage() {
           size="icon"
           type="button"
           aria-label="Notifications"
-          onClick={() => window.alert("Notifications are simulated in this demo.")}
+          disabled
+          aria-disabled
         >
           <Bell className="h-5 w-5 text-primary" />
         </Button>

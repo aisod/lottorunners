@@ -1,9 +1,11 @@
-import { getUserDisplayName } from "./auth-users";
+import { getUserDisplayName, getUserPhone } from "./auth-users";
 import { getAuthSession } from "./auth-session";
 import { SERVICES } from "./services";
 import { ERRAND_CATEGORIES } from "./errand-categories";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
 import type { TripRequest } from "./types";
+import { isSupabaseConfigured } from "./supabase/config";
+import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
 
 const JOBS_STORAGE_KEY = "lr-marketplace-jobs-v1";
 const JOBS_CHANNEL_NAME = "lr-marketplace-jobs-sync";
@@ -33,6 +35,40 @@ function notifyListeners(): void {
   getChannel()?.postMessage({ type: "jobs-updated", at: Date.now() });
 }
 
+function persistJobsLocal(jobs: MarketplaceJob[]): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+}
+
+function syncJobToRemote(job: MarketplaceJob): void {
+  if (!isSupabaseConfigured()) return;
+  void upsertRemoteJob(job);
+}
+
+function writeJobs(jobs: MarketplaceJob[], options?: { skipRemote?: boolean }): void {
+  persistJobsLocal(jobs);
+  notifyListeners();
+  if (!options?.skipRemote && isSupabaseConfigured()) {
+    for (const job of jobs) syncJobToRemote(job);
+  }
+}
+
+/** Replace in-memory store from remote pull (no upload). */
+export function notifyJobsChanged(remoteJobs: MarketplaceJob[]): void {
+  const local = readJobs();
+  const map = new Map<string, MarketplaceJob>();
+  for (const job of local) map.set(job.id, job);
+  for (const job of remoteJobs) map.set(job.id, job);
+  writeJobs([...map.values()], { skipRemote: true });
+}
+
+export async function hydrateJobsFromRemote(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const remote = await fetchRemoteJobs();
+  if (remote.length === 0) return;
+  notifyJobsChanged(remote);
+}
+
 export function readJobs(): MarketplaceJob[] {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(JOBS_STORAGE_KEY);
@@ -45,19 +81,15 @@ export function readJobs(): MarketplaceJob[] {
   }
 }
 
-function writeJobs(jobs: MarketplaceJob[]): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
-  notifyListeners();
-}
-
 function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob | null {
   const jobs = readJobs();
   const index = jobs.findIndex((j) => j.id === jobId);
   if (index === -1) return null;
   const next = { ...jobs[index], ...patch };
   jobs[index] = next;
-  writeJobs(jobs);
+  persistJobsLocal(jobs);
+  notifyListeners();
+  syncJobToRemote(next);
   return next;
 }
 
@@ -81,6 +113,12 @@ export function listPendingJobs(): MarketplaceJob[] {
 export function listJobsForCustomer(customerId: string): MarketplaceJob[] {
   return readJobs()
     .filter((j) => j.customerId === customerId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export function listJobsForRunner(runnerId: string): MarketplaceJob[] {
+  return readJobs()
+    .filter((j) => j.runnerId === runnerId)
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -132,6 +170,7 @@ export function createJobFromCustomerBooking(
   const destination = state.destination!;
   const serviceType = state.selectedService!;
   const customerName = getUserDisplayName(customerId) ?? customerId.split("@")[0] ?? "Customer";
+  const customerPhone = getUserPhone(customerId) ?? undefined;
 
   let subType = state.rideSubType ?? undefined;
   if (serviceType === "errand" && state.errandCategory) {
@@ -157,6 +196,7 @@ export function createJobFromCustomerBooking(
     id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     customerId,
     customerName,
+    customerPhone,
     serviceType,
     subType,
     pickupAddress: pickup.label,
@@ -181,23 +221,62 @@ export function createJobFromCustomerBooking(
   return job;
 }
 
-export function acceptJob(jobId: string, runnerId: string, runnerName: string): MarketplaceJob | null {
-  const job = getJob(jobId);
-  if (!job || job.status !== "pending") return null;
+export async function acceptJob(
+  jobId: string,
+  runnerId: string,
+  runnerName: string,
+): Promise<MarketplaceJob | null> {
   if (getRunnerActiveJob(runnerId)) return null;
+
+  const runnerPhone = getUserPhone(runnerId) ?? undefined;
+
+  if (isSupabaseConfigured()) {
+    const remote = await acceptJobRemote(jobId, runnerId, runnerName, runnerPhone);
+    if (!remote) return null;
+    const jobs = readJobs();
+    const index = jobs.findIndex((j) => j.id === jobId);
+    if (index === -1) {
+      writeJobs([remote, ...jobs], { skipRemote: true });
+    } else {
+      jobs[index] = remote;
+      writeJobs(jobs, { skipRemote: true });
+    }
+    return remote;
+  }
+
+  const fresh = getJob(jobId);
+  if (!fresh || fresh.status !== "pending" || fresh.runnerId) return null;
 
   return patchJob(jobId, {
     runnerId,
     runnerName,
+    runnerPhone,
     status: "accepted",
     acceptedAt: Date.now(),
   });
 }
 
+export function listActiveJobs(): MarketplaceJob[] {
+  return readJobs().filter(
+    (j) => j.status !== "completed" && j.status !== "cancelled" && j.status !== "declined",
+  );
+}
+
+export function setJobProofPhoto(jobId: string, runnerId: string, proofPhotoUrl: string): MarketplaceJob | null {
+  const job = getJob(jobId);
+  if (!job || job.runnerId !== runnerId) return null;
+  return patchJob(jobId, { proofPhotoUrl });
+}
+
+export function rateJobAsRunner(jobId: string, runnerId: string, runnerRating: number): MarketplaceJob | null {
+  const job = getJob(jobId);
+  if (!job || job.runnerId !== runnerId || job.status !== "completed") return null;
+  return patchJob(jobId, { runnerRating });
+}
+
 export function declineJob(jobId: string, runnerId: string): MarketplaceJob | null {
   const job = getJob(jobId);
   if (!job || job.status !== "pending") return null;
-  // Runner declines this offer; job stays pending for other runners.
   void runnerId;
   return job;
 }

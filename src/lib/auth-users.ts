@@ -6,10 +6,20 @@ import {
 } from "./auth-session";
 import type { RunnerOnboardingStatus } from "./runner-account";
 import { migrateLegacyRunnerAccount, syncRunnerDeviceStateFromUser } from "./runner-account";
+import { isValidPhone, normalizePhone } from "./phone-utils";
+import { isSupabaseConfigured } from "./supabase/config";
+import { getSupabaseClient } from "./supabase/client";
+import {
+  fetchProfileByEmail,
+  signInRemote,
+  signUpRemote,
+  upsertRemoteProfile,
+} from "./supabase/profiles-remote";
 import { applyRoleSetup, getRoleHomePath, setRunnerAccess, setRunnerApproved, type RunnerStage } from "./store";
 
 const USERS_KEY = "lr-users-v1";
 const PREFERRED_ROLE_KEY = "lr-preferred-role-v1";
+const PROFILE_PHONE_KEY = "lr-profile-phone";
 
 export type StoredUser = {
   email: string;
@@ -18,6 +28,8 @@ export type StoredUser = {
   /** Role chosen at signup; used when signing in with multiple roles. */
   primaryRole?: PublicRole;
   displayName?: string;
+  phone?: string;
+  supabaseId?: string;
   runnerStatus?: RunnerOnboardingStatus;
   runnerStage?: RunnerStage;
 };
@@ -126,13 +138,98 @@ function rememberActiveRole(role: PublicRole): void {
   }
 }
 
-export function registerUser(input: {
+function upsertLocalUser(user: StoredUser): void {
+  const users = readUsers();
+  const index = users.findIndex((entry) => entry.email === user.email);
+  if (index === -1) {
+    users.push(user);
+  } else {
+    users[index] = { ...users[index], ...user };
+  }
+  writeUsers(users);
+}
+
+function finalizeAuthSession(user: StoredUser, activeRole: PublicRole): AuthResult {
+  const session = createAuthSession({ email: user.email, roles: user.roles, activeRole });
+  persistAuthSession(session);
+  rememberActiveRole(activeRole);
+  applyRoleSetup(activeRole);
+  syncProfileCacheForUser(user);
+  if (user.roles.includes("runner")) {
+    syncRunnerDeviceStateFromUser(user);
+  }
+  return { ok: true, homePath: getRoleHomePath(activeRole) };
+}
+
+export function applyRemoteProfileToLocalSession(
+  profile: ReturnType<typeof import("./supabase/profiles-remote").rowToStoredShape>,
+  supabaseId: string,
+): void {
+  const user: StoredUser = migrateUserRecord({
+    email: profile.email,
+    password: "",
+    supabaseId,
+    roles: profile.roles.length > 0 ? profile.roles : ["customer"],
+    primaryRole: profile.primaryRole,
+    displayName: profile.displayName,
+    phone: profile.phone,
+    runnerStatus: profile.runnerStatus,
+    runnerStage: profile.runnerStage,
+  });
+
+  upsertLocalUser(user);
+  const activeRole = getLoginActiveRole(user);
+  const session = createAuthSession({ email: user.email, roles: user.roles, activeRole });
+  persistAuthSession(session);
+  rememberActiveRole(activeRole);
+  applyRoleSetup(activeRole);
+  syncProfileCacheForUser(user);
+  if (user.roles.includes("runner")) {
+    migrateLegacyRunnerAccount(user.email);
+    syncRunnerDeviceStateFromUser(user);
+  }
+}
+
+export async function syncCurrentUserProfileToRemote(
+  patch: Partial<Pick<StoredUser, "displayName" | "phone" | "runnerStatus" | "runnerStage">>,
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const session = getAuthSession();
+  if (!session) return;
+
+  const users = readUsers();
+  const index = users.findIndex((entry) => entry.email === session.email);
+  if (index === -1) return;
+
+  const user = { ...users[index], ...patch };
+  users[index] = user;
+  writeUsers(users);
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  const { data } = await supabase.auth.getUser();
+  const userId = user.supabaseId ?? data.user?.id;
+  if (!userId) return;
+
+  await upsertRemoteProfile(userId, {
+    email: user.email,
+    displayName: user.displayName,
+    phone: user.phone,
+    roles: user.roles,
+    primaryRole: user.primaryRole,
+    runnerStatus: user.runnerStatus,
+    runnerStage: user.runnerStage,
+  });
+}
+
+export async function registerUser(input: {
   email: string;
   password: string;
   confirmPassword: string;
+  phone: string;
   wantRunner: boolean;
   wantBusiness: boolean;
-}): AuthResult {
+}): Promise<AuthResult> {
   const email = normalizeEmail(input.email);
   const password = input.password;
   const confirmPassword = input.confirmPassword;
@@ -149,9 +246,9 @@ export function registerUser(input: {
     return { ok: false, error: "Passwords do not match." };
   }
 
-  const users = readUsers();
-  if (users.some((user) => user.email === email)) {
-    return { ok: false, error: "An account with this email already exists." };
+  const phone = normalizePhone(input.phone);
+  if (!phone) {
+    return { ok: false, error: "Enter a valid Namibia mobile number (e.g. 081 123 4567)." };
   }
 
   const roles = buildRoles(input.wantRunner, input.wantBusiness);
@@ -160,28 +257,60 @@ export function registerUser(input: {
     : input.wantBusiness
       ? "business"
       : "customer";
-  const newUser: StoredUser = { email, password, roles, primaryRole };
-  if (input.wantRunner) {
-    newUser.runnerStatus = "in_progress";
-    newUser.runnerStage = "service-selection";
-    if (typeof window !== "undefined") {
+
+  if (isSupabaseConfigured()) {
+    const existing = await fetchProfileByEmail(email);
+    if (existing) {
+      return { ok: false, error: "An account with this email already exists." };
+    }
+
+    const remote = await signUpRemote(email, password, {
+      email,
+      phone,
+      roles,
+      primaryRole,
+      runnerStatus: input.wantRunner ? "in_progress" : undefined,
+      runnerStage: input.wantRunner ? "service-selection" : undefined,
+    });
+
+    if (!remote.ok) {
+      return { ok: false, error: remote.error };
+    }
+
+    const newUser: StoredUser = {
+      email,
+      password: "",
+      roles,
+      primaryRole,
+      phone,
+      supabaseId: remote.userId,
+      runnerStatus: input.wantRunner ? "in_progress" : undefined,
+      runnerStage: input.wantRunner ? "service-selection" : undefined,
+    };
+
+    if (input.wantRunner) {
       setRunnerAccess(true);
       setRunnerApproved(false);
     }
-  }
-  users.push(newUser);
-  writeUsers(users);
 
-  const session = createAuthSession({ email, roles, activeRole: primaryRole });
-  persistAuthSession(session);
-  rememberActiveRole(primaryRole);
-  applyRoleSetup(primaryRole);
-  syncProfileCacheForUser(newUser);
+    upsertLocalUser(newUser);
+    return finalizeAuthSession(newUser, primaryRole);
+  }
+
+  const users = readUsers();
+  if (users.some((user) => user.email === email)) {
+    return { ok: false, error: "An account with this email already exists." };
+  }
+
+  const newUser: StoredUser = { email, password, roles, primaryRole, phone };
   if (input.wantRunner) {
-    syncRunnerDeviceStateFromUser(newUser);
+    newUser.runnerStatus = "in_progress";
+    newUser.runnerStage = "service-selection";
+    setRunnerAccess(true);
+    setRunnerApproved(false);
   }
-
-  return { ok: true, homePath: getRoleHomePath(primaryRole) };
+  upsertLocalUser(newUser);
+  return finalizeAuthSession(newUser, primaryRole);
 }
 
 function syncProfileCacheForUser(user: StoredUser): void {
@@ -189,22 +318,67 @@ function syncProfileCacheForUser(user: StoredUser): void {
 
   if (user.displayName?.trim()) {
     window.localStorage.setItem("lr-profile-name", user.displayName.trim());
+  } else {
+    const legacyName = window.localStorage.getItem("lr-profile-name")?.trim();
+    if (legacyName) {
+      const users = readUsers();
+      const index = users.findIndex((entry) => entry.email === user.email);
+      if (index !== -1) {
+        users[index] = { ...users[index], displayName: legacyName };
+        writeUsers(users);
+      }
+    }
+  }
+
+  if (user.phone) {
+    window.localStorage.setItem(PROFILE_PHONE_KEY, user.phone);
     return;
   }
 
-  const legacyName = window.localStorage.getItem("lr-profile-name")?.trim();
-  if (!legacyName) return;
+  const legacyPhone = window.localStorage.getItem(PROFILE_PHONE_KEY)?.trim();
+  if (!legacyPhone || !isValidPhone(legacyPhone)) return;
 
   const users = readUsers();
   const index = users.findIndex((entry) => entry.email === user.email);
   if (index === -1) return;
 
-  users[index] = { ...users[index], displayName: legacyName };
+  const normalized = normalizePhone(legacyPhone);
+  if (!normalized) return;
+
+  users[index] = { ...users[index], phone: normalized };
   writeUsers(users);
 }
 
-export function loginUser(input: { email: string; password: string }): AuthResult {
+export async function loginUser(input: { email: string; password: string }): Promise<AuthResult> {
   const email = normalizeEmail(input.email);
+
+  if (isSupabaseConfigured()) {
+    const remote = await signInRemote(email, input.password);
+    if (!remote.ok) {
+      return { ok: false, error: remote.error };
+    }
+
+    const profile = remote.profile;
+    const user: StoredUser = migrateUserRecord({
+      email: profile.email,
+      password: "",
+      supabaseId: remote.userId,
+      roles: profile.roles.length > 0 ? profile.roles : ["customer"],
+      primaryRole: profile.primaryRole,
+      displayName: profile.displayName,
+      phone: profile.phone,
+      runnerStatus: profile.runnerStatus,
+      runnerStage: profile.runnerStage,
+    });
+
+    upsertLocalUser(user);
+    if (user.roles.includes("runner")) {
+      migrateLegacyRunnerAccount(user.email);
+    }
+    const activeRole = getLoginActiveRole(user);
+    return finalizeAuthSession(user, activeRole);
+  }
+
   const users = readUsers();
   const index = users.findIndex((entry) => entry.email === email);
   const found = index === -1 ? null : users[index];
@@ -219,22 +393,11 @@ export function loginUser(input: { email: string; password: string }): AuthResul
     writeUsers(users);
   }
 
-  const activeRole = getLoginActiveRole(user);
-
-  const session = createAuthSession({
-    email: user.email,
-    roles: user.roles,
-    activeRole,
-  });
-  persistAuthSession(session);
-  rememberActiveRole(activeRole);
   if (user.roles.includes("runner")) {
     migrateLegacyRunnerAccount(user.email);
   }
-  applyRoleSetup(activeRole);
-  syncProfileCacheForUser(user);
-
-  return { ok: true, homePath: getRoleHomePath(activeRole) };
+  const activeRole = getLoginActiveRole(user);
+  return finalizeAuthSession(user, activeRole);
 }
 
 export function switchAccountRole(role: PublicRole): AuthResult {
@@ -274,6 +437,46 @@ export function getUserDisplayName(email?: string): string | null {
   return name || null;
 }
 
+export function getUserPhone(email?: string): string | null {
+  const sessionEmail = email ?? getAuthSession()?.email;
+  if (!sessionEmail) return null;
+
+  const user = readUsers().find((entry) => entry.email === sessionEmail);
+  const phone = user?.phone?.trim();
+  if (phone) return phone;
+
+  if (typeof window !== "undefined") {
+    const legacy = window.localStorage.getItem(PROFILE_PHONE_KEY)?.trim();
+    if (legacy && isValidPhone(legacy)) {
+      return normalizePhone(legacy);
+    }
+  }
+
+  return null;
+}
+
+export function updateUserPhone(phoneInput: string): boolean {
+  const session = getAuthSession();
+  if (!session) return false;
+
+  const phone = normalizePhone(phoneInput);
+  if (!phone) return false;
+
+  const users = readUsers();
+  const index = users.findIndex((entry) => entry.email === session.email);
+  if (index === -1) return false;
+
+  users[index] = { ...users[index], phone };
+  writeUsers(users);
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(PROFILE_PHONE_KEY, phone);
+  }
+
+  void syncCurrentUserProfileToRemote({ phone });
+  return true;
+}
+
 export function updateUserDisplayName(displayName: string): boolean {
   const session = getAuthSession();
   if (!session) return false;
@@ -292,9 +495,35 @@ export function updateUserDisplayName(displayName: string): boolean {
     window.localStorage.setItem("lr-profile-name", trimmed);
   }
 
+  void syncCurrentUserProfileToRemote({ displayName: trimmed });
   return true;
 }
 
 export function hasCustomerProfile(email?: string): boolean {
-  return Boolean(getUserDisplayName(email));
+  return Boolean(getUserDisplayName(email)) && Boolean(getUserPhone(email));
+}
+
+export type DirectoryUser = {
+  email: string;
+  displayName: string;
+  roles: PublicRole[];
+  runnerStatus?: RunnerOnboardingStatus;
+};
+
+/** Registered accounts on this device (local auth store). */
+export function listUsersForDirectory(): DirectoryUser[] {
+  return readUsers().map((user) => ({
+    email: user.email,
+    displayName: user.displayName?.trim() || user.email,
+    roles: user.roles,
+    runnerStatus: user.runnerStatus,
+  }));
+}
+
+export async function getSupabaseUserId(): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
 }

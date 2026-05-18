@@ -1,11 +1,13 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { CustomerPageShell } from "@/components/customer-page-shell";
+import { Button } from "@/components/ui/button";
 import { RoleSwitcher } from "@/components/role-switcher";
 import logo from "@/assets/lotto-runners-logo.png";
 import { getAuthSession } from "@/lib/auth-session";
-import { getUserDisplayName } from "@/lib/auth-users";
+import { getUserDisplayName, getUserPhone, updateUserPhone } from "@/lib/auth-users";
+import { formatPhoneDisplay } from "@/lib/phone-utils";
 
 export const Route = createFileRoute("/profile")({
   beforeLoad: () => {
@@ -16,6 +18,28 @@ export const Route = createFileRoute("/profile")({
 export function CustomerProfilePage() {
   const profileName = useMemo(() => getUserDisplayName() ?? "Guest", []);
   const sessionEmail = useMemo(() => getAuthSession()?.email ?? "", []);
+  const [savedPhone, setSavedPhone] = useState<string | null>(() => getUserPhone());
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const phoneLabel = savedPhone ? formatPhoneDisplay(savedPhone) : "Add mobile number";
+
+  const startPhoneEdit = () => {
+    setPhoneDraft(savedPhone ? formatPhoneDisplay(savedPhone) : "");
+    setPhoneError(null);
+    setEditingPhone(true);
+  };
+
+  const savePhone = () => {
+    setPhoneError(null);
+    if (!updateUserPhone(phoneDraft)) {
+      setPhoneError("Enter a valid Namibia mobile number (e.g. 081 123 4567).");
+      return;
+    }
+    setSavedPhone(getUserPhone());
+    setEditingPhone(false);
+  };
 
   return (
     <CustomerPageShell width="md" variant="plain" tabBar className="pb-24">
@@ -47,7 +71,8 @@ export function CustomerProfilePage() {
           </div>
           <div>
             <div className="text-lg font-bold">{profileName}</div>
-            <div className="text-sm text-muted-foreground">{sessionEmail || "+264 81 ••• ••••"}</div>
+            <div className="text-sm text-muted-foreground">{phoneLabel}</div>
+            <div className="text-xs text-muted-foreground">{sessionEmail}</div>
           </div>
         </div>
 
@@ -67,10 +92,33 @@ export function CustomerProfilePage() {
           </li>
         </ul>
 
+        {editingPhone ? (
+          <div className="mt-6 rounded-2xl border border-border bg-card p-4">
+            <p className="text-sm font-bold">Update mobile number</p>
+            <input
+              value={phoneDraft}
+              onChange={(e) => setPhoneDraft(e.target.value)}
+              type="tel"
+              autoComplete="tel"
+              placeholder="081 123 4567"
+              className="mt-3 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none ring-primary/30 focus:ring"
+            />
+            {phoneError ? <p className="mt-2 text-sm text-destructive">{phoneError}</p> : null}
+            <div className="mt-3 flex gap-2">
+              <Button className="flex-1" onClick={savePhone}>
+                Save
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setEditingPhone(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <h2 className="mt-6 mb-2 text-sm font-bold">Account</h2>
         <ul className="space-y-2">
-          <Row label="Phone number" onPress={() => window.alert("Phone: +264 81 123 4567 (demo)")} />
-          <Row label="Email" onPress={() => window.alert(`Email: ${sessionEmail || "guest@local"} (demo)`)} />
+          <Row label="Phone number" onPress={startPhoneEdit} />
+          <Row label="Email" value={sessionEmail || "Not signed in"} />
           <Row label="Privacy & security" onPress={() => window.alert("Privacy settings are coming soon.")} />
           <li>
             <Link
@@ -144,13 +192,24 @@ function PlaceRow({ label, sub }: { label: string; sub: string }) {
 
 function Row({
   label,
+  value,
   destructive,
   onPress,
 }: {
   label: string;
+  value?: string;
   destructive?: boolean;
   onPress?: () => void;
 }) {
+  if (value) {
+    return (
+      <li className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
+        <span className="font-semibold">{label}</span>
+        <span className="text-sm text-muted-foreground">{value}</span>
+      </li>
+    );
+  }
+
   return (
     <li>
       <button

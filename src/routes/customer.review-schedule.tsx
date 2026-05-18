@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatWalletBalance } from "@/lib/customer-wallet";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
+import { getUserPhone } from "@/lib/auth-users";
 import { validateBooking } from "@/lib/booking-validation";
 import { createJobFromCustomerBooking, getCurrentCustomerId } from "@/lib/jobs-service";
 import { useCustomerApp } from "@/lib/customer-store";
@@ -180,6 +181,11 @@ function CustomerReviewSchedulePage() {
     const customerId = getCurrentCustomerId();
     if (!customerId) {
       navigate({ to: "/customer/signin" });
+      return;
+    }
+
+    if (!getUserPhone(customerId)) {
+      navigate({ to: "/customer/profile-setup" });
       return;
     }
 
