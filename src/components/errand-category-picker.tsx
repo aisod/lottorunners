@@ -99,7 +99,7 @@ export function ErrandCategoryPicker() {
               key={id}
               onClick={() => {
                 setErrandCategory(id);
-                useApp.setState({ status: "selecting" });
+                useCustomerApp.setState({ status: "selecting" });
               }}
               className="flex w-full items-start gap-4 rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:shadow-sm"
             >
