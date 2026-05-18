@@ -29,8 +29,9 @@ function normalizeRoles(roles: unknown): PublicRole[] {
 }
 
 function parseLegacySession(parsed: Record<string, unknown>): AuthSession | null {
-  const legacyRole = parsed.role;
-  if (!isRole(typeof legacyRole === "string" ? legacyRole : null)) return null;
+  const legacyRoleRaw = parsed.role;
+  const legacyRole = typeof legacyRoleRaw === "string" ? legacyRoleRaw : null;
+  if (!isRole(legacyRole)) return null;
 
   if (legacyRole === "admin") {
     return {
@@ -44,7 +45,7 @@ function parseLegacySession(parsed: Record<string, unknown>): AuthSession | null
 
   return {
     email: typeof parsed.email === "string" ? parsed.email : "user@local",
-    roles: [legacyRole],
+    roles: [legacyRole as PublicRole],
     activeRole: legacyRole,
     authenticatedAt:
       typeof parsed.authenticatedAt === "string" ? parsed.authenticatedAt : new Date().toISOString(),
@@ -59,16 +60,17 @@ export function getAuthSession(): AuthSession | null {
 
   try {
     const parsed = JSON.parse(rawValue) as Record<string, unknown>;
-    const activeRole = parsed.activeRole ?? parsed.role;
+    const activeRoleRaw = parsed.activeRole ?? parsed.role;
+    const activeRole = typeof activeRoleRaw === "string" ? activeRoleRaw : null;
 
-    if (!isRole(typeof activeRole === "string" ? activeRole : null)) {
+    if (!isRole(activeRole)) {
       return parseLegacySession(parsed);
     }
 
     return {
       email: typeof parsed.email === "string" ? parsed.email : "user@local",
       roles: normalizeRoles(parsed.roles ?? [activeRole]),
-      activeRole: activeRole,
+      activeRole,
       authenticatedAt:
         typeof parsed.authenticatedAt === "string"
           ? parsed.authenticatedAt
