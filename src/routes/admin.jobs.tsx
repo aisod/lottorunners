@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, MapPin, MessageSquareText, Route as RouteIcon, ShieldCheck, Truck } from "lucide-react";
+import { Activity, AlertTriangle, Clock, ListChecks, MapPin, MessageSquareText, Route as RouteIcon, ShieldCheck, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
