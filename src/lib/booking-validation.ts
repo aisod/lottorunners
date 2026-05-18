@@ -53,7 +53,7 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
       if (!desc && !store) {
         errors.description = "Add a shopping list or task description.";
       }
-      if (snapshot.errandCategory === "shopping" && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
+      if (snapshot.errandCategory === "personal_shopper" && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
         errors.budget = "Enter a budget estimate for shopping errands.";
       }
       break;
@@ -106,7 +106,7 @@ export function validateErrandDetailsStep(snapshot: BookingSnapshot): BookingVal
   if (!desc && !store) {
     errors.description = "Add a shopping list or task description.";
   }
-  if (snapshot.errandCategory === "shopping" && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
+  if (snapshot.errandCategory === "personal_shopper" && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
     errors.budget = "Enter a budget estimate for shopping errands.";
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };

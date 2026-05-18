@@ -189,7 +189,7 @@ function CustomerReviewSchedulePage() {
       return;
     }
 
-    const job = createJobFromCustomerBooking(store, customerId);
+    const job = createJobFromCustomerBooking(store as unknown as Parameters<typeof createJobFromCustomerBooking>[0], customerId);
     setActiveJobId(job.id);
     setStatus("searching");
     navigate({ to: "/customer/matching-runner" });

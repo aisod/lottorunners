@@ -101,7 +101,7 @@ function RunnerActiveJobPage() {
 
   const serviceLabel = job ? SERVICES[job.serviceType].label : "Active job";
 
-  const phaseContent: Record<RunnerPhase, PhaseConfig> = {
+  const phaseMap: Record<RunnerPhase, PhaseConfig> = {
     arrived: {
       turnLabel: "AT PICKUP",
       turnValue: job?.pickupAddress ?? "Confirm handover",
@@ -124,7 +124,8 @@ function RunnerActiveJobPage() {
       ],
       showProof: true,
     },
-  }[jobPhase];
+  };
+  const phaseContent: PhaseConfig = phaseMap[jobPhase];
 
   const customerPhone = job?.customerPhone;
 
