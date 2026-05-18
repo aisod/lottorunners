@@ -89,7 +89,7 @@ function AdminJobsPage() {
                         {job.runnerName ? ` → ${job.runnerName}` : " · awaiting runner"}
                       </p>
                     </div>
-                    <StatusPill label={jobStatusLabel(job.status)} tone={statusTone(job.status)} />
+                    <StatusPill tone={statusTone(job.status)}>{jobStatusLabel(job.status)}</StatusPill>
                   </div>
                 </button>
               ))}
