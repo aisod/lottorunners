@@ -1,9 +1,7 @@
+import { reconcileCloudAuthSession } from "./auth/cloud-session";
 import { getDataSyncMode, isSupabaseConfigured } from "./supabase/config";
 import { subscribeRemoteJobs } from "./supabase/jobs-remote";
-import { applyRemoteProfileToLocalSession } from "./auth-users";
-import { fetchProfileByUserId, restoreSupabaseSession } from "./supabase/profiles-remote";
-import { rowToStoredShape } from "./supabase/profiles-remote";
-import { getSupabaseClient } from "./supabase/client";
+import { restoreSupabaseSession } from "./supabase/profiles-remote";
 import { hydrateJobsFromRemote } from "./jobs-service";
 
 let initialized = false;
@@ -16,14 +14,7 @@ export async function initPlatformSync(): Promise<void> {
 
   if (isSupabaseConfigured()) {
     await restoreSupabaseSession();
-    const supabase = getSupabaseClient();
-    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
-    if (session?.user) {
-      const row = await fetchProfileByUserId(session.user.id);
-      if (row) {
-        applyRemoteProfileToLocalSession(rowToStoredShape(row), session.user.id);
-      }
-    }
+    await reconcileCloudAuthSession();
     await hydrateJobsFromRemote();
     unsubscribeRemote = subscribeRemoteJobs(() => {
       void hydrateJobsFromRemote();
@@ -33,11 +24,6 @@ export async function initPlatformSync(): Promise<void> {
 
   // Local-only: same-browser tabs sync via BroadcastChannel in jobs-service.
   void getDataSyncMode();
-}
-
-export function getCrossDeviceMessage(): string | null {
-  if (isSupabaseConfigured()) return null;
-  return "Accounts and jobs are stored on this device only. Add Supabase keys in .env (see .env.example) to sign in and share jobs across devices.";
 }
 
 export function teardownPlatformSync(): void {

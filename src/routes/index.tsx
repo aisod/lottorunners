@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getAuthSession } from "@/lib/auth-session";
+import { reconcileCloudAuthSession } from "@/lib/auth/cloud-session";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    const session = getAuthSession();
+  beforeLoad: async () => {
+    const session = await reconcileCloudAuthSession();
     if (session) {
       throw redirect({ to: getRoleHomePath(session.activeRole) });
     }

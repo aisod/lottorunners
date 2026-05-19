@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import logo from "@/assets/lotto-runners-logo.png";
-import { getAuthSession } from "@/lib/auth-session";
+import { reconcileCloudAuthSession } from "@/lib/auth/cloud-session";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/splash")({
@@ -13,12 +13,13 @@ function SplashPage() {
 
   useEffect(() => {
     const id = setTimeout(() => {
-      const session = getAuthSession();
-      if (session) {
-        navigate({ to: getRoleHomePath(session.activeRole) });
-        return;
-      }
-      navigate({ to: "/customer/signin" });
+      void reconcileCloudAuthSession().then((session) => {
+        if (session) {
+          navigate({ to: getRoleHomePath(session.activeRole) });
+          return;
+        }
+        navigate({ to: "/customer/signin" });
+      });
     }, 1200);
     return () => clearTimeout(id);
   }, [navigate]);

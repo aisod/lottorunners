@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { getJob, subscribeToJobs } from "./jobs-service";
-import type { MarketplaceJob } from "./jobs-types";
+import { getJob, subscribeToJobs, type MarketplaceJob } from "./jobs-service";
 
 export function useMarketplaceJob(jobId: string | null | undefined): MarketplaceJob | null {
   const [job, setJob] = useState<MarketplaceJob | null>(() => (jobId ? getJob(jobId) : null));

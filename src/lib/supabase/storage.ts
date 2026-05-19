@@ -12,7 +12,10 @@ export async function uploadUserFile(
   folder: string,
 ): Promise<UploadResult> {
   if (!isSupabaseConfigured()) {
-    return { ok: false, error: "Cloud storage is not configured. Add Supabase keys to .env." };
+    return {
+      ok: false,
+      error: "Cloud storage is not configured. Connect Lovable Cloud or set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+    };
   }
 
   const supabase = getSupabaseClient();

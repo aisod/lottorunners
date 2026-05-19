@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Activity, AlertTriangle, Clock, ListChecks, MapPin, MessageSquareText, Route as RouteIcon, ShieldCheck, Truck } from "lucide-react";
+import { AlertTriangle, MapPin, MessageSquareText, Route as RouteIcon, ShieldCheck, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
@@ -52,10 +52,10 @@ function AdminJobsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <PortalStatTile icon={ListChecks} label="Active jobs" value={String(jobs.length)} />
-        <PortalStatTile icon={Clock} label="Pending" value={String(pendingCount)} />
-        <PortalStatTile icon={Activity} label="In progress" value={String(inProgressCount)} />
-        <PortalStatTile icon={AlertTriangle} label="Delayed" value="0" meta="Set when SLA rules are added" />
+        <PortalStatTile label="Active jobs" value={String(jobs.length)} />
+        <PortalStatTile label="Pending" value={String(pendingCount)} />
+        <PortalStatTile label="In progress" value={String(inProgressCount)} />
+        <PortalStatTile label="Delayed" value="0" hint="Set when SLA rules are added" />
       </div>
 
       {jobs.length === 0 ? (
@@ -89,7 +89,7 @@ function AdminJobsPage() {
                         {job.runnerName ? ` → ${job.runnerName}` : " · awaiting runner"}
                       </p>
                     </div>
-                    <StatusPill tone={statusTone(job.status)}>{jobStatusLabel(job.status)}</StatusPill>
+                    <StatusPill label={jobStatusLabel(job.status)} tone={statusTone(job.status)} />
                   </div>
                 </button>
               ))}

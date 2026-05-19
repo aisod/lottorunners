@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { getAuthSession } from "@/lib/auth-session";
+import { reconcileCloudAuthSession } from "@/lib/auth/cloud-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
 import {
   getRoleHomePath,
@@ -32,8 +32,8 @@ const RUNNER_ONBOARDING_PATHS = new Set([
 ]);
 
 export const Route = createFileRoute("/runner")({
-  beforeLoad: ({ location }) => {
-    const session = getAuthSession();
+  beforeLoad: async ({ location }) => {
+    const session = await reconcileCloudAuthSession();
     if (!session) {
       throw redirect({ to: "/customer/signin" });
     }

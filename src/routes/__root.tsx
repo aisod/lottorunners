@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
-import { SyncStatusBanner } from "@/components/sync-status-banner";
 import { initPlatformSync } from "@/lib/platform-sync";
 import appCss from "../styles.css?url";
 
@@ -103,10 +102,5 @@ function RootComponent() {
     void import("../register-pwa");
     void initPlatformSync();
   }, []);
-  return (
-    <>
-      <SyncStatusBanner />
-      <Outlet />
-    </>
-  );
+  return <Outlet />;
 }

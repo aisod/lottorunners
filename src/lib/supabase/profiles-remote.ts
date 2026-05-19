@@ -88,9 +88,68 @@ export async function fetchProfileByUserId(userId: string): Promise<RemoteProfil
   return data as RemoteProfileRow;
 }
 
-export async function upsertRemoteProfile(userId: string, input: RemoteProfileInput): Promise<boolean> {
+function profileToAuthMetadata(input: RemoteProfileInput): Record<string, unknown> {
+  return {
+    email: input.email,
+    display_name: input.displayName ?? null,
+    phone: input.phone ?? null,
+    roles: input.roles,
+    primary_role: input.primaryRole ?? null,
+    runner_status: input.runnerStatus ?? null,
+    runner_stage: input.runnerStage ?? null,
+  };
+}
+
+function profileRowFromAuthMetadata(
+  userId: string,
+  email: string,
+  metadata: Record<string, unknown> | undefined,
+): RemoteProfileRow {
+  const input = profileFromAuthMetadata(email, metadata);
+  return {
+    id: userId,
+    email: input.email,
+    display_name: input.displayName ?? null,
+    phone: input.phone ?? null,
+    roles: input.roles,
+    primary_role: input.primaryRole ?? null,
+    runner_status: input.runnerStatus ?? null,
+    runner_stage: input.runnerStage ?? null,
+  };
+}
+
+function profileFromAuthMetadata(email: string, metadata: Record<string, unknown> | undefined): RemoteProfileInput {
+  const rolesRaw = metadata?.roles;
+  const roles = Array.isArray(rolesRaw)
+    ? rolesRaw.filter((r): r is PublicRole => r === "customer" || r === "runner" || r === "business")
+    : ["customer"];
+
+  return {
+    email: typeof metadata?.email === "string" ? metadata.email : email,
+    displayName: typeof metadata?.display_name === "string" ? metadata.display_name : undefined,
+    phone: typeof metadata?.phone === "string" ? metadata.phone : undefined,
+    roles: roles.length > 0 ? roles : ["customer"],
+    primaryRole:
+      metadata?.primary_role === "customer" ||
+      metadata?.primary_role === "runner" ||
+      metadata?.primary_role === "business"
+        ? metadata.primary_role
+        : undefined,
+    runnerStatus:
+      typeof metadata?.runner_status === "string"
+        ? (metadata.runner_status as RunnerOnboardingStatus)
+        : undefined,
+    runnerStage:
+      typeof metadata?.runner_stage === "string" ? (metadata.runner_stage as RunnerStage) : undefined,
+  };
+}
+
+export async function upsertRemoteProfile(
+  userId: string,
+  input: RemoteProfileInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = getSupabaseClient();
-  if (!supabase) return false;
+  if (!supabase) return { ok: false, error: "Could not connect to the database." };
 
   const { error } = await supabase.from("profiles").upsert({
     id: userId,
@@ -104,14 +163,22 @@ export async function upsertRemoteProfile(userId: string, input: RemoteProfileIn
     updated_at: new Date().toISOString(),
   });
 
-  return !error;
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true };
 }
+
+export type SignUpRemoteResult =
+  | { ok: true; userId: string; needsEmailConfirmation?: boolean }
+  | { ok: false; error: string };
 
 export async function signUpRemote(
   email: string,
   password: string,
   profile: RemoteProfileInput,
-): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+): Promise<SignUpRemoteResult> {
   if (!isSupabaseConfigured()) {
     return { ok: false, error: "Supabase is not configured." };
   }
@@ -119,14 +186,39 @@ export async function signUpRemote(
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: profileToAuthMetadata(profile) },
+  });
+
   if (error) return { ok: false, error: error.message };
   if (!data.user) return { ok: false, error: "Sign up did not return a user." };
 
-  const saved = await upsertRemoteProfile(data.user.id, profile);
-  if (!saved) return { ok: false, error: "Account created but profile could not be saved." };
+  const userId = data.user.id;
 
-  return { ok: true, userId: data.user.id };
+  if (!data.session) {
+    return {
+      ok: true,
+      userId,
+      needsEmailConfirmation: true,
+    };
+  }
+
+  const saved = await upsertRemoteProfile(userId, profile);
+  if (saved.ok) {
+    return { ok: true, userId };
+  }
+
+  const existing = await fetchProfileByUserId(userId);
+  if (existing) {
+    return { ok: true, userId };
+  }
+
+  return {
+    ok: false,
+    error: `Account created but profile could not be saved. ${saved.error} Run the latest Supabase migration (profile_on_auth_signup) in Lovable Cloud.`,
+  };
 }
 
 export async function signInRemote(
@@ -146,10 +238,71 @@ export async function signInRemote(
   if (error) return { ok: false, error: error.message };
   if (!data.user) return { ok: false, error: "Sign in failed." };
 
-  const row = await fetchProfileByUserId(data.user.id);
-  if (!row) return { ok: false, error: "Profile not found for this account." };
+  let row = await fetchProfileByUserId(data.user.id);
+
+  if (!row) {
+    const metadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+    const repair = await upsertRemoteProfile(data.user.id, profileFromAuthMetadata(email, metadata));
+    if (repair.ok) {
+      row = await fetchProfileByUserId(data.user.id);
+    }
+  }
+
+  if (!row) {
+    const metadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+    row = profileRowFromAuthMetadata(data.user.id, email, metadata);
+  }
 
   return { ok: true, userId: data.user.id, profile: rowToStoredShape(row) };
+}
+
+export async function establishSessionFromTokens(
+  accessToken: string,
+  refreshToken: string,
+  email: string,
+): Promise<
+  { ok: true; userId: string; profile: ReturnType<typeof rowToStoredShape> } | { ok: false; error: string }
+> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  if (sessionError) return { ok: false, error: sessionError.message };
+  const user = sessionData.user;
+  if (!user) return { ok: false, error: "Sign in did not return a user." };
+
+  let row = await fetchProfileByUserId(user.id);
+  if (!row) {
+    const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const repair = await upsertRemoteProfile(user.id, profileFromAuthMetadata(email, metadata));
+    if (repair.ok) {
+      row = await fetchProfileByUserId(user.id);
+    }
+  }
+
+  if (!row) {
+    row = profileRowFromAuthMetadata(user.id, email, (user.user_metadata ?? {}) as Record<string, unknown>);
+  }
+
+  return { ok: true, userId: user.id, profile: rowToStoredShape(row) };
+}
+
+export async function requestPasswordReset(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+
+  const redirectTo =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/customer/signin`
+      : undefined;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 export async function restoreSupabaseSession(): Promise<boolean> {

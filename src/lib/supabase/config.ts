@@ -1,12 +1,33 @@
-/** True when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set (see .env.example). */
-export function isSupabaseConfigured(): boolean {
+/** Lovable Cloud / Supabase: URL + anon or publishable key (see .env.example). */
+
+export function getSupabaseUrl(): string | undefined {
   const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return Boolean(url && key && typeof url === "string" && typeof key === "string");
+  return url && typeof url === "string" ? url : undefined;
 }
 
-export type DataSyncMode = "supabase" | "local-only";
+/** Accepts Lovable's `VITE_SUPABASE_PUBLISHABLE_KEY` or legacy `VITE_SUPABASE_ANON_KEY`. */
+export function getSupabaseAnonKey(): string | undefined {
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (anon && typeof anon === "string") return anon;
+
+  const publishable = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (publishable && typeof publishable === "string") return publishable;
+
+  return undefined;
+}
+
+export function isSupabaseConfigured(): boolean {
+  return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
+}
+
+/** Offline localStorage auth only when cloud is off and explicitly allowed (dev). */
+export function isLocalDevAuthAllowed(): boolean {
+  if (isSupabaseConfigured()) return false;
+  return import.meta.env.VITE_ALLOW_LOCAL_DEV === "true";
+}
+
+export type DataSyncMode = "cloud" | "local-only";
 
 export function getDataSyncMode(): DataSyncMode {
-  return isSupabaseConfigured() ? "supabase" : "local-only";
+  return isSupabaseConfigured() ? "cloud" : "local-only";
 }
