@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { clearPendingAuth, getAuthSession } from "@/lib/auth-session";
 import { loginUser } from "@/lib/auth-users";
 import { getRoleHomePath } from "@/lib/store";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 export const Route = createFileRoute("/customer/signin")({
   beforeLoad: () => {
@@ -73,8 +74,10 @@ function CustomerSignInPage() {
             <div className="flex justify-end">
               <button
                 type="button"
-                className="text-sm font-semibold text-primary hover:underline"
-                onClick={() => window.alert("Password reset coming soon")}
+                className="text-sm font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                disabled
+                title={UNAVAILABLE.passwordReset}
+                onClick={() => notifyUnavailable(UNAVAILABLE.passwordReset)}
               >
                 Forgot your password?
               </button>

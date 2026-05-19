@@ -27,7 +27,6 @@ function CustomerErrandDetailsPage() {
     durationMin,
     setDurationMin,
     setStatus,
-    ensureRoute,
     setSelectedService,
     restoreHomeUi,
   } = useCustomerApp();
@@ -133,7 +132,6 @@ function CustomerErrandDetailsPage() {
             }
             setErrors({});
             setSelectedService("errand");
-            ensureRoute();
             setStatus("estimating");
             navigate({ to: "/customer/review-schedule" });
           }}

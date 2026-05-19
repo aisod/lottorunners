@@ -17,7 +17,6 @@ import {
   TRUCK_SIZE_BASE_NAD,
 } from "./services";
 import { estimateErrandPrice, type ErrandCategoryId, type PriceQuote } from "./errand-categories";
-import { ensureCustomerRoute } from "./customer-route";
 import {
   clearCustomerBookingDraft,
   loadCustomerBookingDraft,
@@ -117,7 +116,7 @@ export interface CustomerAppState {
   hydrateBookingDraft: () => void;
 
   buildEstimate: () => { fare: number; distanceKm: number; etaMin: number; quote?: PriceQuote } | null;
-  ensureRoute: (labels?: { pickup?: string; destination?: string }) => void;
+  ensureRoute: () => void;
   completeBooking: (rating?: number) => void;
   restoreHomeUi: () => void;
   reset: () => void;
@@ -261,9 +260,8 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
     return { fare, distanceKm, etaMin };
   },
 
-  ensureRoute: (labels) => {
-    const { pickup, destination, setPickup, setDestination } = get();
-    ensureCustomerRoute(pickup, destination, setPickup, setDestination, labels);
+  ensureRoute: () => {
+    /* No-op: real coordinates must come from geocoding or the home map. */
   },
 
   completeBooking: (rating) => {
@@ -282,8 +280,6 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
         }
       }
     } else {
-      const st = get();
-      ensureCustomerRoute(st.pickup, st.destination, st.setPickup, st.setDestination);
       const {
         pickup,
         destination,

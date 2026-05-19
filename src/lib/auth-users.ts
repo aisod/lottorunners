@@ -1,9 +1,13 @@
 import {
+  accountHasAdminRole,
+  clearAuthSession,
   createAuthSession,
   getAuthSession,
   persistAuthSession,
+  type AccountRole,
   type PublicRole,
 } from "./auth-session";
+import type { AppRole } from "./store";
 import type { RunnerOnboardingStatus } from "./runner-account";
 import { migrateLegacyRunnerAccount, syncRunnerDeviceStateFromUser } from "./runner-account";
 import { isValidPhone, normalizePhone } from "./phone-utils";
@@ -11,7 +15,10 @@ import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
 import { getSupabaseClient } from "./supabase/client";
 import {
   fetchProfileByEmail,
+  fetchProfileByUserId,
+  rowToStoredShape,
   signInRemote,
+  signOutRemote,
   signUpRemote,
   upsertRemoteProfile,
 } from "./supabase/profiles-remote";
@@ -24,9 +31,9 @@ const PROFILE_PHONE_KEY = "lr-profile-phone";
 export type StoredUser = {
   email: string;
   password: string;
-  roles: PublicRole[];
+  roles: AccountRole[];
   /** Role chosen at signup; used when signing in with multiple roles. */
-  primaryRole?: PublicRole;
+  primaryRole?: AccountRole;
   displayName?: string;
   phone?: string;
   supabaseId?: string;
@@ -69,6 +76,7 @@ function buildRoles(wantRunner: boolean, wantBusiness: boolean): PublicRole[] {
 }
 
 function inferPrimaryRole(user: StoredUser): PublicRole | null {
+  if (user.primaryRole === "admin") return null;
   if (user.primaryRole && user.roles.includes(user.primaryRole)) {
     return user.primaryRole;
   }
@@ -87,7 +95,7 @@ function migrateUserRecord(user: StoredUser): StoredUser {
     return user;
   }
 
-  let primaryRole: PublicRole | undefined;
+  let primaryRole: AccountRole | undefined;
   if (
     user.roles.includes("runner") &&
     user.runnerStatus &&
@@ -115,7 +123,12 @@ function getStoredPreferredRole(): PublicRole | null {
   return null;
 }
 
-function getLoginActiveRole(user: StoredUser): PublicRole {
+function getLoginActiveRole(user: StoredUser): AppRole {
+  if (accountHasAdminRole(user.roles)) {
+    if (user.primaryRole === "admin") return "admin";
+    if (user.roles.length === 1) return "admin";
+  }
+
   const { roles } = user;
 
   // Account signup role wins over browser preference so each email lands on its portal.
@@ -149,10 +162,12 @@ function upsertLocalUser(user: StoredUser): void {
   writeUsers(users);
 }
 
-function finalizeAuthSession(user: StoredUser, activeRole: PublicRole): AuthResult {
+function finalizeAuthSession(user: StoredUser, activeRole: AppRole): AuthResult {
   const session = createAuthSession({ email: user.email, roles: user.roles, activeRole });
   persistAuthSession(session);
-  rememberActiveRole(activeRole);
+  if (activeRole !== "admin") {
+    rememberActiveRole(activeRole);
+  }
   applyRoleSetup(activeRole);
   syncProfileCacheForUser(user);
   if (user.roles.includes("runner")) {
@@ -181,7 +196,9 @@ export function applyRemoteProfileToLocalSession(
   const activeRole = getLoginActiveRole(user);
   const session = createAuthSession({ email: user.email, roles: user.roles, activeRole });
   persistAuthSession(session);
-  rememberActiveRole(activeRole);
+  if (activeRole !== "admin") {
+    rememberActiveRole(activeRole);
+  }
   applyRoleSetup(activeRole);
   syncProfileCacheForUser(user);
   if (user.roles.includes("runner")) {
@@ -442,6 +459,32 @@ export function switchAccountRole(role: PublicRole): AuthResult {
   return { ok: true, homePath: getRoleHomePath(role) };
 }
 
+/** Sign out of Supabase and clear the local app session mirror. */
+export async function logoutUser(): Promise<void> {
+  if (isSupabaseConfigured()) {
+    await signOutRemote();
+  }
+  clearAuthSession();
+}
+
+/** Re-load roles from Supabase `profiles` (source of truth when cloud is on). */
+export async function refreshAuthSessionFromProfile(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user?.id;
+  if (!userId) return false;
+
+  const row = await fetchProfileByUserId(userId);
+  if (!row) return false;
+
+  applyRemoteProfileToLocalSession(rowToStoredShape(row), userId);
+  return true;
+}
+
 export function getUserDisplayName(email?: string): string | null {
   const sessionEmail = email ?? getAuthSession()?.email;
   if (!sessionEmail) return null;
@@ -520,7 +563,7 @@ export function hasCustomerProfile(email?: string): boolean {
 export type DirectoryUser = {
   email: string;
   displayName: string;
-  roles: PublicRole[];
+  roles: AccountRole[];
   runnerStatus?: RunnerOnboardingStatus;
 };
 

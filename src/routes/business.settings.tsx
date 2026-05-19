@@ -34,11 +34,8 @@ function BusinessSettingsPage() {
         title="Business profile"
         description="Manage the identity, billing inbox, and operating defaults used throughout the business portal."
         action={
-          <Button
-            type="button"
-            onClick={() => window.alert("Settings saved locally for this demo session.")}
-          >
-            Save changes (local only)
+          <Button type="button" disabled title="Business profile cloud sync is not available yet">
+            Save changes (coming soon)
           </Button>
         }
       />

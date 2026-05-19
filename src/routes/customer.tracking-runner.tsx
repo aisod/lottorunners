@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Phone, MessageCircle, ShieldCheck, Timer } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CustomerHeaderLogo } from "@/components/customer-header-logo";
 import { BottomSheet } from "@/components/bottom-sheet";
 import { LiveMapClient } from "@/components/live-map-client";
 import { Button } from "@/components/ui/button";
 import { useGeolocation } from "@/lib/use-geolocation";
-import { useSimulatedRunners } from "@/lib/use-simulated-runners";
 import { openPhoneCall, openPhoneSms } from "@/lib/contact-actions";
 import { jobStatusLabel } from "@/lib/jobs-service";
+import { useAssignedRunnerLocation } from "@/lib/use-assigned-runner-location";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
@@ -19,14 +19,20 @@ export const Route = createFileRoute("/customer/tracking-runner")({
 
 function CustomerTrackingRunnerPage() {
   const navigate = useNavigate();
-  const geo = useGeolocation();
+  const geo = useGeolocation({ fallbackOnError: false });
   const activeJobId = useCustomerApp((s) => s.activeJobId);
   const { userLocation, setUserLocation, pickup, destination } = useCustomerApp();
   const job = useMarketplaceJob(activeJobId);
+  const { runner: assignedRunner, freshnessLabel, waitingForGps } = useAssignedRunnerLocation(job);
   const [completionReady, setCompletionReady] = useState(false);
 
   const mapPickup = pickup?.coord ?? job?.pickup ?? null;
   const mapDestination = destination?.coord ?? job?.dropoff ?? null;
+
+  const followTarget = useMemo(() => {
+    if (assignedRunner?.position) return assignedRunner.position;
+    return mapDestination ?? mapPickup ?? userLocation ?? geo.location;
+  }, [assignedRunner?.position, mapDestination, mapPickup, userLocation, geo.location]);
 
   useEffect(() => {
     if (geo.location && !userLocation) {
@@ -49,9 +55,6 @@ function CustomerTrackingRunnerPage() {
     setCompletionReady(job.status === "in_progress" || job.status === "arrived");
   }, [job, navigate]);
 
-  const runners = useSimulatedRunners(userLocation);
-  const leadRunner = runners[0] ?? null;
-
   const markComplete = () => {
     if (job?.status === "completed" || job?.status === "in_progress") {
       navigate({ to: "/customer/rate-runner" });
@@ -61,6 +64,7 @@ function CustomerTrackingRunnerPage() {
   const serviceLabel = job ? SERVICES[job.serviceType].label : "Service";
   const statusText = job ? jobStatusLabel(job.status) : "Runner en route";
   const runnerPhone = job?.runnerPhone;
+  const hasAssignedRunner = Boolean(job?.runnerId || job?.runnerEmail);
 
   const messageRunner = () => {
     if (!openPhoneSms(runnerPhone)) {
@@ -78,18 +82,18 @@ function CustomerTrackingRunnerPage() {
     <div className="relative h-dvh overflow-hidden bg-background">
       <div className="absolute inset-0">
         <LiveMapClient
-          userLocation={userLocation}
-          runners={runners}
+          userLocation={userLocation ?? geo.location}
+          runners={assignedRunner ? [assignedRunner] : []}
           pickup={mapPickup}
           destination={mapDestination}
-          activeRunner={leadRunner}
-          followLocation={leadRunner?.position ?? mapDestination ?? mapPickup ?? userLocation}
+          activeRunner={assignedRunner}
+          followLocation={followTarget}
         />
       </div>
 
-      {!userLocation && (
-        <MapLoadingOverlay geoError={geo.error} />
-      )}
+      {!userLocation && !geo.location && geo.loading ? (
+        <MapLoadingOverlay geoError={null} />
+      ) : null}
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-[800] flex items-center justify-between bg-card/95 px-4 py-3 shadow-sm backdrop-blur">
         <div className="pointer-events-auto flex items-center gap-3">
@@ -107,7 +111,12 @@ function CustomerTrackingRunnerPage() {
       </header>
 
       <div className="pointer-events-none absolute inset-x-4 top-20 z-[800] mx-auto w-auto max-w-3xl">
-        <EtaSummaryCard />
+        <EtaSummaryCard
+          distanceKm={job?.distanceKm}
+          etaMin={job?.etaMin}
+          freshnessLabel={freshnessLabel}
+          waitingForGps={hasAssignedRunner && waitingForGps}
+        />
       </div>
 
       <BottomSheet className="max-w-3xl">
@@ -120,6 +129,14 @@ function CustomerTrackingRunnerPage() {
             <div className="h-2 rounded-full bg-secondary">
               <div className="h-2 w-2/3 rounded-full bg-primary" />
             </div>
+            {hasAssignedRunner && waitingForGps ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Waiting for your runner&apos;s live GPS signal…
+              </p>
+            ) : null}
+            {freshnessLabel ? (
+              <p className="mt-1 text-xs text-primary">{freshnessLabel}</p>
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between">
@@ -127,7 +144,7 @@ function CustomerTrackingRunnerPage() {
               <div className="h-14 w-14 rounded-2xl bg-secondary" />
               <div>
                 <p className="font-semibold">{job?.runnerName ?? "Your runner"}</p>
-                <p className="text-sm text-muted-foreground">Lotto Runner • 4.9</p>
+                <p className="text-sm text-muted-foreground">Lotto Runner • assigned</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -158,7 +175,7 @@ function CustomerTrackingRunnerPage() {
               <p className="text-sm font-semibold">{serviceLabel}</p>
             </div>
             <div className="rounded-xl border bg-secondary/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Verify runner</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Pickup</p>
               <p className="text-sm font-semibold">{job?.pickupAddress ?? "Pickup set"}</p>
             </div>
           </div>
@@ -230,7 +247,17 @@ function MapLoadingOverlay({ geoError }: { geoError: string | null }) {
   );
 }
 
-function EtaSummaryCard() {
+function EtaSummaryCard({
+  distanceKm,
+  etaMin,
+  freshnessLabel,
+  waitingForGps,
+}: {
+  distanceKm?: number;
+  etaMin?: number;
+  freshnessLabel: string | null;
+  waitingForGps: boolean;
+}) {
   return (
     <div className="pointer-events-auto rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between">
@@ -240,14 +267,19 @@ function EtaSummaryCard() {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Estimated arrival
             </p>
-            <p className="text-xl font-bold">4 mins</p>
+            <p className="text-xl font-bold">{etaMin != null ? `${etaMin} min` : "—"}</p>
           </div>
         </div>
         <div className="text-right">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Distance</p>
-          <p className="text-xl font-bold">1.2 km</p>
+          <p className="text-xl font-bold">{distanceKm != null ? `${distanceKm.toFixed(1)} km` : "—"}</p>
         </div>
       </div>
+      {waitingForGps ? (
+        <p className="mt-3 text-xs text-muted-foreground">Runner GPS not available yet — showing route only.</p>
+      ) : freshnessLabel ? (
+        <p className="mt-3 text-xs text-primary">{freshnessLabel}</p>
+      ) : null}
     </div>
   );
 }

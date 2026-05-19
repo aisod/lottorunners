@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CircleHelp, MessageCircle, Phone } from "lucide-react";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
+
+const SUPPORT_PHONE = "+264610000000";
+const SUPPORT_EMAIL = "support@lottorunners.na";
 
 export const Route = createFileRoute("/runner/support-help")({
   component: RunnerSupportHelpPage,
@@ -20,17 +24,26 @@ function RunnerSupportHelpPage() {
         <SupportCard
           icon={<Phone className="h-5 w-5" />}
           title="Call support"
-          subtitle="+264 61 000 000"
+          subtitle={SUPPORT_PHONE}
+          onClick={() => {
+            window.location.href = `tel:${SUPPORT_PHONE.replace(/\s/g, "")}`;
+          }}
         />
         <SupportCard
           icon={<MessageCircle className="h-5 w-5" />}
-          title="Live chat"
-          subtitle="Average wait: 2 minutes"
+          title="Email support"
+          subtitle={SUPPORT_EMAIL}
+          onClick={() => {
+            window.location.href = `mailto:${SUPPORT_EMAIL}?subject=Lotto%20Runners%20runner%20support`;
+          }}
         />
         <SupportCard
           icon={<CircleHelp className="h-5 w-5" />}
-          title="Help center"
-          subtitle="Policies, payouts, and account FAQs"
+          title="Live chat"
+          subtitle="Not available in this release"
+          disabled
+          titleAttr="Live chat is not available yet. Use phone or email support."
+          onClick={() => notifyUnavailable("Live chat is not available yet. Use phone or email support.")}
         />
       </main>
 
@@ -39,9 +52,29 @@ function RunnerSupportHelpPage() {
   );
 }
 
-function SupportCard({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+function SupportCard({
+  icon,
+  title,
+  subtitle,
+  onClick,
+  disabled,
+  titleAttr,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+  disabled?: boolean;
+  titleAttr?: string;
+}) {
   return (
-    <button type="button" className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left">
+    <button
+      type="button"
+      disabled={disabled}
+      title={titleAttr}
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left transition hover:bg-secondary/40 disabled:cursor-not-allowed disabled:opacity-60"
+    >
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">{icon}</div>
       <div>
         <p className="font-semibold">{title}</p>

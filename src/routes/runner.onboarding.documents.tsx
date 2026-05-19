@@ -107,8 +107,15 @@ function RunnerOnboardingDocumentsPage() {
           <h1 className="text-lg font-bold text-primary">Runner setup</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" type="button" aria-label="Notifications" disabled>
-            <Bell className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            aria-label="Notifications"
+            disabled
+            title="Notifications are not available yet"
+          >
+            <Bell className="h-5 w-5 opacity-50" />
           </Button>
           {urls.profilePhoto ? (
             <img src={urls.profilePhoto} alt="" className="h-9 w-9 rounded-full object-cover" />

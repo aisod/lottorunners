@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { FileText, Hourglass, Pill, Receipt, Search, ShoppingCart } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import {
@@ -11,6 +11,7 @@ import {
   type ErrandCategoryId,
 } from "@/lib/errand-categories";
 import { goBackOrFallback } from "@/lib/customer-navigation";
+import { isValidRouteStop } from "@/lib/geocode-address";
 import { useCustomerApp } from "@/lib/customer-store";
 import { cn } from "@/lib/utils";
 
@@ -31,13 +32,10 @@ export const Route = createFileRoute("/customer/choose-errand-type")({
 function CustomerChooseErrandTypePage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const { setErrandCategory, setSelectedService, setStatus, pickup, destination, ensureRoute, restoreHomeUi } =
+  const { setErrandCategory, setSelectedService, setStatus, pickup, destination, restoreHomeUi } =
     useCustomerApp();
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    ensureRoute();
-  }, [ensureRoute]);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = (query ?? "").toLowerCase().trim();
@@ -51,6 +49,11 @@ function CustomerChooseErrandTypePage() {
   }, [query]);
 
   const pickCategory = (id: ErrandCategoryId) => {
+    if (!isValidRouteStop(pickup)) {
+      setLocationError("Set a pickup location on the home map before choosing an errand.");
+      return;
+    }
+    setLocationError(null);
     setSelectedService("errand");
     setErrandCategory(id);
     setStatus("errand_category");
@@ -79,6 +82,8 @@ function CustomerChooseErrandTypePage() {
             <p className="font-semibold">{destination?.label ?? "Set destination location"}</p>
           </div>
         </section>
+
+        {locationError ? <p className="text-sm text-destructive">{locationError}</p> : null}
 
         <section>
           <div className="relative">

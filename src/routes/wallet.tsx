@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import { formatWalletBalance } from "@/lib/customer-wallet";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 export const Route = createFileRoute("/wallet")({
   beforeLoad: () => {
@@ -27,15 +28,17 @@ export function CustomerWalletPage() {
           <div className="mt-4 flex gap-2">
             <button
               type="button"
-              className="flex-1 rounded-xl bg-card py-2.5 text-sm font-bold text-primary"
-              onClick={() => window.alert("Top up via MTC MoMo is simulated in this demo.")}
+              className="flex-1 rounded-xl bg-card py-2.5 text-sm font-bold text-primary opacity-80"
+              aria-label={UNAVAILABLE.walletTopUp}
+              onClick={() => notifyUnavailable(UNAVAILABLE.walletTopUp)}
             >
               + Top up
             </button>
             <button
               type="button"
-              className="flex-1 rounded-xl border border-primary-foreground/30 py-2.5 text-sm font-semibold"
-              onClick={() => window.alert("Send money is coming soon in this demo.")}
+              className="flex-1 rounded-xl border border-primary-foreground/30 py-2.5 text-sm font-semibold opacity-80"
+              aria-label={UNAVAILABLE.walletSend}
+              onClick={() => notifyUnavailable(UNAVAILABLE.walletSend)}
             >
               Send
             </button>

@@ -1,3 +1,5 @@
+import { canRunnerAcceptJobs } from "./runner-account";
+
 export type RunnerJobStatus = "arrived" | "in-progress";
 
 export interface RunnerBankDetails {
@@ -17,7 +19,9 @@ export function getRunnerOnline(): boolean {
 
 export function setRunnerOnline(online: boolean): void {
   if (typeof window === "undefined") return;
+  if (online && !canRunnerAcceptJobs()) return;
   window.localStorage.setItem(RUNNER_ONLINE_KEY, online ? "true" : "false");
+  window.dispatchEvent(new Event("lr-runner-online-changed"));
 }
 
 export function clearRunnerOnline(): void {

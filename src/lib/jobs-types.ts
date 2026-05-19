@@ -14,10 +14,14 @@ export type MarketplaceJobStatus =
 
 export interface MarketplaceJob {
   id: string;
+  /** Customer account email (same as auth session email). */
   customerId: string;
+  customerEmail: string;
   customerName: string;
   customerPhone?: string;
+  /** Assigned runner account email. */
   runnerId?: string;
+  runnerEmail?: string;
   runnerName?: string;
   runnerPhone?: string;
   serviceType: ServiceType;
@@ -43,6 +47,14 @@ export interface MarketplaceJob {
   runnerRating?: number;
   proofPhotoUrl?: string;
   errandCategory?: ErrandCategoryId;
+  /** Who created the job — customer app vs business portal. */
+  source?: "customer" | "business";
+  businessId?: string;
+  businessEmail?: string;
+  businessName?: string;
+  batchId?: string;
+  batchName?: string;
+  batchStopIndex?: number;
 }
 
 export type BookingValidationResult =

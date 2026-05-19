@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Clock3, MapPin, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { acceptJob, declineJob, getCurrentRunnerId, listPendingJobs } from "@/lib/jobs-service";
+import { acceptJob, declineJob, getCurrentRunnerId, listAvailableJobsForRunner } from "@/lib/jobs-service";
+import { canRunnerAcceptJobs } from "@/lib/runner-account";
 import { getUserDisplayName } from "@/lib/auth-users";
 import { SERVICES } from "@/lib/services";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
@@ -19,13 +20,19 @@ const ACCEPT_WINDOW_SECONDS = 60;
 function RunnerIncomingJobAlertPage() {
   const navigate = useNavigate();
   const { jobId: searchJobId } = Route.useSearch();
-  const pending = listPendingJobs();
+  const runnerId = getCurrentRunnerId();
+  const pending = listAvailableJobsForRunner(runnerId);
   const resolvedJobId = searchJobId || pending[0]?.id || "";
   const job = useMarketplaceJob(resolvedJobId);
   const [secondsLeft, setSecondsLeft] = useState(ACCEPT_WINDOW_SECONDS);
   const [error, setError] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState(false);
 
   useEffect(() => {
+    if (!canRunnerAcceptJobs()) {
+      navigate({ to: "/runner/onboarding/verification", replace: true });
+      return;
+    }
     if (!resolvedJobId || (job && job.status !== "pending")) {
       navigate({ to: "/runner/dashboard", replace: true });
     }
@@ -47,15 +54,22 @@ function RunnerIncomingJobAlertPage() {
   const serviceLabel = SERVICES[job.serviceType].label;
 
   const handleAccept = () => {
-    const runnerId = getCurrentRunnerId();
-    if (!runnerId) {
+    if (!canRunnerAcceptJobs()) {
+      setError("Your runner profile must be approved before you can accept jobs.");
+      return;
+    }
+    const currentRunnerId = getCurrentRunnerId();
+    if (!currentRunnerId) {
       navigate({ to: "/customer/signin" });
       return;
     }
-    const runnerName = getUserDisplayName(runnerId) ?? "Runner";
-    void acceptJob(job.id, runnerId, runnerName).then((updated) => {
+    const runnerName = getUserDisplayName(currentRunnerId) ?? "Runner";
+    setAccepting(true);
+    setError(null);
+    void acceptJob(job.id, currentRunnerId, runnerName).then((updated) => {
+      setAccepting(false);
       if (!updated) {
-        setError("Could not accept this job. It may have been taken already.");
+        setError("Could not accept this job. It may have been taken already or you are not approved.");
         return;
       }
       navigate({ to: "/runner/active-job", search: { jobId: job.id } });
@@ -63,7 +77,6 @@ function RunnerIncomingJobAlertPage() {
   };
 
   const handleDecline = () => {
-    const runnerId = getCurrentRunnerId();
     if (runnerId) declineJob(job.id, runnerId);
     navigate({ to: "/runner/dashboard" });
   };
@@ -80,8 +93,15 @@ function RunnerIncomingJobAlertPage() {
                 Review the request and accept or decline before the timer ends.
               </p>
             </div>
-            <Button variant="ghost" size="icon" type="button" aria-label="Notifications">
-              <Bell className="h-5 w-5 text-primary" />
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              aria-label="Notifications"
+              disabled
+              title="Notifications are not available yet"
+            >
+              <Bell className="h-5 w-5 text-primary opacity-50" />
             </Button>
           </div>
 
@@ -108,8 +128,12 @@ function RunnerIncomingJobAlertPage() {
           </div>
           {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <Button variant="outline" className="h-12 text-base" onClick={handleDecline}>Decline</Button>
-            <Button className="h-12 text-base" onClick={handleAccept}>Accept job</Button>
+            <Button variant="outline" className="h-12 text-base" onClick={handleDecline} disabled={accepting}>
+              Pass
+            </Button>
+            <Button className="h-12 text-base" onClick={handleAccept} disabled={accepting}>
+              {accepting ? "Accepting…" : "Accept job"}
+            </Button>
           </div>
           <div className="mt-4 flex items-center gap-2 rounded-2xl border bg-secondary/20 px-4 py-3 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4 text-primary" />

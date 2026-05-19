@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CreditCard, ExternalLink, LifeBuoy, Settings2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 import { PortalPageIntro, PortalSection } from "@/components/portal-primitives";
 
 export const Route = createFileRoute("/admin/support")({
@@ -8,10 +9,10 @@ export const Route = createFileRoute("/admin/support")({
 });
 
 const ARTICLES = [
-  { title: "Incident response · P1 playbook", tag: "Ops", href: "#" },
-  { title: "Wallet settlement reconciliation", tag: "Finance", href: "#" },
-  { title: "Runner verification escalations", tag: "Trust", href: "#" },
-  { title: "Regional surge pricing overrides", tag: "Pricing", href: "#" },
+  { title: "Incident response · P1 playbook", tag: "Ops" },
+  { title: "Wallet settlement reconciliation", tag: "Finance" },
+  { title: "Runner verification escalations", tag: "Trust" },
+  { title: "Regional surge pricing overrides", tag: "Pricing" },
 ];
 
 function AdminSupportPage() {
@@ -33,7 +34,14 @@ function AdminSupportPage() {
               placeholder="Describe your issue or search a runbook..."
               className="h-11 flex-1 bg-transparent text-sm text-foreground outline-none"
             />
-            <Button type="button">Search</Button>
+            <Button
+              type="button"
+              disabled
+              title={UNAVAILABLE.adminSupportSearch}
+              onClick={() => notifyUnavailable(UNAVAILABLE.adminSupportSearch)}
+            >
+              Search
+            </Button>
           </div>
         </div>
       </div>
@@ -49,17 +57,20 @@ function AdminSupportPage() {
         <PortalSection title="Knowledge base" description="Most-used internal articles.">
           <div className="divide-y divide-border rounded-2xl border border-border">
             {ARTICLES.map((article) => (
-              <a
+              <button
                 key={article.title}
-                href={article.href}
-                className="flex items-center justify-between gap-3 bg-white/80 px-4 py-4 transition hover:bg-secondary/20"
+                type="button"
+                className="flex w-full items-center justify-between gap-3 bg-white/80 px-4 py-4 text-left transition hover:bg-secondary/20 disabled:cursor-not-allowed disabled:opacity-70"
+                disabled
+                title={UNAVAILABLE.adminSupportArticle}
+                onClick={() => notifyUnavailable(UNAVAILABLE.adminSupportArticle)}
               >
                 <div>
                   <p className="font-semibold">{article.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{article.tag}</p>
                 </div>
                 <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </a>
+              </button>
             ))}
           </div>
         </PortalSection>

@@ -2,10 +2,13 @@ import type { AppRole } from "./store";
 
 export type AuthMode = "signup" | "login";
 export type PublicRole = "customer" | "runner" | "business";
+/** Roles stored on `profiles.roles` (includes admin when granted in Supabase). */
+export type AccountRole = PublicRole | "admin";
 
 export interface AuthSession {
   email: string;
-  roles: PublicRole[];
+  /** Mirrors `profiles.roles` (customer/runner/business/admin). */
+  roles: AccountRole[];
   activeRole: AppRole;
   authenticatedAt: string;
 }
@@ -18,14 +21,26 @@ function isPublicRole(value: string): value is PublicRole {
   return value === "customer" || value === "runner" || value === "business";
 }
 
+function isAccountRole(value: string): value is AccountRole {
+  return isPublicRole(value) || value === "admin";
+}
+
 function isRole(value: string | null): value is AppRole {
   return value === "customer" || value === "runner" || value === "business" || value === "admin";
 }
 
-function normalizeRoles(roles: unknown): PublicRole[] {
+export function normalizeAccountRoles(roles: unknown): AccountRole[] {
   if (!Array.isArray(roles)) return ["customer"];
-  const next = roles.filter((role): role is PublicRole => typeof role === "string" && isPublicRole(role));
+  const next = roles.filter((role): role is AccountRole => typeof role === "string" && isAccountRole(role));
   return next.length > 0 ? Array.from(new Set(next)) : ["customer"];
+}
+
+export function accountHasAdminRole(roles: AccountRole[]): boolean {
+  return roles.includes("admin");
+}
+
+export function sessionHasAdminAccess(session: AuthSession | null): boolean {
+  return Boolean(session && accountHasAdminRole(session.roles));
 }
 
 function parseLegacySession(parsed: Record<string, unknown>): AuthSession | null {
@@ -34,9 +49,10 @@ function parseLegacySession(parsed: Record<string, unknown>): AuthSession | null
   if (!isRole(legacyRole)) return null;
 
   if (legacyRole === "admin") {
+    const email = typeof parsed.email === "string" ? parsed.email : "user@local";
     return {
-      email: typeof parsed.email === "string" ? parsed.email : "admin@local",
-      roles: [],
+      email,
+      roles: ["admin"],
       activeRole: "admin",
       authenticatedAt:
         typeof parsed.authenticatedAt === "string" ? parsed.authenticatedAt : new Date().toISOString(),
@@ -69,7 +85,7 @@ export function getAuthSession(): AuthSession | null {
 
     return {
       email: typeof parsed.email === "string" ? parsed.email : "user@local",
-      roles: normalizeRoles(parsed.roles ?? [activeRole]),
+      roles: normalizeAccountRoles(parsed.roles ?? [activeRole]),
       activeRole,
       authenticatedAt:
         typeof parsed.authenticatedAt === "string"
@@ -88,14 +104,18 @@ export function persistAuthSession(session: AuthSession): void {
 
 export function createAuthSession(input: {
   email: string;
-  roles: PublicRole[];
+  roles: AccountRole[];
   activeRole?: AppRole;
 }): AuthSession {
-  const roles = normalizeRoles(input.roles);
-  const activeRole =
-    input.activeRole && (input.activeRole === "admin" || roles.includes(input.activeRole))
-      ? input.activeRole
-      : roles[0];
+  const roles = normalizeAccountRoles(input.roles);
+  let activeRole = input.activeRole ?? roles[0];
+
+  if (activeRole === "admin" && !accountHasAdminRole(roles)) {
+    activeRole = roles.find((r) => r !== "admin") ?? "customer";
+  }
+  if (activeRole !== "admin" && !roles.includes(activeRole)) {
+    activeRole = roles.find((r) => r !== "admin") ?? "customer";
+  }
 
   return {
     email: input.email.trim().toLowerCase(),
@@ -105,22 +125,16 @@ export function createAuthSession(input: {
   };
 }
 
+/** Prototype/guest flows only — admin must come from `profiles.roles`. */
 export function setAuthSession(role: AppRole): void {
   const current = getAuthSession();
   if (current) {
+    if (role === "admin" && !accountHasAdminRole(current.roles)) return;
     persistAuthSession({ ...current, activeRole: role });
     return;
   }
 
-  if (role === "admin") {
-    persistAuthSession({
-      email: "admin@local",
-      roles: [],
-      activeRole: "admin",
-      authenticatedAt: new Date().toISOString(),
-    });
-    return;
-  }
+  if (role === "admin") return;
 
   persistAuthSession(
     createAuthSession({
@@ -136,7 +150,7 @@ export function setActiveRole(role: AppRole): boolean {
   if (!session) return false;
 
   if (role === "admin") {
-    if (session.activeRole !== "admin") return false;
+    if (!accountHasAdminRole(session.roles)) return false;
     persistAuthSession({ ...session, activeRole: "admin" });
     return true;
   }

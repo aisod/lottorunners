@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { Button } from "@/components/ui/button";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 export const Route = createFileRoute("/subscription-packages")({
   beforeLoad: () => {
@@ -28,7 +29,15 @@ export function CustomerSubscriptionPackagesPage() {
             <h2 className="text-lg font-bold">{plan.title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{plan.perks}</p>
             <p className="mt-2 font-semibold text-primary">{plan.price}</p>
-            <Button className="mt-3 h-10 w-full">Choose {plan.title}</Button>
+            <Button
+              type="button"
+              className="mt-3 h-10 w-full"
+              disabled
+              title={UNAVAILABLE.subscriptionChoose}
+              onClick={() => notifyUnavailable(UNAVAILABLE.subscriptionChoose)}
+            >
+              Choose {plan.title}
+            </Button>
           </section>
         ))}
       </div>

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CreditCard, Download, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
 
 export const Route = createFileRoute("/business/invoicing")({
@@ -28,7 +29,13 @@ function BusinessInvoicingPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/80">Current outstanding balance</p>
             <p className="mt-3 text-4xl font-black">N$ 12,450.00</p>
             <p className="mt-2 text-sm text-primary-foreground/80">Billing cycle ends in 12 days.</p>
-            <Button type="button" className="mt-5 bg-white text-primary hover:bg-white/90">
+            <Button
+              type="button"
+              className="mt-5 bg-white text-primary hover:bg-white/90"
+              disabled
+              title={UNAVAILABLE.invoicePay}
+              onClick={() => notifyUnavailable(UNAVAILABLE.invoicePay)}
+            >
               Pay now
             </Button>
           </div>
@@ -63,7 +70,15 @@ function BusinessInvoicingPage() {
                       <StatusPill tone={invoice.status === "Paid" ? "success" : "warning"}>{invoice.status}</StatusPill>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" className="gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1"
+                        disabled
+                        title={UNAVAILABLE.invoicePdf}
+                        onClick={() => notifyUnavailable(UNAVAILABLE.invoicePdf)}
+                      >
                         <Download className="h-4 w-4" />
                         PDF
                       </Button>
@@ -106,7 +121,14 @@ function MethodRow({
           <p className="text-xs text-muted-foreground">{detail}</p>
         </div>
       </div>
-      <Button variant="ghost" size="sm">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled
+        title={UNAVAILABLE.paymentMethodEdit}
+        onClick={() => notifyUnavailable(UNAVAILABLE.paymentMethodEdit)}
+      >
         Edit
       </Button>
     </div>

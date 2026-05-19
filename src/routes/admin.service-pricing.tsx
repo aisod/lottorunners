@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Bike, CarTaxiFront, PackageCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
 
 export const Route = createFileRoute("/admin/service-pricing")({
@@ -14,7 +15,9 @@ function AdminServicePricingPage() {
   const [perKm, setPerKm] = useState(8);
   const [errandMultiplier, setErrandMultiplier] = useState(1.15);
   const [deliveryBase, setDeliveryBase] = useState(30);
+  const [deliveryPerKm, setDeliveryPerKm] = useState(6);
   const [truckBase, setTruckBase] = useState(250);
+  const [truckPerKm, setTruckPerKm] = useState(18);
 
   return (
     <div className="space-y-6">
@@ -22,7 +25,16 @@ function AdminServicePricingPage() {
         eyebrow="Pricing controls"
         title="Service & pricing configuration"
         description="Adjust platform fees, base fares, and service defaults. Inputs stay local to this prototype."
-        action={<Button type="button">Save changes</Button>}
+        action={
+          <Button
+            type="button"
+            disabled
+            title={UNAVAILABLE.adminPricingSave}
+            onClick={() => notifyUnavailable(UNAVAILABLE.adminPricingSave)}
+          >
+            Save changes
+          </Button>
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-4">
@@ -59,7 +71,7 @@ function AdminServicePricingPage() {
             <PackageCheck className="h-5 w-5" />
           </div>
           <Field label="Base fee (N$)" value={deliveryBase} onChange={setDeliveryBase} min={0} max={200} />
-          <Field label="Per km (N$)" value={6} onChange={() => {}} min={0} max={20} />
+          <Field label="Per km (N$)" value={deliveryPerKm} onChange={setDeliveryPerKm} min={0} max={20} />
         </PortalSection>
 
         <PortalSection title="Truck" description="Large-item and heavy cargo." className="xl:col-span-1" bodyClassName="space-y-4">
@@ -67,7 +79,7 @@ function AdminServicePricingPage() {
             <Truck className="h-5 w-5" />
           </div>
           <Field label="Starting fee (N$)" value={truckBase} onChange={setTruckBase} min={0} max={2000} />
-          <Field label="Per km (N$)" value={18} onChange={() => {}} min={0} max={40} />
+          <Field label="Per km (N$)" value={truckPerKm} onChange={setTruckPerKm} min={0} max={40} />
         </PortalSection>
       </div>
     </div>

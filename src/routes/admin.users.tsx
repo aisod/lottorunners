@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
 import { listUsersForDirectory } from "@/lib/auth-users";
-import { approveRunnerAccount } from "@/lib/runner-account";
+import { approveRunnerAccount, rejectRunnerAccount } from "@/lib/runner-account";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfilesForAdmin } from "@/lib/supabase/profiles-remote";
 
@@ -17,7 +17,7 @@ type Row = {
   name: string;
   email: string;
   kind: "Runner" | "Customer" | "Business";
-  status: "Active" | "Pending" | "Suspended";
+  status: "Active" | "Pending" | "Suspended" | "Rejected";
   rating: string;
   lastActive: string;
   flag: string;
@@ -25,6 +25,7 @@ type Row = {
 
 function mapRunnerStatus(status?: string | null): Row["status"] {
   if (status === "approved") return "Active";
+  if (status === "rejected") return "Rejected";
   if (status === "pending_verification" || status === "in_progress") return "Pending";
   if (status === "suspended") return "Suspended";
   return "Pending";
@@ -52,10 +53,16 @@ function profileToRows(
       status: kind === "Runner" ? mapRunnerStatus(profile.runner_status) : "Active",
       rating: kind === "Runner" && profile.runner_status === "approved" ? "4.8" : "N/A",
       lastActive: profile.updated_at ? new Date(profile.updated_at).toLocaleString() : "—",
-      flag: kind === "Runner" && profile.runner_status !== "approved" ? "Onboarding review" : "—",
+      flag:
+        kind === "Runner" && profile.runner_status === "rejected"
+          ? "Application rejected"
+          : kind === "Runner" && profile.runner_status !== "approved"
+            ? "Onboarding review"
+            : "—",
     };
 
     if (row.status === "Pending") pending.push(row);
+    else if (row.status === "Rejected") active.push(row);
     else active.push(row);
   }
 
@@ -117,30 +124,32 @@ function AdminUsersPage() {
   const [pending, setPending] = useState<Row[]>([]);
   const [activeRows, setActiveRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
   const rows = useMemo(() => [...pending, ...activeRows], [pending, activeRows]);
+
+  const reload = async () => {
+    setLoading(true);
+    setActionError(null);
+    if (isSupabaseConfigured()) {
+      const profiles = await fetchProfilesForAdmin();
+      const mapped = profileToRows(profiles);
+      setPending(mapped.pending);
+      setActiveRows(mapped.active);
+      setLoading(false);
+      return;
+    }
+    const mapped = localUsersToRows();
+    setPending(mapped.pending);
+    setActiveRows(mapped.active);
+    setLoading(false);
+  };
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      setLoading(true);
-      if (isSupabaseConfigured()) {
-        const profiles = await fetchProfilesForAdmin();
-        if (!cancelled) {
-          const mapped = profileToRows(profiles);
-          setPending(mapped.pending);
-          setActiveRows(mapped.active);
-          setLoading(false);
-        }
-        return;
-      }
-
-      const mapped = localUsersToRows();
-      if (!cancelled) {
-        setPending(mapped.pending);
-        setActiveRows(mapped.active);
-        setLoading(false);
-      }
+      if (!cancelled) await reload();
     }
 
     void load();
@@ -151,21 +160,34 @@ function AdminUsersPage() {
 
   const approve = (id: string) => {
     const row = pending.find((entry) => entry.id === id);
-    if (!row) return;
-    if (row.kind === "Runner") {
-      approveRunnerAccount(row.email);
-    }
-    setPending((entries) => entries.filter((entry) => entry.id !== id));
-    setActiveRows((entries) => [
-      {
-        ...row,
-        status: "Active",
-        rating: row.kind === "Runner" ? "4.7" : "5.0",
-        lastActive: "Just now",
-        flag: "—",
-      },
-      ...entries,
-    ]);
+    if (!row || row.kind !== "Runner") return;
+
+    setActingId(id);
+    setActionError(null);
+    void approveRunnerAccount(row.email).then((result) => {
+      setActingId(null);
+      if (!result.ok) {
+        setActionError(result.error);
+        return;
+      }
+      void reload();
+    });
+  };
+
+  const reject = (id: string) => {
+    const row = pending.find((entry) => entry.id === id);
+    if (!row || row.kind !== "Runner") return;
+
+    setActingId(id);
+    setActionError(null);
+    void rejectRunnerAccount(row.email).then((result) => {
+      setActingId(null);
+      if (!result.ok) {
+        setActionError(result.error);
+        return;
+      }
+      void reload();
+    });
   };
 
   const runnerCount = rows.filter((row) => row.kind === "Runner" && row.status === "Active").length;
@@ -222,6 +244,7 @@ function AdminUsersPage() {
       </PortalSection>
 
       <PortalSection title="Platform directory" description="Moderate access and review each account’s current state.">
+        {actionError ? <p className="mb-3 text-sm text-destructive">{actionError}</p> : null}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading accounts…</p>
         ) : rows.length === 0 ? (
@@ -251,7 +274,17 @@ function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-3">{row.kind}</td>
                     <td className="px-4 py-3">
-                      <StatusPill tone={row.status === "Active" ? "success" : row.status === "Pending" ? "warning" : "danger"}>
+                      <StatusPill
+                        tone={
+                          row.status === "Active"
+                            ? "success"
+                            : row.status === "Pending"
+                              ? "warning"
+                              : row.status === "Rejected"
+                                ? "danger"
+                                : "danger"
+                        }
+                      >
                         {row.status}
                       </StatusPill>
                     </td>
@@ -265,10 +298,29 @@ function AdminUsersPage() {
                           View
                         </Button>
                         {row.status === "Pending" && row.kind === "Runner" ? (
-                          <Button type="button" size="sm" className="gap-1" onClick={() => approve(row.id)}>
-                            <Star className="h-3.5 w-3.5" />
-                            Approve
-                          </Button>
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-1"
+                              disabled={actingId === row.id}
+                              onClick={() => approve(row.id)}
+                            >
+                              <Star className="h-3.5 w-3.5" />
+                              {actingId === row.id ? "Saving…" : "Approve"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              disabled={actingId === row.id}
+                              onClick={() => reject(row.id)}
+                            >
+                              <UserRoundX className="h-3.5 w-3.5" />
+                              Reject
+                            </Button>
+                          </>
                         ) : null}
                       </div>
                     </td>

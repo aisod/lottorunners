@@ -27,7 +27,7 @@ import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 import { SERVICES } from "@/lib/services";
 import type { MarketplaceJobStatus } from "@/lib/jobs-types";
 import { useGeolocation } from "@/lib/use-geolocation";
-import { useSimulatedRunners } from "@/lib/use-simulated-runners";
+import type { Runner } from "@/lib/types";
 
 export const Route = createFileRoute("/runner/active-job")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -64,11 +64,21 @@ function RunnerActiveJobPage() {
   const activeAssigned = runnerId ? getRunnerActiveJob(runnerId) : null;
   const resolvedJobId = searchJobId || activeAssigned?.id || "";
   const job = useMarketplaceJob(resolvedJobId);
-  const geo = useGeolocation();
+  const geo = useGeolocation({ fallbackOnError: false, watch: true });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const userLocation = geo.location;
-  const nearbyRunners = useSimulatedRunners(userLocation, 1);
-  const activeRunner = nearbyRunners[0] ?? null;
+  const activeRunner: Runner | null =
+    userLocation && runnerId
+      ? {
+          id: runnerId,
+          name: job?.runnerName ?? "You",
+          vehicle: job?.serviceType ?? "delivery",
+          rating: 5,
+          plate: "",
+          position: userLocation,
+          heading: 0,
+        }
+      : null;
   const [jobPhase, setJobPhase] = useState<RunnerPhase>("arrived");
   const proofUpload = useFileUpload(`job-proof/${resolvedJobId || "active"}`);
   const [showDestinationPreview, setShowDestinationPreview] = useState(false);
@@ -90,9 +100,8 @@ function RunnerActiveJobPage() {
     setJobPhase(marketplaceToPhase(job.status));
   }, [job, navigate, resolvedJobId]);
 
-  const pickup = job?.pickup ?? (userLocation ? { lat: userLocation.lat + 0.008, lng: userLocation.lng - 0.005 } : null);
-  const destination =
-    job?.dropoff ?? (userLocation ? { lat: userLocation.lat + 0.015, lng: userLocation.lng + 0.006 } : null);
+  const pickup = job?.pickup ?? null;
+  const destination = job?.dropoff ?? null;
   const mapFocus = showDestinationPreview
     ? destination ?? activeRunner?.position ?? userLocation
     : jobPhase === "in-progress"
@@ -197,8 +206,10 @@ function RunnerActiveJobPage() {
           </div>
           <button
             type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
+            className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full text-muted-foreground opacity-50"
             aria-label="Notifications"
+            disabled
+            title="Notifications are not available yet"
           >
             <Bell className="h-5 w-5" />
           </button>

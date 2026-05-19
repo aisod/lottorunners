@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Mail, Plus, ShieldCheck, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
 
 export const Route = createFileRoute("/business/team")({
@@ -40,7 +41,9 @@ function BusinessTeamPage() {
           <Button
             type="button"
             className="gap-2"
-            onClick={() => window.alert("Member invites are simulated in this demo.")}
+            disabled
+            title={UNAVAILABLE.teamInvite}
+            onClick={() => notifyUnavailable(UNAVAILABLE.teamInvite)}
           >
             <Plus className="h-4 w-4" />
             Add new member

@@ -6,6 +6,15 @@ import {
   setRunnerApproved,
   setStoredRunnerStage,
 } from "./store";
+import { isSupabaseConfigured } from "./supabase/config";
+import {
+  fetchProfileByEmail,
+  updateRemoteRunnerStatus,
+} from "./supabase/profiles-remote";
+function clearRunnerOnlineLocal(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem("lr-runner-online-v1");
+}
 
 const USERS_KEY = "lr-users-v1";
 
@@ -13,16 +22,20 @@ export type RunnerOnboardingStatus =
   | "not_started"
   | "in_progress"
   | "pending_verification"
-  | "approved";
+  | "approved"
+  | "rejected";
 
 export type StoredUserWithRunner = {
   email: string;
   password: string;
   roles: string[];
   displayName?: string;
+  supabaseId?: string;
   runnerStatus?: RunnerOnboardingStatus;
   runnerStage?: RunnerStage;
 };
+
+export type RunnerModerationResult = { ok: true } | { ok: false; error: string };
 
 function readUsers(): StoredUserWithRunner[] {
   if (typeof window === "undefined") return [];
@@ -64,9 +77,17 @@ export function getRunnerOnboardingStatus(email?: string): RunnerOnboardingStatu
   return inferLegacyRunnerStatus(user);
 }
 
+export function isRunnerFullyApproved(email?: string): boolean {
+  return getRunnerOnboardingStatus(email) === "approved";
+}
+
+export function canRunnerAcceptJobs(email?: string): boolean {
+  return isRunnerFullyApproved(email);
+}
+
 function patchRunnerUser(
   email: string,
-  patch: Partial<Pick<StoredUserWithRunner, "runnerStatus" | "runnerStage">>,
+  patch: Partial<Pick<StoredUserWithRunner, "runnerStatus" | "runnerStage" | "supabaseId">>,
 ): StoredUserWithRunner | null {
   const users = readUsers();
   const index = users.findIndex((entry) => entry.email === email);
@@ -91,9 +112,10 @@ export function syncRunnerDeviceStateFromUser(user: StoredUserWithRunner | null)
   }
 
   setRunnerApproved(false);
+  clearRunnerOnlineLocal();
 
-  if (status === "pending_verification") {
-    setStoredRunnerStage("dashboard");
+  if (status === "pending_verification" || status === "rejected") {
+    setStoredRunnerStage("verification");
     return;
   }
 
@@ -115,7 +137,9 @@ export function persistRunnerOnboardingStage(stage: RunnerStage): void {
   const status =
     current?.runnerStatus === "not_started" || !current?.runnerStatus
       ? "in_progress"
-      : current.runnerStatus === "approved" || current.runnerStatus === "pending_verification"
+      : current.runnerStatus === "approved" ||
+          current.runnerStatus === "pending_verification" ||
+          current.runnerStatus === "rejected"
         ? current.runnerStatus
         : "in_progress";
 
@@ -124,27 +148,74 @@ export function persistRunnerOnboardingStage(stage: RunnerStage): void {
   setStoredRunnerStage(stage);
 }
 
-/** Demo / prototype: mark runner approved and sync device flags for job acceptance. */
-export function approveRunnerAccount(email?: string): void {
-  const sessionEmail = email ?? getAuthSession()?.email;
-  if (!sessionEmail) return;
+async function persistRunnerStatusForEmail(
+  email: string,
+  runnerStatus: RunnerOnboardingStatus,
+  runnerStage: RunnerStage,
+): Promise<RunnerModerationResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  let user = getStoredUser(normalizedEmail);
 
-  const user = patchRunnerUser(sessionEmail, {
-    runnerStatus: "approved",
-    runnerStage: "dashboard",
-  });
-  if (!user) return;
+  if (isSupabaseConfigured()) {
+    const profile = await fetchProfileByEmail(normalizedEmail);
+    if (!profile) {
+      return { ok: false, error: "Runner profile not found in Supabase." };
+    }
+
+    const saved = await updateRemoteRunnerStatus(profile.id, runnerStatus);
+    if (!saved) {
+      return { ok: false, error: "Could not update runner status in Supabase." };
+    }
+
+    user = patchRunnerUser(normalizedEmail, {
+      runnerStatus,
+      runnerStage,
+      supabaseId: profile.id,
+    });
+  } else {
+    user = patchRunnerUser(normalizedEmail, { runnerStatus, runnerStage });
+  }
+
+  if (!user) {
+    return { ok: false, error: "Runner account not found on this device." };
+  }
 
   syncRunnerDeviceStateFromUser(user);
-  void syncCurrentUserProfileToRemote({
-    runnerStatus: user.runnerStatus,
-    runnerStage: user.runnerStage,
-  });
+
+  const session = getAuthSession();
+  if (session?.email === normalizedEmail) {
+    void syncCurrentUserProfileToRemote({
+      runnerStatus: user.runnerStatus,
+      runnerStage: user.runnerStage,
+    });
+  }
+
+  return { ok: true };
 }
 
-/** Called when onboarding is finished (verification → home). Auto-approves for demo. */
+/** Runner finished onboarding — awaits admin review (production path). */
+export async function submitRunnerForVerification(email?: string): Promise<RunnerModerationResult> {
+  const sessionEmail = email ?? getAuthSession()?.email;
+  if (!sessionEmail) {
+    return { ok: false, error: "You must be signed in as a runner." };
+  }
+
+  return persistRunnerStatusForEmail(sessionEmail, "pending_verification", "verification");
+}
+
+/** Admin approves a runner — updates Supabase profile for the target user. */
+export async function approveRunnerAccount(email: string): Promise<RunnerModerationResult> {
+  return persistRunnerStatusForEmail(email, "approved", "dashboard");
+}
+
+/** Admin rejects a runner application — updates Supabase profile for the target user. */
+export async function rejectRunnerAccount(email: string): Promise<RunnerModerationResult> {
+  return persistRunnerStatusForEmail(email, "rejected", "verification");
+}
+
+/** @deprecated Use submitRunnerForVerification instead. */
 export function completeRunnerOnboardingPending(): void {
-  approveRunnerAccount();
+  void submitRunnerForVerification();
 }
 
 export function migrateLegacyRunnerAccount(email: string): void {
@@ -157,7 +228,9 @@ export function migrateLegacyRunnerAccount(email: string): void {
     ((typeof window !== "undefined"
       ? window.localStorage.getItem("lr-runner-stage")
       : null) as RunnerStage | null) ??
-    (status === "pending_verification" || status === "approved" ? "dashboard" : "service-selection");
+    (status === "pending_verification" || status === "approved" || status === "rejected"
+      ? "verification"
+      : "service-selection");
 
   patchRunnerUser(email, { runnerStatus: status, runnerStage: stage });
 }

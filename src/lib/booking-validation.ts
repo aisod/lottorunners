@@ -1,3 +1,4 @@
+import { isValidRouteStop } from "./geocode-address";
 import type { ErrandCategoryId } from "./errand-categories";
 import type { BookingValidationResult } from "./jobs-types";
 import type { LatLng, PaymentMethod, ScheduleMode, ServiceType, TruckSizeId } from "./types";
@@ -28,6 +29,8 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
 
   if (!snapshot.pickup?.label?.trim()) {
     errors.pickup = "Pickup address is required.";
+  } else if (!isValidRouteStop(snapshot.pickup)) {
+    errors.pickup = "Select a pickup location from search or the home map.";
   }
 
   const needsDropoff =
@@ -37,6 +40,8 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
 
   if (needsDropoff && !snapshot.destination?.label?.trim()) {
     errors.dropoff = "Drop-off address is required.";
+  } else if (needsDropoff && !isValidRouteStop(snapshot.destination)) {
+    errors.dropoff = "Select a drop-off location from search or the home map.";
   }
 
   if (!snapshot.paymentMethod) {
@@ -98,6 +103,11 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
 
 export function validateErrandDetailsStep(snapshot: BookingSnapshot): BookingValidationResult {
   const errors: Record<string, string> = {};
+  if (!snapshot.pickup?.label?.trim()) {
+    errors.pickup = "Set a pickup location on the home map or errand screen.";
+  } else if (!isValidRouteStop(snapshot.pickup)) {
+    errors.pickup = "Pickup needs map coordinates — search an address or use the home map.";
+  }
   if (!snapshot.errandCategory) {
     errors.errandType = "Select an errand type.";
   }
@@ -132,7 +142,13 @@ export function validateMovingStep(
   const errors: Record<string, string> = {};
   if (!snapshot.truckSizeId) errors.truckSize = "Select a truck size first.";
   if (!snapshot.pickup?.label?.trim()) errors.pickup = "Set a pickup location.";
+  else if (!isValidRouteStop(snapshot.pickup)) {
+    errors.pickup = "Pickup needs map coordinates — search an address or use the home map.";
+  }
   if (!snapshot.destination?.label?.trim()) errors.dropoff = "Set a drop-off location.";
+  else if (!isValidRouteStop(snapshot.destination)) {
+    errors.dropoff = "Drop-off needs map coordinates — search an address or use the home map.";
+  }
   if (!snapshot.movingNotes?.trim()) errors.movingDetails = "Describe what you are moving.";
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true };

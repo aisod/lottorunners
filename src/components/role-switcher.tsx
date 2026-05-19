@@ -41,7 +41,7 @@ export function RoleSwitcher({ className, title = "Switch role" }: RoleSwitcherP
     <div className={cn("rounded-2xl border border-border bg-card p-4", className)}>
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {session.roles.map((role) => (
+        {session.roles.filter((role) => role !== "admin").map((role) => (
           <button
             key={role}
             type="button"

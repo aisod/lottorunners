@@ -8,7 +8,18 @@ interface GeoState {
   loading: boolean;
 }
 
-export function useGeolocation(): GeoState {
+export type UseGeolocationOptions = {
+  /**
+   * When false, permission errors leave location null (map may still center on Windhoek for display only).
+   * Production runner/tracking flows should set this to false.
+   */
+  fallbackOnError?: boolean;
+  /** Poll position while mounted (runner online / active job). */
+  watch?: boolean;
+};
+
+export function useGeolocation(options: UseGeolocationOptions = {}): GeoState {
+  const { fallbackOnError = true, watch = false } = options;
   const [state, setState] = useState<GeoState>({
     location: null,
     error: null,
@@ -18,54 +29,78 @@ export function useGeolocation(): GeoState {
   useEffect(() => {
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
       setState({
-        location: { lat: WINDHOEK[0], lng: WINDHOEK[1] },
-        error: "Geolocation not supported — using Windhoek",
+        location: fallbackOnError ? { lat: WINDHOEK[0], lng: WINDHOEK[1] } : null,
+        error: "Geolocation is not supported in this browser.",
         loading: false,
       });
       return;
     }
 
     let cancelled = false;
+
+    const applySuccess = (pos: GeolocationPosition) => {
+      if (cancelled) return;
+      setState({
+        location: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        error: null,
+        loading: false,
+      });
+    };
+
+    const applyError = (err?: GeolocationPositionError) => {
+      if (cancelled) return;
+      const denied = err?.code === 1;
+      setState({
+        location: fallbackOnError ? { lat: WINDHOEK[0], lng: WINDHOEK[1] } : null,
+        error: denied
+          ? "Location permission denied."
+          : "Couldn't get your location.",
+        loading: false,
+      });
+    };
+
+    if (watch) {
+      const watchId = navigator.geolocation.watchPosition(applySuccess, applyError, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000,
+      });
+      return () => {
+        cancelled = true;
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+
     const timeout = setTimeout(() => {
       if (cancelled) return;
       setState((s) =>
-        s.location
-          ? s
-          : {
-              location: { lat: WINDHOEK[0], lng: WINDHOEK[1] },
-              error: "Couldn't get your location — using Windhoek",
+        s.loading
+          ? {
+              location: fallbackOnError ? { lat: WINDHOEK[0], lng: WINDHOEK[1] } : null,
+              error: "Location request timed out.",
               loading: false,
-            },
+            }
+          : s,
       );
-    }, 6000);
+    }, 12000);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (cancelled) return;
         clearTimeout(timeout);
-        setState({
-          location: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          error: null,
-          loading: false,
-        });
+        applySuccess(pos);
       },
-      () => {
-        if (cancelled) return;
+      (err) => {
         clearTimeout(timeout);
-        setState({
-          location: { lat: WINDHOEK[0], lng: WINDHOEK[1] },
-          error: "Location permission denied — using Windhoek",
-          loading: false,
-        });
+        applyError(err);
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
     );
 
     return () => {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, []);
+  }, [fallbackOnError, watch]);
 
   return state;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { shouldUseSimulatedRunners } from "@/lib/runner-location-service";
 import type { Runner, ServiceType, LatLng } from "@/lib/types";
 
 const VEHICLE_POOL: ServiceType[] = ["errand", "ride", "ride", "delivery", "delivery", "truck"];
@@ -15,9 +16,13 @@ function randomOffset(center: LatLng, radiusKm = 1.2): LatLng {
 
 export function useSimulatedRunners(center: LatLng | null, count = 8): Runner[] {
   const [runners, setRunners] = useState<Runner[]>([]);
+  const demoMode = shouldUseSimulatedRunners();
 
   useEffect(() => {
-    if (!center) return;
+    if (!demoMode || !center) {
+      setRunners([]);
+      return;
+    }
     const initial: Runner[] = Array.from({ length: count }).map((_, i) => ({
       id: `sim-${i}`,
       name: NAMES[i % NAMES.length],
@@ -28,10 +33,10 @@ export function useSimulatedRunners(center: LatLng | null, count = 8): Runner[] 
       heading: Math.random() * 360,
     }));
     setRunners(initial);
-  }, [center?.lat, center?.lng, count]);
+  }, [center?.lat, center?.lng, count, demoMode]);
 
   useEffect(() => {
-    if (!center || runners.length === 0) return;
+    if (!demoMode || !center || runners.length === 0) return;
     const id = setInterval(() => {
       setRunners((rs) =>
         rs.map((r) => {
@@ -58,7 +63,7 @@ export function useSimulatedRunners(center: LatLng | null, count = 8): Runner[] 
       );
     }, 2000);
     return () => clearInterval(id);
-  }, [center?.lat, center?.lng, runners.length]);
+  }, [center?.lat, center?.lng, runners.length, demoMode]);
 
-  return runners;
+  return demoMode ? runners : [];
 }

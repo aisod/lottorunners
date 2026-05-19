@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AdminConsoleShell } from "@/components/console-shell";
-import { getAuthSession } from "@/lib/auth-session";
+import { getAuthSession, sessionHasAdminAccess, setActiveRole } from "@/lib/auth-session";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/admin")({
@@ -10,8 +10,12 @@ export const Route = createFileRoute("/admin")({
       throw redirect({ to: "/customer/signin" });
     }
 
-    if (session.activeRole !== "admin") {
+    if (!sessionHasAdminAccess(session)) {
       throw redirect({ to: getRoleHomePath(session.activeRole) });
+    }
+
+    if (session.activeRole !== "admin") {
+      setActiveRole("admin");
     }
 
     const path = location.pathname.replace(/\/$/, "") || "/";

@@ -153,14 +153,15 @@ export function getRunnerHomePath(): string {
     case "in_progress":
       return getRunnerOnboardingPath(user.runnerStage ?? getStoredRunnerStage() ?? "service-selection");
     case "pending_verification":
+    case "rejected":
+      return "/runner/onboarding/verification";
     case "approved":
       return "/runner/dashboard";
   }
 }
 
 export function hasRunnerConsoleAccess(_stage = getStoredRunnerStage()): boolean {
-  const status = getRunnerOnboardingStatus();
-  return status === "pending_verification" || status === "approved";
+  return getRunnerOnboardingStatus() === "approved";
 }
 
 export function isRunnerFullyApproved(): boolean {

@@ -4,11 +4,13 @@ import { SERVICES } from "./services";
 import { ERRAND_CATEGORIES } from "./errand-categories";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
 import type { TripRequest } from "./types";
+import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
 
 const JOBS_STORAGE_KEY = "lr-marketplace-jobs-v1";
 const JOBS_CHANNEL_NAME = "lr-marketplace-jobs-sync";
+const RUNNER_DECLINED_JOBS_KEY = "lr-runner-declined-jobs-v1";
 
 type JobsListener = (jobs: MarketplaceJob[]) => void;
 
@@ -45,6 +47,16 @@ function syncJobToRemote(job: MarketplaceJob): void {
   void upsertRemoteJob(job);
 }
 
+async function syncJobToRemoteAwait(job: MarketplaceJob): Promise<boolean> {
+  if (!isSupabaseConfigured()) return true;
+  try {
+    await upsertRemoteJob(job);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function writeJobs(jobs: MarketplaceJob[], options?: { skipRemote?: boolean }): void {
   persistJobsLocal(jobs);
   notifyListeners();
@@ -53,13 +65,30 @@ function writeJobs(jobs: MarketplaceJob[], options?: { skipRemote?: boolean }): 
   }
 }
 
+function insertJobLocal(job: MarketplaceJob): void {
+  writeJobs([job, ...readJobs()], { skipRemote: true });
+}
+
 /** Replace in-memory store from remote pull (no upload). */
 export function notifyJobsChanged(remoteJobs: MarketplaceJob[]): void {
   const local = readJobs();
   const map = new Map<string, MarketplaceJob>();
-  for (const job of local) map.set(job.id, job);
-  for (const job of remoteJobs) map.set(job.id, job);
+  for (const j of local) map.set(j.id, j);
+  for (const j of remoteJobs) map.set(j.id, normalizeJob(j));
   writeJobs([...map.values()], { skipRemote: true });
+}
+
+function normalizeJob(job: MarketplaceJob): MarketplaceJob {
+  const customerEmail = job.customerEmail ?? job.customerId;
+  const businessEmail = job.businessEmail ?? job.businessId;
+  return {
+    ...job,
+    customerEmail,
+    runnerEmail: job.runnerEmail ?? job.runnerId,
+    source: job.source ?? (businessEmail ? "business" : "customer"),
+    businessEmail,
+    businessId: job.businessId ?? businessEmail,
+  };
 }
 
 export async function hydrateJobsFromRemote(): Promise<void> {
@@ -75,17 +104,42 @@ export function readJobs(): MarketplaceJob[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as MarketplaceJob[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeJob) : [];
   } catch {
     return [];
   }
+}
+
+function readDeclinedJobIds(runnerId: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  const raw = window.localStorage.getItem(RUNNER_DECLINED_JOBS_KEY);
+  if (!raw) return new Set();
+  try {
+    const map = JSON.parse(raw) as Record<string, string[]>;
+    return new Set(map[runnerId] ?? []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDeclinedJobIds(runnerId: string, ids: Set<string>): void {
+  if (typeof window === "undefined") return;
+  const raw = window.localStorage.getItem(RUNNER_DECLINED_JOBS_KEY);
+  let map: Record<string, string[]> = {};
+  try {
+    map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+  } catch {
+    map = {};
+  }
+  map[runnerId] = [...ids];
+  window.localStorage.setItem(RUNNER_DECLINED_JOBS_KEY, JSON.stringify(map));
 }
 
 function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob | null {
   const jobs = readJobs();
   const index = jobs.findIndex((j) => j.id === jobId);
   if (index === -1) return null;
-  const next = { ...jobs[index], ...patch };
+  const next = normalizeJob({ ...jobs[index], ...patch });
   jobs[index] = next;
   persistJobsLocal(jobs);
   notifyListeners();
@@ -104,21 +158,32 @@ export function getJob(jobId: string): MarketplaceJob | null {
   return readJobs().find((j) => j.id === jobId) ?? null;
 }
 
+/** Pending jobs visible in the marketplace (not yet assigned). */
 export function listPendingJobs(): MarketplaceJob[] {
   return readJobs()
-    .filter((j) => j.status === "pending")
+    .filter((j) => j.status === "pending" && !j.runnerId)
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Pending jobs a runner may respond to. Empty unless the runner is approved.
+ * Skips jobs this runner declined locally (pass without accepting).
+ */
+export function listAvailableJobsForRunner(runnerId?: string | null): MarketplaceJob[] {
+  if (!canRunnerAcceptJobs(runnerId ?? undefined)) return [];
+  const declined = runnerId ? readDeclinedJobIds(runnerId) : new Set<string>();
+  return listPendingJobs().filter((j) => !declined.has(j.id));
 }
 
 export function listJobsForCustomer(customerId: string): MarketplaceJob[] {
   return readJobs()
-    .filter((j) => j.customerId === customerId)
+    .filter((j) => j.customerId === customerId || j.customerEmail === customerId)
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function listJobsForRunner(runnerId: string): MarketplaceJob[] {
   return readJobs()
-    .filter((j) => j.runnerId === runnerId)
+    .filter((j) => j.runnerId === runnerId || j.runnerEmail === runnerId)
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -130,7 +195,7 @@ export function getRunnerActiveJob(runnerId: string): MarketplaceJob | null {
   return (
     readJobs().find(
       (j) =>
-        j.runnerId === runnerId &&
+        (j.runnerId === runnerId || j.runnerEmail === runnerId) &&
         j.status !== "pending" &&
         j.status !== "completed" &&
         j.status !== "cancelled" &&
@@ -161,14 +226,15 @@ export type CreateJobBookingInput = {
   } | null;
 };
 
-export function createJobFromCustomerBooking(
+export async function createJobFromCustomerBooking(
   state: CreateJobBookingInput,
   customerId: string,
-): MarketplaceJob {
+): Promise<{ job: MarketplaceJob | null; error?: string }> {
   const estimate = state.buildEstimate();
   const pickup = state.pickup!;
   const destination = state.destination!;
   const serviceType = state.selectedService!;
+  const customerEmail = customerId;
   const customerName = getUserDisplayName(customerId) ?? customerId.split("@")[0] ?? "Customer";
   const customerPhone = getUserPhone(customerId) ?? undefined;
 
@@ -194,7 +260,8 @@ export function createJobFromCustomerBooking(
 
   const job: MarketplaceJob = {
     id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    customerId,
+    customerId: customerEmail,
+    customerEmail,
     customerName,
     customerPhone,
     serviceType,
@@ -217,8 +284,17 @@ export function createJobFromCustomerBooking(
     createdAt: Date.now(),
   };
 
-  writeJobs([job, ...readJobs()]);
-  return job;
+  insertJobLocal(job);
+
+  const synced = await syncJobToRemoteAwait(job);
+  if (!synced) {
+    return {
+      job: null,
+      error: "Could not save your request to the server. Check your connection and try again.",
+    };
+  }
+
+  return { job };
 }
 
 export async function acceptJob(
@@ -226,22 +302,26 @@ export async function acceptJob(
   runnerId: string,
   runnerName: string,
 ): Promise<MarketplaceJob | null> {
+  if (!canRunnerAcceptJobs(runnerId)) return null;
+
   if (getRunnerActiveJob(runnerId)) return null;
 
   const runnerPhone = getUserPhone(runnerId) ?? undefined;
+  const runnerEmail = runnerId;
 
   if (isSupabaseConfigured()) {
     const remote = await acceptJobRemote(jobId, runnerId, runnerName, runnerPhone);
     if (!remote) return null;
+    const normalized = normalizeJob(remote);
     const jobs = readJobs();
     const index = jobs.findIndex((j) => j.id === jobId);
     if (index === -1) {
-      writeJobs([remote, ...jobs], { skipRemote: true });
+      writeJobs([normalized, ...jobs], { skipRemote: true });
     } else {
-      jobs[index] = remote;
+      jobs[index] = normalized;
       writeJobs(jobs, { skipRemote: true });
     }
-    return remote;
+    return normalized;
   }
 
   const fresh = getJob(jobId);
@@ -249,6 +329,7 @@ export async function acceptJob(
 
   return patchJob(jobId, {
     runnerId,
+    runnerEmail,
     runnerName,
     runnerPhone,
     status: "accepted",
@@ -264,26 +345,31 @@ export function listActiveJobs(): MarketplaceJob[] {
 
 export function setJobProofPhoto(jobId: string, runnerId: string, proofPhotoUrl: string): MarketplaceJob | null {
   const job = getJob(jobId);
-  if (!job || job.runnerId !== runnerId) return null;
+  if (!job || (job.runnerId !== runnerId && job.runnerEmail !== runnerId)) return null;
   return patchJob(jobId, { proofPhotoUrl });
 }
 
 export function rateJobAsRunner(jobId: string, runnerId: string, runnerRating: number): MarketplaceJob | null {
   const job = getJob(jobId);
-  if (!job || job.runnerId !== runnerId || job.status !== "completed") return null;
+  if (!job || (job.runnerId !== runnerId && job.runnerEmail !== runnerId) || job.status !== "completed") {
+    return null;
+  }
   return patchJob(jobId, { runnerRating });
 }
 
-export function declineJob(jobId: string, runnerId: string): MarketplaceJob | null {
+/** Runner passes on a pending alert without accepting (job stays available for others). */
+export function declineJob(jobId: string, runnerId: string): void {
   const job = getJob(jobId);
-  if (!job || job.status !== "pending") return null;
-  void runnerId;
-  return job;
+  if (!job || job.status !== "pending") return;
+  const declined = readDeclinedJobIds(runnerId);
+  declined.add(jobId);
+  writeDeclinedJobIds(runnerId, declined);
+  notifyListeners();
 }
 
 export function cancelJob(jobId: string, customerId: string): MarketplaceJob | null {
   const job = getJob(jobId);
-  if (!job || job.customerId !== customerId) return null;
+  if (!job || (job.customerId !== customerId && job.customerEmail !== customerId)) return null;
   if (job.status !== "pending" && job.status !== "accepted") return null;
   return patchJob(jobId, { status: "cancelled" });
 }
@@ -298,7 +384,7 @@ const RUNNER_STATUS_FLOW: MarketplaceJobStatus[] = [
 
 export function advanceRunnerJobStatus(jobId: string, runnerId: string): MarketplaceJob | null {
   const job = getJob(jobId);
-  if (!job || job.runnerId !== runnerId) return null;
+  if (!job || (job.runnerId !== runnerId && job.runnerEmail !== runnerId)) return null;
 
   const idx = RUNNER_STATUS_FLOW.indexOf(job.status);
   if (idx === -1 || idx >= RUNNER_STATUS_FLOW.length - 1) return job;
@@ -318,8 +404,12 @@ export function setJobStatus(
   const job = getJob(jobId);
   if (!job) return null;
 
-  if (actor.role === "customer" && job.customerId !== actor.id) return null;
-  if (actor.role === "runner" && job.runnerId !== actor.id) return null;
+  if (actor.role === "customer" && job.customerId !== actor.id && job.customerEmail !== actor.id) {
+    return null;
+  }
+  if (actor.role === "runner" && job.runnerId !== actor.id && job.runnerEmail !== actor.id) {
+    return null;
+  }
 
   return patchJob(jobId, {
     status,
@@ -329,7 +419,7 @@ export function setJobStatus(
 
 export function completeJobWithRating(jobId: string, customerId: string, rating: number): MarketplaceJob | null {
   const job = getJob(jobId);
-  if (!job || job.customerId !== customerId) return null;
+  if (!job || (job.customerId !== customerId && job.customerEmail !== customerId)) return null;
   return patchJob(jobId, {
     status: "completed",
     rating,
@@ -362,6 +452,46 @@ export function jobToTripRequest(job: MarketplaceJob): TripRequest {
 
 export function getCurrentCustomerId(): string | null {
   return getAuthSession()?.email ?? null;
+}
+
+export function getCurrentBusinessId(): string | null {
+  const session = getAuthSession();
+  if (!session || session.activeRole !== "business") return null;
+  return session.email;
+}
+
+export function listJobsForBusiness(businessEmail: string): MarketplaceJob[] {
+  return readJobs()
+    .filter(
+      (j) =>
+        j.businessEmail === businessEmail ||
+        j.businessId === businessEmail ||
+        (j.source === "business" && j.customerEmail === businessEmail),
+    )
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export type BusinessJobCreateResult =
+  | { ok: true; jobs: MarketplaceJob[] }
+  | { ok: false; error: string };
+
+/** Persist business-created jobs locally and to Supabase. */
+export async function insertBusinessJobs(jobs: MarketplaceJob[]): Promise<BusinessJobCreateResult> {
+  if (jobs.length === 0) {
+    return { ok: false, error: "No jobs to create." };
+  }
+
+  const normalized = jobs.map(normalizeJob);
+  writeJobs([...normalized, ...readJobs()], { skipRemote: true });
+
+  for (const job of normalized) {
+    const synced = await syncJobToRemoteAwait(job);
+    if (!synced) {
+      return { ok: false, error: "Could not save jobs to the server. Check your connection and try again." };
+    }
+  }
+
+  return { ok: true, jobs: normalized };
 }
 
 export function getCurrentRunnerId(): string | null {

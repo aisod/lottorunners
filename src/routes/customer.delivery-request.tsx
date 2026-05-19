@@ -1,13 +1,16 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, Box, FileText, HelpCircle, MapPin, Package } from "lucide-react";
+import { ArrowLeft, Box, FileText, HelpCircle, Package } from "lucide-react";
 import { useState } from "react";
+import { AddressRouteField } from "@/components/address-route-field";
 import { CustomerHeaderLogo } from "@/components/customer-header-logo";
 import { CustomerFixedFooter, CustomerPageShell, CustomerStickyHeader } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
 import { goBackOrFallback } from "@/lib/customer-navigation";
-import { routeFromAddresses } from "@/lib/customer-route";
+import type { RouteStop } from "@/lib/geocode-address";
+import { resolveRouteStop } from "@/lib/geocode-address";
 import { validateDeliveryStep } from "@/lib/booking-validation";
 import { useCustomerApp } from "@/lib/customer-store";
+import { notifyUnavailable } from "@/lib/user-feedback";
 
 export const Route = createFileRoute("/customer/delivery-request")({
   component: CustomerDeliveryRequestPage,
@@ -16,30 +19,54 @@ export const Route = createFileRoute("/customer/delivery-request")({
 function CustomerDeliveryRequestPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const { setPickup, setDestination, setSelectedService, setStatus, setScheduleMode, setErrandDescription } =
+  const { setPickup, setDestination, setSelectedService, setStatus, setScheduleMode, setErrandDescription, userLocation } =
     useCustomerApp();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
   const [deliveryType, setDeliveryType] = useState<"instant" | "scheduled">("instant");
   const [pickupAddress, setPickupAddress] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
+  const [pickupStop, setPickupStop] = useState<RouteStop | null>(null);
+  const [destinationStop, setDestinationStop] = useState<RouteStop | null>(null);
   const [packageSize, setPackageSize] = useState<"document" | "small_box" | "medium_box">("document");
   const [instructions, setInstructions] = useState("");
 
-  const submit = () => {
+  const submit = async () => {
     const validation = validateDeliveryStep(pickupAddress, recipientAddress, instructions);
     if (!validation.ok) {
       setErrors(validation.errors);
       return;
     }
+
+    setSubmitting(true);
     setErrors({});
-    setErrandDescription(instructions);
-    const route = routeFromAddresses(pickupAddress, recipientAddress);
-    setPickup(route.pickup);
-    setDestination(route.destination);
-    setSelectedService("delivery");
-    setScheduleMode(deliveryType === "scheduled" ? "later" : "now");
-    setStatus("estimating");
-    navigate({ to: "/customer/review-schedule" });
+
+    try {
+      const pickup = await resolveRouteStop(pickupStop, pickupAddress, userLocation);
+      const destination = await resolveRouteStop(destinationStop, recipientAddress, userLocation);
+
+      const nextErrors: Record<string, string> = {};
+      if (!pickup) {
+        nextErrors.pickup = "Could not find pickup location. Pick a search result or refine the address.";
+      }
+      if (!destination) {
+        nextErrors.dropoff = "Could not find delivery destination. Pick a search result or refine the address.";
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors);
+        return;
+      }
+
+      setErrandDescription(instructions);
+      setPickup(pickup!);
+      setDestination(destination!);
+      setSelectedService("delivery");
+      setScheduleMode(deliveryType === "scheduled" ? "later" : "now");
+      setStatus("estimating");
+      navigate({ to: "/customer/review-schedule" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -58,7 +85,11 @@ function CustomerDeliveryRequestPage() {
             variant="ghost"
             size="icon"
             aria-label="Help"
-            onClick={() => window.alert("Delivery help: enter pickup and drop-off addresses, then continue to review.")}
+            onClick={() =>
+              notifyUnavailable(
+                "Enter pickup and drop-off addresses (search or map), choose package size, then continue to review and confirm your booking.",
+              )
+            }
           >
             <HelpCircle className="h-5 w-5" />
           </Button>
@@ -91,31 +122,35 @@ function CustomerDeliveryRequestPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-foreground">Pickup Address</label>
-            <div className="flex items-center rounded-xl border bg-card">
-              <input
-                value={pickupAddress}
-                onChange={(e) => setPickupAddress(e.target.value)}
-                placeholder="Enter pickup location"
-                className="h-12 w-full rounded-xl bg-transparent px-4 text-sm outline-none"
-              />
-              <MapPin className="mr-4 h-5 w-5 text-primary" />
-            </div>
-          </div>
+          <AddressRouteField
+            label="Pickup Address"
+            value={pickupAddress}
+            onChange={setPickupAddress}
+            stop={pickupStop}
+            onSelectStop={(stop) => {
+              setPickupStop(stop);
+              setPickupAddress(stop.label);
+            }}
+            near={userLocation}
+            field="pickup"
+            placeholder="Enter pickup location"
+            error={errors.pickup}
+          />
 
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-foreground">Recipient Address</label>
-            <div className="flex items-center rounded-xl border bg-card">
-              <input
-                value={recipientAddress}
-                onChange={(e) => setRecipientAddress(e.target.value)}
-                placeholder="Enter delivery destination"
-                className="h-12 w-full rounded-xl bg-transparent px-4 text-sm outline-none"
-              />
-              <MapPin className="mr-4 h-5 w-5 text-primary" />
-            </div>
-          </div>
+          <AddressRouteField
+            label="Recipient Address"
+            value={recipientAddress}
+            onChange={setRecipientAddress}
+            stop={destinationStop}
+            onSelectStop={(stop) => {
+              setDestinationStop(stop);
+              setRecipientAddress(stop.label);
+            }}
+            near={userLocation}
+            field="destination"
+            placeholder="Enter delivery destination"
+            error={errors.dropoff}
+          />
         </section>
 
         <section className="space-y-3">
@@ -150,15 +185,16 @@ function CustomerDeliveryRequestPage() {
             placeholder="Gate code, floor number, or specific delivery handling instructions..."
             className="min-h-24 w-full rounded-xl border bg-card p-4 text-sm outline-none"
           />
+          {errors.parcel ? <p className="text-sm text-destructive">{errors.parcel}</p> : null}
         </section>
       </main>
 
       <CustomerFixedFooter width="md">
-        {Object.keys(errors).length > 0 ? (
+        {Object.keys(errors).length > 0 && !errors.pickup && !errors.dropoff && !errors.parcel ? (
           <p className="mb-2 text-sm text-destructive">{Object.values(errors)[0]}</p>
         ) : null}
-        <Button className="h-12 w-full text-base font-bold" onClick={submit}>
-          Estimate Delivery
+        <Button className="h-12 w-full text-base font-bold" onClick={submit} disabled={submitting}>
+          {submitting ? "Locating addresses…" : "Estimate Delivery"}
         </Button>
         <p className="mt-3 text-center text-xs text-muted-foreground">Transparent pricing. No hidden fees.</p>
       </CustomerFixedFooter>

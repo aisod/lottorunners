@@ -66,6 +66,7 @@ export async function acceptJobRemote(
   const updated: MarketplaceJob = {
     ...current,
     runnerId,
+    runnerEmail: runnerId,
     runnerName,
     runnerPhone,
     status: "accepted",

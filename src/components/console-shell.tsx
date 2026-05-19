@@ -22,6 +22,7 @@ import { useState, type ReactNode } from "react";
 import { RoleSwitcher } from "@/components/role-switcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 type NavItem = {
   to: string;
@@ -197,13 +198,37 @@ function AdminChrome({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" aria-label="Notifications">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Notifications"
+              disabled
+              title={UNAVAILABLE.adminNotifications}
+              onClick={() => notifyUnavailable(UNAVAILABLE.adminNotifications)}
+            >
               <Bell className="h-5 w-5 text-muted-foreground" />
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Help">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Help"
+              disabled
+              title={UNAVAILABLE.adminHelp}
+              onClick={() => notifyUnavailable(UNAVAILABLE.adminHelp)}
+            >
               <CircleHelp className="h-5 w-5 text-muted-foreground" />
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Account">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Account"
+              disabled
+              title={UNAVAILABLE.adminAccount}
+              onClick={() => notifyUnavailable(UNAVAILABLE.adminAccount)}
+            >
               <UserRound className="h-5 w-5 text-muted-foreground" />
             </Button>
           </div>

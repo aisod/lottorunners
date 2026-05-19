@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { BriefcaseBusiness, Car, Clock3, Truck, Venus, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
+import { AddressSearchInput } from "@/components/address-search-input";
 import { CustomerFixedFooter, CustomerPageShell } from "@/components/customer-page-shell";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
 import { goBackOrFallback } from "@/lib/customer-navigation";
 import { formatWalletBalance } from "@/lib/customer-wallet";
+import type { RouteStop } from "@/lib/geocode-address";
+import { isValidRouteStop, resolveRouteStop } from "@/lib/geocode-address";
 import { useCustomerApp } from "@/lib/customer-store";
 
 const RIDE_OPTIONS = [
@@ -22,13 +25,65 @@ export const Route = createFileRoute("/customer/choose-service")({
 function CustomerChooseServicePage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const { setStatus, setSelectedService, setRideSubType, ensureRoute, restoreHomeUi } = useCustomerApp();
+  const {
+    setStatus,
+    setSelectedService,
+    setRideSubType,
+    setPickup,
+    setDestination,
+    pickup,
+    destination,
+    userLocation,
+    restoreHomeUi,
+  } = useCustomerApp();
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [selectedOption, setSelectedOption] = useState<(typeof RIDE_OPTIONS)[number]["id"]>("standard");
+  const [pickupDraft, setPickupDraft] = useState<RouteStop | null>(pickup);
+  const [destinationDraft, setDestinationDraft] = useState<RouteStop | null>(destination);
 
   const selectedFare = useMemo(() => {
     return RIDE_OPTIONS.find((option) => option.id === selectedOption)?.price ?? 45;
   }, [selectedOption]);
+
+  const pickupLabel = pickupDraft?.label ?? pickup?.label ?? "Set pickup location";
+  const destinationLabel = destinationDraft?.label ?? destination?.label ?? "Set destination location";
+
+  const confirm = async () => {
+    setFormError(null);
+    if (!selectedOption) {
+      setFormError("Select a ride type.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const resolvedPickup = await resolveRouteStop(pickupDraft ?? pickup, pickupLabel, userLocation);
+      const resolvedDestination = await resolveRouteStop(
+        destinationDraft ?? destination,
+        destinationLabel,
+        userLocation,
+      );
+
+      if (!isValidRouteStop(resolvedPickup)) {
+        setFormError("Set a pickup location using search or the home map.");
+        return;
+      }
+      if (!isValidRouteStop(resolvedDestination)) {
+        setFormError("Set a destination using search or the home map.");
+        return;
+      }
+
+      setPickup(resolvedPickup!);
+      setDestination(resolvedDestination!);
+      setRideSubType(selectedOption);
+      setSelectedService("ride");
+      setStatus("estimating");
+      navigate({ to: "/customer/review-schedule" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <CustomerPageShell width="md" variant="plain" className="pb-36">
@@ -46,10 +101,22 @@ function CustomerChooseServicePage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_35%,oklch(0.9_0.05_250),transparent_40%),radial-gradient(circle_at_75%_70%,oklch(0.8_0.06_200),transparent_45%)]" />
           <div className="absolute inset-x-4 bottom-4 rounded-xl border bg-card/95 p-4 shadow">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Pickup</p>
-            <p className="font-semibold">Independence Ave, Windhoek</p>
+            <p className="font-semibold">{pickupLabel}</p>
+            <AddressSearchInput
+              near={userLocation}
+              field="pickup"
+              className="mt-2"
+              onPick={(r) => setPickupDraft({ label: r.shortLabel, coord: r.coord })}
+            />
             <div className="my-2 h-px bg-border" />
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Destination</p>
-            <p className="font-semibold">Maerua Mall Entrance</p>
+            <p className="font-semibold">{destinationLabel}</p>
+            <AddressSearchInput
+              near={userLocation}
+              field="destination"
+              className="mt-2"
+              onPick={(r) => setDestinationDraft({ label: r.shortLabel, coord: r.coord })}
+            />
           </div>
         </div>
       </section>
@@ -104,22 +171,8 @@ function CustomerChooseServicePage() {
             </div>
             <span className="text-sm text-muted-foreground">Estimated total: N$ {selectedFare.toFixed(2)}</span>
           </div>
-          <Button
-            className="h-12 text-base"
-            onClick={() => {
-              setFormError(null);
-              if (!selectedOption) {
-                setFormError("Select a ride type.");
-                return;
-              }
-              setRideSubType(selectedOption);
-              setSelectedService("ride");
-              ensureRoute();
-              setStatus("estimating");
-              navigate({ to: "/customer/review-schedule" });
-            }}
-          >
-            Confirm Selection
+          <Button className="h-12 text-base" onClick={confirm} disabled={submitting}>
+            {submitting ? "Confirming locations…" : "Confirm Selection"}
             <Clock3 className="ml-2 h-4 w-4" />
           </Button>
         </div>

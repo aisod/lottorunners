@@ -50,7 +50,6 @@ function CustomerReviewSchedulePage() {
     selectedService,
     errandCategory,
     setStatus,
-    ensureRoute,
     truckSizeId,
     truckLabour,
     truckExtraHelpers,
@@ -69,10 +68,7 @@ function CustomerReviewSchedulePage() {
   );
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    ensureRoute();
-  }, [ensureRoute]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (scheduleMode === "later" && !selectedDate) {
@@ -152,10 +148,11 @@ function CustomerReviewSchedulePage() {
   }, [scheduleMode, scheduledDateTime, setScheduledAt]);
 
   const confirmDisabled =
-    scheduleMode === "later" &&
-    (!selectedDate || !selectedTime || !scheduledDateTime || scheduledDateTime.getTime() <= Date.now());
+    submitting ||
+    (scheduleMode === "later" &&
+      (!selectedDate || !selectedTime || !scheduledDateTime || scheduledDateTime.getTime() <= Date.now()));
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (scheduleMode === "later") {
       if (!scheduledDateTime) {
         setScheduleError("Select a date and time.");
@@ -189,10 +186,19 @@ function CustomerReviewSchedulePage() {
       return;
     }
 
-    const job = createJobFromCustomerBooking(store, customerId);
-    setActiveJobId(job.id);
-    setStatus("searching");
-    navigate({ to: "/customer/matching-runner" });
+    setSubmitting(true);
+    try {
+      const result = await createJobFromCustomerBooking(store, customerId);
+      if (!result.job) {
+        setFormErrors({ submit: result.error ?? "Could not create your request. Try again." });
+        return;
+      }
+      setActiveJobId(result.job.id);
+      setStatus("searching");
+      navigate({ to: "/customer/matching-runner" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -341,8 +347,11 @@ function CustomerReviewSchedulePage() {
             <p className="text-xs text-muted-foreground">Total fare</p>
             <p className="text-base font-semibold text-primary">N$ {total.toFixed(2)}</p>
           </div>
+          {formErrors.submit ? (
+            <p className="mb-2 w-full text-sm text-destructive">{formErrors.submit}</p>
+          ) : null}
           <Button className="h-12 flex-1 text-base" disabled={confirmDisabled} onClick={handleConfirm}>
-            Confirm & Request Runner
+            {submitting ? "Posting request…" : "Confirm & Request Runner"}
           </Button>
         </div>
       </CustomerFixedFooter>

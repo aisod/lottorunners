@@ -8,6 +8,7 @@ import logo from "@/assets/lotto-runners-logo.png";
 import { getAuthSession } from "@/lib/auth-session";
 import { getUserDisplayName, getUserPhone, updateUserPhone } from "@/lib/auth-users";
 import { formatPhoneDisplay } from "@/lib/phone-utils";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 export const Route = createFileRoute("/profile")({
   beforeLoad: () => {
@@ -119,7 +120,12 @@ export function CustomerProfilePage() {
         <ul className="space-y-2">
           <Row label="Phone number" onPress={startPhoneEdit} />
           <Row label="Email" value={sessionEmail || "Not signed in"} />
-          <Row label="Privacy & security" onPress={() => window.alert("Privacy settings are coming soon.")} />
+          <Row
+            label="Privacy & security"
+            disabled
+            title={UNAVAILABLE.privacySettings}
+            onPress={() => notifyUnavailable(UNAVAILABLE.privacySettings)}
+          />
           <li>
             <Link
               to="/customer/subscription-packages"
@@ -195,11 +201,15 @@ function Row({
   value,
   destructive,
   onPress,
+  disabled,
+  title,
 }: {
   label: string;
   value?: string;
   destructive?: boolean;
   onPress?: () => void;
+  disabled?: boolean;
+  title?: string;
 }) {
   if (value) {
     return (
@@ -215,7 +225,9 @@ function Row({
       <button
         type="button"
         onClick={onPress}
-        className={`flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left ${destructive ? "text-destructive" : ""}`}
+        disabled={disabled}
+        title={title}
+        className={`flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left disabled:cursor-not-allowed disabled:opacity-60 ${destructive ? "text-destructive" : ""}`}
       >
       <span className="font-semibold">{label}</span>
       <svg

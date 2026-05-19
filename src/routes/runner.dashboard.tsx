@@ -5,7 +5,7 @@ import { LiveMapClient } from "@/components/live-map-client";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { Button } from "@/components/ui/button";
 import { getCurrentRunnerId, getRunnerActiveJob, listJobsForRunner } from "@/lib/jobs-service";
-import { usePendingJobs } from "@/lib/use-marketplace-job";
+import { useRunnerAvailableJobs } from "@/lib/use-marketplace-job";
 import {
   getRunnerBankDetails,
   getRunnerOnline,
@@ -13,11 +13,13 @@ import {
   setRunnerOnline,
 } from "@/lib/runner-workflow";
 import { SERVICES } from "@/lib/services";
-import { approveRunnerAccount, getRunnerOnboardingStatus } from "@/lib/runner-account";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getRunnerOnboardingStatus } from "@/lib/runner-account";
 import { setStoredRunnerStage } from "@/lib/store";
+import { requestCurrentPosition } from "@/lib/geolocation-utils";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { useSimulatedRunners } from "@/lib/use-simulated-runners";
+import type { Runner } from "@/lib/types";
 
 export const Route = createFileRoute("/runner/dashboard")({
   component: RunnerDashboardPage,
@@ -25,12 +27,15 @@ export const Route = createFileRoute("/runner/dashboard")({
 
 function RunnerDashboardPage() {
   const navigate = useNavigate();
-  const geo = useGeolocation();
+  const [online, setOnlineState] = useState(() => getRunnerOnline());
+  const geo = useGeolocation({ fallbackOnError: false, watch: online });
+  const [locationGateError, setLocationGateError] = useState<string | null>(null);
   const [runnerStatus, setRunnerStatus] = useState(getRunnerOnboardingStatus);
   const canReceiveJobs = runnerStatus === "approved";
-  const [online, setOnlineState] = useState(() => getRunnerOnline());
+  const isPending = runnerStatus === "pending_verification";
+  const isRejected = runnerStatus === "rejected";
 
-  const pendingJobs = usePendingJobs();
+  const pendingJobs = useRunnerAvailableJobs();
   const nextJob = pendingJobs[0] ?? null;
   const runnerId = getCurrentRunnerId();
   const activeJob = runnerId ? getRunnerActiveJob(runnerId) : null;
@@ -40,7 +45,15 @@ function RunnerDashboardPage() {
         .slice(0, 3)
     : [];
 
-  const setOnline = (next: boolean) => {
+  const setOnline = async (next: boolean) => {
+    setLocationGateError(null);
+    if (next) {
+      const permission = await requestCurrentPosition();
+      if (!permission.ok) {
+        setLocationGateError(permission.error);
+        return;
+      }
+    }
     setOnlineState(next);
     setRunnerOnline(next);
     if (next && canReceiveJobs && nextJob) {
@@ -48,12 +61,21 @@ function RunnerDashboardPage() {
     }
   };
 
-  const handleDemoApprove = () => {
-    approveRunnerAccount();
-    setRunnerStatus("approved");
-  };
   const userLocation = geo.location;
   const runners = useSimulatedRunners(userLocation);
+  const selfMarker: Runner | null =
+    userLocation && runnerId
+      ? {
+          id: runnerId,
+          name: "You",
+          vehicle: "delivery",
+          rating: 5,
+          plate: "",
+          position: userLocation,
+          heading: 0,
+        }
+      : null;
+  const mapRunners = selfMarker ? [selfMarker, ...runners] : runners;
   const payoutDetails = getRunnerBankDetails();
 
   useEffect(() => {
@@ -73,15 +95,42 @@ function RunnerDashboardPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-5 pb-28 pt-20">
-        {runnerStatus === "pending_verification" ? (
+        {isPending ? (
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
             <div className="flex gap-3">
               <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-              <VerificationPendingBanner
-                navigate={navigate}
-                onDemoApprove={handleDemoApprove}
-                showDemoApprove={!isSupabaseConfigured()}
-              />
+              <VerificationPendingBanner navigate={navigate} />
+            </div>
+          </section>
+        ) : null}
+
+        {locationGateError || geo.error ? (
+          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            {locationGateError ?? geo.error}
+            {isSupabaseConfigured() ? null : (
+              <p className="mt-2 text-xs opacity-80">Live GPS sharing requires Lovable Cloud / Supabase.</p>
+            )}
+          </section>
+        ) : null}
+
+        {isRejected ? (
+          <section className="rounded-3xl border border-destructive/30 bg-destructive/5 p-5 shadow-sm">
+            <div className="flex gap-3">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+              <div>
+                <h2 className="text-lg font-bold text-destructive">Application not approved</h2>
+                <p className="mt-1 text-sm text-destructive/90">
+                  Your runner profile was rejected. You cannot go online or accept jobs. Contact runner support if you
+                  need help or want to reapply.
+                </p>
+                <Button
+                  variant="link"
+                  className="mt-2 h-auto p-0 text-destructive"
+                  onClick={() => navigate({ to: "/runner/onboarding/verification" })}
+                >
+                  View verification status
+                </Button>
+              </div>
             </div>
           </section>
         ) : null}
@@ -181,7 +230,7 @@ function RunnerDashboardPage() {
             <div className="relative h-80">
               <LiveMapClient
                 userLocation={userLocation}
-                runners={runners}
+                runners={mapRunners}
                 pickup={null}
                 destination={null}
                 activeRunner={null}
@@ -222,21 +271,23 @@ function RunnerDashboardPage() {
               <WorkflowRow label="Completion" value="Upload proof if needed, complete the task, and rate the customer." />
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Button asChild variant="outline">
-                <Link
-                  to="/runner/incoming-job-alert"
-                  search={nextJob ? { jobId: nextJob.id } : {}}
-                >
-                  Open job alert
-                </Link>
+              <Button
+                variant="outline"
+                disabled={!canReceiveJobs || !online || !nextJob}
+                onClick={() =>
+                  nextJob && navigate({ to: "/runner/incoming-job-alert", search: { jobId: nextJob.id } })
+                }
+              >
+                Open job alert
               </Button>
-              <Button asChild disabled={!activeJob}>
-                <Link
-                  to="/runner/active-job"
-                  search={activeJob ? { jobId: activeJob.id } : {}}
-                >
-                  Open active job
-                </Link>
+              <Button
+                variant="outline"
+                disabled={!canReceiveJobs || !activeJob}
+                onClick={() =>
+                  activeJob && navigate({ to: "/runner/active-job", search: { jobId: activeJob.id } })
+                }
+              >
+                Open active job
               </Button>
             </div>
           </section>
@@ -333,48 +384,19 @@ function ActivityRow({ icon, title, time, amount }: { icon: ReactNode; title: st
   );
 }
 
-function VerificationPendingBanner({
-  navigate,
-  onDemoApprove,
-  showDemoApprove,
-}: {
-  navigate: ReturnType<typeof useNavigate>;
-  onDemoApprove: () => void;
-  showDemoApprove: boolean;
-}) {
+function VerificationPendingBanner({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   return (
     <div>
       <h2 className="text-lg font-bold text-amber-950">Verification in progress</h2>
       <p className="mt-1 text-sm text-amber-900/80">
-        Your profile is under review. You can check your status here anytime. Going online and accepting jobs will unlock once you are approved.
+        Your profile is under review. You can check your status here anytime. Going online and accepting jobs will unlock
+        once you are approved.
       </p>
-      <VerificationBannerActions navigate={navigate} onDemoApprove={onDemoApprove} showDemoApprove={showDemoApprove} />
-    </div>
-  );
-}
-
-function VerificationBannerActions({
-  navigate,
-  onDemoApprove,
-  showDemoApprove,
-}: {
-  navigate: ReturnType<typeof useNavigate>;
-  onDemoApprove: () => void;
-  showDemoApprove: boolean;
-}) {
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      {showDemoApprove ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
-          onClick={onDemoApprove}
-        >
-          Demo Approve Runner
-        </Button>
-      ) : null}
-      <Button variant="link" className="h-auto p-0 text-amber-950" onClick={() => navigate({ to: "/runner/onboarding/verification" })}>
+      <Button
+        variant="link"
+        className="mt-3 h-auto p-0 text-amber-950"
+        onClick={() => navigate({ to: "/runner/onboarding/verification" })}
+      >
         View verification details
       </Button>
     </div>

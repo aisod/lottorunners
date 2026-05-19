@@ -42,8 +42,15 @@ function RunnerEarningsPage() {
           </Button>
           <h1 className="text-lg font-bold text-primary">Runner Earnings</h1>
         </div>
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5 text-primary" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          disabled
+          aria-label="Notifications"
+          title="Notifications are not available yet"
+        >
+          <Bell className="h-5 w-5 text-primary opacity-50" />
         </Button>
       </header>
 

@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { AddressSearchInput } from "@/components/address-search-input";
 import { CustomerFixedFooter, CustomerPageShell } from "@/components/customer-page-shell";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,9 @@ function CustomerMovingDetailsPage() {
     setTruckExtraHelpers,
     pickup,
     destination,
-    ensureRoute,
+    setPickup,
+    setDestination,
+    userLocation,
     setStatus,
     setSelectedService,
     setScheduleMode,
@@ -48,10 +51,6 @@ function CustomerMovingDetailsPage() {
     }
     setErrors({});
     setSelectedService("truck");
-    ensureRoute({
-      pickup: "Heavy cargo pickup — Windhoek",
-      destination: "Drop-off — residential / commercial",
-    });
     setScheduleMode(timing === "schedule" ? "later" : "now");
     setStatus("estimating");
     navigate({ to: "/customer/review-schedule" });
@@ -86,6 +85,16 @@ function CustomerMovingDetailsPage() {
                 <p className="font-semibold">{destination?.label ?? "Use home map or confirm on review"}</p>
               </div>
             </div>
+            <AddressSearchInput
+              near={userLocation}
+              field="pickup"
+              onPick={(r) => setPickup({ label: r.shortLabel, coord: r.coord })}
+            />
+            <AddressSearchInput
+              near={userLocation}
+              field="destination"
+              onPick={(r) => setDestination({ label: r.shortLabel, coord: r.coord })}
+            />
           </div>
         </section>
 

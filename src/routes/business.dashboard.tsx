@@ -1,46 +1,179 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { TrendingUp, Truck, Users } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus, TrendingUp, Truck, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
+import { Button } from "@/components/ui/button";
+import { businessJobActivityTitle } from "@/lib/business-jobs";
+import { useBusinessJobs } from "@/lib/use-business-jobs";
+import { jobStatusLabel } from "@/lib/jobs-service";
+import {
+  formatLocationFreshness,
+  isLocationFresh,
+  subscribeRunnerLocation,
+} from "@/lib/runner-location-service";
+import type { MarketplaceJob, MarketplaceJobStatus } from "@/lib/jobs-types";
 
 export const Route = createFileRoute("/business/dashboard")({
   component: BusinessDashboardPage,
 });
 
 function BusinessDashboardPage() {
+  const jobs = useBusinessJobs();
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const thisMonth = jobs.filter((j) => j.createdAt >= monthStart);
+    const active = jobs.filter(
+      (j) => j.status !== "completed" && j.status !== "cancelled" && j.status !== "declined",
+    );
+    const spend = thisMonth.reduce((sum, j) => sum + j.estimatedFare, 0);
+    return {
+      monthlySpend: spend,
+      activeCount: active.length,
+      totalJobs: jobs.length,
+    };
+  }, [jobs]);
+
+  const recentJobs = jobs.slice(0, 12);
+
   return (
     <div className="space-y-6">
       <PortalPageIntro
         eyebrow="Corporate operations"
         title="Business dashboard"
-        description="Welcome back. Here is your corporate activity overview for October."
+        description="Live view of your dispatched marketplace jobs and batches."
+        action={
+          <Button asChild className="gap-2">
+            <Link to="/business/bulk-request">
+              <Plus className="h-4 w-4" />
+              New dispatch
+            </Link>
+          </Button>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <PortalStatTile icon={TrendingUp} label="Monthly spend" value="N$ 124,500" meta="12% vs last month" />
-        <PortalStatTile icon={Truck} label="Active errands" value="42" meta="8 arriving today" />
-        <PortalStatTile icon={Users} label="Authorized employees" value="158" meta="Active on portal" />
+        <PortalStatTile
+          icon={TrendingUp}
+          label="Monthly spend (est.)"
+          value={`N$ ${stats.monthlySpend.toLocaleString()}`}
+          meta={`${jobs.filter((j) => j.createdAt >= new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()).length} jobs this month`}
+        />
+        <PortalStatTile
+          icon={Truck}
+          label="Active jobs"
+          value={String(stats.activeCount)}
+          meta={stats.activeCount === 0 ? "No open dispatches" : "Awaiting or in progress"}
+        />
+        <PortalStatTile
+          icon={Users}
+          label="Total dispatches"
+          value={String(stats.totalJobs)}
+          meta="All time on this account"
+        />
       </div>
 
-      <PortalSection title="Active corporate errands" description="Current batches and scheduled business requests.">
-        <div className="space-y-3">
-          <ActivityRow title="Documents delivery · HQ to Branch A" meta="Requested by John Doe · 14:30 today" tag="In transit" amount="N$ 120" />
-          <ActivityRow title="Bulk stationery pickup" meta="Requested by Sarah Smith · 12:15 today" tag="Assigned" amount="N$ 350" />
-          <ActivityRow title="Client airport transfer" meta="Requested by Admin · 16:00 scheduled" tag="Scheduled" amount="N$ 450" />
-        </div>
+      <PortalSection
+        title="Corporate dispatches"
+        description="Jobs posted to the shared marketplace — runners see pending requests like customer bookings."
+      >
+        {recentJobs.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-4 py-8 text-center">
+            <p className="text-sm text-muted-foreground">No business jobs yet.</p>
+            <Button asChild className="mt-4">
+              <Link to="/business/bulk-request">Create your first bulk dispatch</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentJobs.map((job) => (
+              <BusinessDispatchRow key={job.id} job={job} />
+            ))}
+          </div>
+        )}
       </PortalSection>
     </div>
   );
+}
+
+function BusinessDispatchRow({ job }: { job: MarketplaceJob }) {
+  const runnerEmail = job.runnerEmail ?? job.runnerId ?? null;
+  const showLiveGps =
+    Boolean(runnerEmail) &&
+    job.status !== "pending" &&
+    job.status !== "cancelled" &&
+    job.status !== "declined" &&
+    job.status !== "completed";
+  const [gpsMeta, setGpsMeta] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showLiveGps || !runnerEmail) {
+      setGpsMeta(null);
+      return;
+    }
+
+    return subscribeRunnerLocation(runnerEmail, (loc) => {
+      if (!loc) {
+        setGpsMeta("Runner GPS: waiting for signal");
+        return;
+      }
+      setGpsMeta(
+        isLocationFresh(loc.updatedAt)
+          ? `Runner GPS: ${formatLocationFreshness(loc.updatedAt)}`
+          : "Runner GPS: signal stale",
+      );
+    });
+  }, [runnerEmail, showLiveGps]);
+
+  const meta = [buildJobMeta(job), gpsMeta].filter(Boolean).join(" · ");
+
+  return (
+    <ActivityRow
+      title={businessJobActivityTitle(job)}
+      meta={meta}
+      tag={jobStatusLabel(job.status)}
+      tone={statusTone(job.status)}
+      amount={`N$ ${job.estimatedFare.toFixed(2)}`}
+    />
+  );
+}
+
+function buildJobMeta(job: {
+  batchName?: string;
+  runnerName?: string;
+  createdAt: number;
+  dropoffAddress: string;
+}): string {
+  const time = new Date(job.createdAt).toLocaleString([], {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const runner = job.runnerName ? `Runner: ${job.runnerName}` : "Awaiting runner";
+  const batch = job.batchName ? `${job.batchName} · ` : "";
+  return `${batch}${runner} · ${time}`;
+}
+
+function statusTone(status: MarketplaceJobStatus): "neutral" | "primary" | "warning" | "danger" {
+  if (status === "pending") return "neutral";
+  if (status === "completed") return "primary";
+  if (status === "cancelled" || status === "declined") return "danger";
+  return "warning";
 }
 
 function ActivityRow({
   title,
   meta,
   tag,
+  tone,
   amount,
 }: {
   title: string;
   meta: string;
   tag: string;
+  tone: "neutral" | "primary" | "warning" | "danger";
   amount: string;
 }) {
   return (
@@ -53,7 +186,7 @@ function ActivityRow({
         <p className="text-sm text-muted-foreground">{meta}</p>
       </div>
       <div className="text-right">
-        <StatusPill tone={tag === "In transit" ? "warning" : tag === "Assigned" ? "primary" : "neutral"}>{tag}</StatusPill>
+        <StatusPill tone={tone}>{tag}</StatusPill>
         <p className="mt-2 text-sm font-semibold">{amount}</p>
       </div>
     </div>

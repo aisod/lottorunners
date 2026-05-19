@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
 
 export const Route = createFileRoute("/admin/settings")({
@@ -53,7 +54,14 @@ function AdminSettingsPage() {
           <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/80">Audit exports</p>
             <p className="mt-2 text-lg font-bold">24h security digest available</p>
-            <Button variant="secondary" type="button" className="mt-4">
+            <Button
+              variant="secondary"
+              type="button"
+              className="mt-4"
+              disabled
+              title={UNAVAILABLE.adminDigest}
+              onClick={() => notifyUnavailable(UNAVAILABLE.adminDigest)}
+            >
               Download digest
             </Button>
           </div>

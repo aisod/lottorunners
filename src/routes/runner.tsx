@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { RunnerLocationSync } from "@/components/runner-location-sync";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
 import {
@@ -63,11 +64,18 @@ export const Route = createFileRoute("/runner")({
     }
 
     if (
+      (status === "pending_verification" || status === "rejected") &&
+      RUNNER_CONSOLE_PATHS.has(path)
+    ) {
+      throw redirect({ to: "/runner/onboarding/verification" });
+    }
+
+    if (
+      (status === "pending_verification" || status === "rejected") &&
       RUNNER_ONBOARDING_PATHS.has(path) &&
-      status === "pending_verification" &&
       path !== "/runner/onboarding/verification"
     ) {
-      throw redirect({ to: "/runner/dashboard" });
+      throw redirect({ to: "/runner/onboarding/verification" });
     }
 
     if (RUNNER_CONSOLE_PATHS.has(path) && !hasRunnerConsoleAccess()) {
@@ -78,5 +86,10 @@ export const Route = createFileRoute("/runner")({
 });
 
 function RunnerLayout() {
-  return <Outlet />;
+  return (
+    <>
+      <RunnerLocationSync />
+      <Outlet />
+    </>
+  );
 }

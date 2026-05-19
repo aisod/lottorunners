@@ -1,9 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, MapPin, PackageCheck, Plus, Trash2, Truck, Upload } from "lucide-react";
 import { useState } from "react";
+import { AddressSearchInput } from "@/components/address-search-input";
 import { Button } from "@/components/ui/button";
 import { BusinessRequestStepper, PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
 import { saveBusinessBulkDraft } from "@/lib/business-bulk-draft";
+import { SERVICES } from "@/lib/services";
+import type { ServiceType } from "@/lib/types";
 
 export const Route = createFileRoute("/business/bulk-request")({
   component: BusinessBulkRequestPage,
@@ -14,9 +17,11 @@ type StopRow = { id: string; address: string; notes: string };
 function BusinessBulkRequestPage() {
   const navigate = useNavigate();
   const [batchName, setBatchName] = useState("Weekly pharmacy circuit");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [serviceType, setServiceType] = useState<ServiceType>("delivery");
+  const [formError, setFormError] = useState<string | null>(null);
   const [stops, setStops] = useState<StopRow[]>([
-    { id: "1", address: "123 Independence Ave, Windhoek", notes: "Reception" },
-    { id: "2", address: "Katatura Health Centre", notes: "Lab samples" },
+    { id: "1", address: "", notes: "" },
   ]);
 
   const addStop = () => {
@@ -32,25 +37,40 @@ function BusinessBulkRequestPage() {
   };
 
   const continueToReview = () => {
+    setFormError(null);
+    const trimmedPickup = pickupAddress.trim();
+    const validStops = stops.filter((s) => s.address.trim().length >= 3);
+
+    if (!trimmedPickup) {
+      setFormError("Enter a pickup / dispatch origin address.");
+      return;
+    }
+    if (validStops.length === 0) {
+      setFormError("Add at least one stop with a full address (3+ characters).");
+      return;
+    }
+
     saveBusinessBulkDraft({
-      batchName,
-      stops: stops.map((s) => ({
-        address: (s.address ?? "").trim() || "Address TBD",
-        notes: (s.notes ?? "").trim(),
+      batchName: batchName.trim() || "Business batch",
+      pickupAddress: trimmedPickup,
+      serviceType,
+      stops: validStops.map((s) => ({
+        address: s.address.trim(),
+        notes: s.notes.trim(),
       })),
     });
 
-    navigate({
-      to: "/business/bulk-review",
-    });
+    navigate({ to: "/business/bulk-review" });
   };
+
+  const estimatedTotal = stops.filter((s) => s.address.trim()).length * SERVICES[serviceType].baseFare;
 
   return (
     <div className="space-y-6">
       <PortalPageIntro
         eyebrow="Bulk logistics"
         title="Bulk request"
-        description="Choose the service, enter stops, and prepare the batch for dispatch."
+        description="Choose the service, set your pickup origin, enter stops, and prepare the batch for dispatch."
       />
 
       <BusinessRequestStepper current="bulk-request" />
@@ -59,10 +79,44 @@ function BusinessBulkRequestPage() {
         <div className="space-y-6">
           <PortalSection title="Choose service type" description="Select the primary logistical task for this batch.">
             <div className="grid gap-3 md:grid-cols-3">
-              <ServiceTile title="Errand" description="Personal tasks and utility runs." active />
-              <ServiceTile title="Delivery" description="Courier services for parcels and documents." />
-              <ServiceTile title="Truck" description="Freight and heavy item transport." icon={<Truck className="h-7 w-7" />} />
+              <ServiceTile
+                title="Errand"
+                description="Personal tasks and utility runs."
+                active={serviceType === "errand"}
+                onClick={() => setServiceType("errand")}
+              />
+              <ServiceTile
+                title="Delivery"
+                description="Courier services for parcels and documents."
+                active={serviceType === "delivery"}
+                onClick={() => setServiceType("delivery")}
+              />
+              <ServiceTile
+                title="Truck"
+                description="Freight and heavy item transport."
+                active={serviceType === "truck"}
+                onClick={() => setServiceType("truck")}
+                icon={<Truck className="h-7 w-7" />}
+              />
             </div>
+          </PortalSection>
+
+          <PortalSection
+            title="Pickup origin"
+            description="Where runners collect items before each drop-off stop."
+          >
+            <input
+              value={pickupAddress}
+              onChange={(e) => setPickupAddress(e.target.value)}
+              placeholder="e.g. 123 Independence Ave, Windhoek"
+              className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2"
+            />
+            <AddressSearchInput
+              near={null}
+              field="pickup"
+              className="mt-2"
+              onPick={(r) => setPickupAddress(r.shortLabel)}
+            />
           </PortalSection>
 
           <PortalSection
@@ -82,7 +136,7 @@ function BusinessBulkRequestPage() {
             </p>
           </PortalSection>
 
-          <PortalSection title="Stops builder" description="Create the route in the order the runner should complete it.">
+          <PortalSection title="Stops builder" description="Create drop-off stops in the order runners should complete them.">
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="batch-name">
@@ -143,42 +197,53 @@ function BusinessBulkRequestPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assign to team</label>
-                <select className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2">
-                  <option>Logistics Alpha · Windhoek Central</option>
-                  <option>Relief Team B</option>
-                  <option>Standard Courier Pool</option>
+                <select
+                  disabled
+                  title="Team assignment is not available yet"
+                  className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-border bg-muted/50 px-4 text-sm text-muted-foreground"
+                >
+                  <option>Coming soon</option>
                 </select>
               </div>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Service speed</label>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button type="button" className="rounded-xl border border-primary bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
+                  <button
+                    type="button"
+                    disabled
+                    title="Express scheduling is not available yet"
+                    className="cursor-not-allowed rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground opacity-60"
+                  >
                     Standard
                   </button>
-                  <button type="button" className="rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground">
+                  <button
+                    type="button"
+                    disabled
+                    title="Express scheduling is not available yet"
+                    className="cursor-not-allowed rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground opacity-60"
+                  >
                     Express
                   </button>
                 </div>
               </div>
-              <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/20 px-4 py-3 text-sm">
-                <input type="checkbox" className="h-4 w-4 accent-primary" />
-                Schedule recurring request
+              <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/20 px-4 py-3 text-sm opacity-60">
+                <input type="checkbox" disabled className="h-4 w-4 accent-primary" title="Recurring requests are not available yet" />
+                Schedule recurring request (coming soon)
               </label>
             </div>
           </PortalSection>
 
           <PortalSection title="Request summary" description="A quick read before import and review.">
             <div className="space-y-3">
-              <SummaryRow label="Stops entered" value={String(stops.length)} />
-              <SummaryRow label="Est. fleet weight" value="-- kg" />
-              <SummaryRow label="Selected team" value="Logistics Alpha" />
-              <SummaryRow label="Recurring" value="Off" />
+              <SummaryRow label="Stops entered" value={String(stops.filter((s) => s.address.trim()).length)} />
+              <SummaryRow label="Service" value={SERVICES[serviceType].label} />
+              <SummaryRow label="Pickup set" value={pickupAddress.trim() ? "Yes" : "No"} />
               <div className="border-t border-dashed border-border pt-4">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold">Estimated cost</p>
-                  <p className="text-2xl font-black text-primary">N$ 0.00</p>
+                  <p className="text-2xl font-black text-primary">N$ {estimatedTotal.toFixed(2)}</p>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">Pricing updates after address validation.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Final fare per stop is calculated at dispatch from distance.</p>
               </div>
             </div>
           </PortalSection>
@@ -186,12 +251,16 @@ function BusinessBulkRequestPage() {
           <div className="rounded-2xl border border-border bg-primary/90 p-5 text-primary-foreground shadow-sm">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <CalendarDays className="h-4 w-4" />
-              Efficient Namibia-wide coverage
+              Shared marketplace dispatch
             </div>
-            <p className="mt-3 text-sm text-primary-foreground/85">Teams can switch between manual entry and spreadsheet import without leaving the business portal flow.</p>
+            <p className="mt-3 text-sm text-primary-foreground/85">
+              Each stop becomes a real job in marketplace_jobs for approved runners to accept.
+            </p>
           </div>
         </div>
       </div>
+
+      {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button variant="secondary" asChild>
@@ -209,16 +278,19 @@ function ServiceTile({
   title,
   description,
   active = false,
+  onClick,
   icon,
 }: {
   title: string;
   description: string;
   active?: boolean;
+  onClick: () => void;
   icon?: React.ReactNode;
 }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className={`rounded-2xl border-2 p-5 text-left transition ${active ? "border-primary bg-primary/10" : "border-border bg-white/80 hover:border-primary/40"}`}
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-primary">
