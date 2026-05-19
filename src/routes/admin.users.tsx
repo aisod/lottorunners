@@ -171,7 +171,7 @@ function AdminUsersPage() {
   const runnerCount = rows.filter((row) => row.kind === "Runner" && row.status === "Active").length;
 
   return (
-    <div className="space-y-6">
+    <motionlessTeamSnapshot className="space-y-6">
       <PortalPageIntro
         eyebrow="Identity & trust"
         title="User management"
@@ -259,7 +259,7 @@ function AdminUsersPage() {
                     <td className="px-4 py-3 text-muted-foreground">{row.lastActive}</td>
                     <td className="px-4 py-3 text-muted-foreground">{row.flag}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
+                      <motionlessTeamSnapshot className="flex flex-wrap gap-2">
                         <Button type="button" variant="outline" size="sm" className="gap-1" disabled>
                           <Eye className="h-3.5 w-3.5" />
                           View
@@ -270,15 +270,15 @@ function AdminUsersPage() {
                             Approve
                           </Button>
                         ) : null}
-                      </div>
+                      </motionlessTeamSnapshot>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </motionlessTeamSnapshot>
         )}
       </PortalSection>
-    </div>
+    </motionlessTeamSnapshot>
   );
 }

@@ -7,15 +7,10 @@ import {
 import type { RunnerOnboardingStatus } from "./runner-account";
 import { migrateLegacyRunnerAccount, syncRunnerDeviceStateFromUser } from "./runner-account";
 import { isValidPhone, normalizePhone } from "./phone-utils";
-import { diagnoseSignIn } from "./auth/diagnose-sign-in.server";
-import { normalizeAuthError } from "./auth/auth-errors";
-import { messageForSignInDiagnosis } from "./auth/sign-in-messages";
-import { signInOnServer } from "./auth/sign-in.server";
 import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
 import { getSupabaseClient } from "./supabase/client";
-import { registerAccountOnServer } from "./auth/register-account.server";
 import {
-  establishSessionFromTokens,
+  fetchProfileByEmail,
   signInRemote,
   signUpRemote,
   upsertRemoteProfile,
@@ -40,8 +35,8 @@ export type StoredUser = {
 };
 
 export type AuthResult =
-  | { ok: true; homePath: string; message?: string }
-  | { ok: false; error: string; signInAction?: "resend_confirmation" | "sign_up" };
+  | { ok: true; homePath: string }
+  | { ok: false; error: string };
 
 function readUsers(): StoredUser[] {
   if (typeof window === "undefined") return [];
@@ -264,49 +259,22 @@ export async function registerUser(input: {
       : "customer";
 
   if (isSupabaseConfigured()) {
-    const profileInput = {
+    const existing = await fetchProfileByEmail(email);
+    if (existing) {
+      return { ok: false, error: "An account with this email already exists." };
+    }
+
+    const remote = await signUpRemote(email, password, {
       email,
       phone,
       roles,
       primaryRole,
-      runnerStatus: input.wantRunner ? ("in_progress" as const) : undefined,
-      runnerStage: input.wantRunner ? ("service-selection" as const) : undefined,
-    };
-
-    let remote:
-      | { ok: true; userId: string; needsEmailConfirmation?: boolean }
-      | { ok: false; error: string };
-
-    try {
-      remote = await registerAccountOnServer({
-        data: {
-          email,
-          password,
-          phone,
-          roles,
-          primaryRole,
-          runnerStatus: profileInput.runnerStatus,
-          runnerStage: profileInput.runnerStage,
-        },
-      });
-      if (!remote.ok) {
-        remote = await signUpRemote(email, password, profileInput);
-      }
-    } catch {
-      remote = await signUpRemote(email, password, profileInput);
-    }
+      runnerStatus: input.wantRunner ? "in_progress" : undefined,
+      runnerStage: input.wantRunner ? "service-selection" : undefined,
+    });
 
     if (!remote.ok) {
       return { ok: false, error: remote.error };
-    }
-
-    if (remote.needsEmailConfirmation) {
-      return {
-        ok: true,
-        homePath: "/customer/signin",
-        message:
-          "Account created. Check your email to confirm your address, then sign in with the same email and password.",
-      };
     }
 
     const newUser: StoredUser = {
@@ -388,71 +356,13 @@ function syncProfileCacheForUser(user: StoredUser): void {
   writeUsers(users);
 }
 
-function loginFailure(
-  email: string,
-  rawError: string,
-  legacyHint?: AuthResult,
-): Promise<AuthResult> {
-  if (legacyHint) return Promise.resolve(legacyHint);
-
-  return diagnoseSignIn({ data: { email } })
-    .then((diagnosis) => {
-      const mapped = messageForSignInDiagnosis(diagnosis, rawError);
-      return { ok: false as const, error: mapped.error, signInAction: mapped.action };
-    })
-    .catch(() => {
-      const message = normalizeAuthError(rawError);
-      const lower = rawError.toLowerCase();
-      const signInAction =
-        lower.includes("invalid login credentials") || lower.includes("invalid credentials")
-          ? ("resend_confirmation" as const)
-          : undefined;
-      return { ok: false as const, error: message, signInAction };
-    });
-}
-
 export async function loginUser(input: { email: string; password: string }): Promise<AuthResult> {
   const email = normalizeEmail(input.email);
 
   if (isSupabaseConfigured()) {
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
-    let remote = await signInRemote(email, input.password);
-
+    const remote = await signInRemote(email, input.password);
     if (!remote.ok) {
-      try {
-        const server = await signInOnServer({ data: { email, password: input.password } });
-        if (server.ok) {
-          remote = await establishSessionFromTokens(
-            server.accessToken,
-            server.refreshToken,
-            email,
-          );
-        }
-      } catch {
-        // fall through to error handling
-      }
-    }
-
-    if (!remote.ok) {
-      const users = readUsers();
-      const legacy = users.find((entry) => entry.email === email);
-      const legacyHint =
-        legacy?.password &&
-        !legacy.supabaseId &&
-        remote.error.toLowerCase().includes("invalid login credentials")
-          ? ({
-              ok: false as const,
-              error:
-                "This email was created in offline dev mode on this browser only. Sign up again on this site (or use preview--lottorunners.lovable.app) to create a Lovable Cloud account.",
-              signInAction: "sign_up" as const,
-            } satisfies AuthResult)
-          : undefined;
-
-      return loginFailure(email, remote.error, legacyHint);
+      return { ok: false, error: remote.error };
     }
 
     const profile = remote.profile;

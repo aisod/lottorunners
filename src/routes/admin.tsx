@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AdminConsoleShell } from "@/components/console-shell";
-import { reconcileCloudAuthSession } from "@/lib/auth/cloud-session";
+import { getAuthSession } from "@/lib/auth-session";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: async ({ location }) => {
-    const session = await reconcileCloudAuthSession();
+  beforeLoad: ({ location }) => {
+    const session = getAuthSession();
     if (!session) {
       throw redirect({ to: "/customer/signin" });
     }

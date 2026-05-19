@@ -6,14 +6,18 @@ import { AuthField } from "@/components/auth-field";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { clearPendingAuth } from "@/lib/auth-session";
-import { redirectIfAuthenticated } from "@/lib/auth/route-guards";
+import { clearPendingAuth, getAuthSession } from "@/lib/auth-session";
 import { registerUser } from "@/lib/auth-users";
+import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/customer/welcome")({
-  beforeLoad: async () => {
+  beforeLoad: () => {
     clearPendingAuth();
-    await redirectIfAuthenticated();
+
+    const session = getAuthSession();
+    if (session) {
+      throw redirect({ to: getRoleHomePath(session.activeRole) });
+    }
   },
   component: CustomerWelcomePage,
 });
@@ -52,13 +56,6 @@ function CustomerWelcomePage() {
         setError(result.error);
         return;
       }
-      if (result.message) {
-        navigate({
-          to: "/customer/signin",
-          search: { notice: result.message },
-        });
-        return;
-      }
       navigate({ to: result.homePath });
     });
   };
@@ -70,7 +67,7 @@ function CustomerWelcomePage() {
           <div className="space-y-5 px-5 pb-6 pt-6 sm:px-6">
             <div className="text-center">
               <img src={logo} alt="Lotto Runners" className="mx-auto h-20 w-20 object-contain" />
-              <h1 className="mt-4 text-2xl font-bold tracking-tight text-destructive">Create account</h1>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">Create account</h1>
               <p className="mt-1.5 text-sm text-muted-foreground">Join Lotto Runners in a few steps</p>
             </div>
 

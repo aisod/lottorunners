@@ -106,7 +106,7 @@ function RunnerOnboardingDocumentsPage() {
           </Button>
           <h1 className="text-lg font-bold text-primary">Runner setup</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <motionlessTeamSnapshot className="flex items-center gap-2">
           <Button variant="ghost" size="icon" type="button" aria-label="Notifications" disabled>
             <Bell className="h-5 w-5" />
           </Button>
@@ -115,7 +115,7 @@ function RunnerOnboardingDocumentsPage() {
           ) : (
             <div className="h-9 w-9 rounded-full bg-secondary" />
           )}
-        </div>
+        </motionlessTeamSnapshot>
       </header>
 
       <main className="mx-auto max-w-4xl space-y-6 px-5 py-6">
@@ -257,10 +257,10 @@ function RunnerOnboardingDocumentsPage() {
           >
             Continue to vehicle details
           </Button>
-        </div>
-      </div>
+        </motionlessTeamSnapshot>
+      </motionlessTeamSnapshot>
 
-    </div>
+    </motionlessTeamSnapshot>
   );
 }
 
@@ -287,15 +287,15 @@ function DocumentRow({
     <div className="rounded-xl border bg-card p-4">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
-          <div>
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</motionlessTeamSnapshot>
+          <motionlessTeamSnapshot>
             <h4 className="font-semibold">{title}</h4>
             <p className="text-xs text-muted-foreground">{subtitle}</p>
             {previewUrl ? (
               <img src={previewUrl} alt="" className="mt-2 max-h-24 rounded-lg border object-cover" />
             ) : null}
-          </div>
-        </div>
+          </motionlessTeamSnapshot>
+        </motionlessTeamSnapshot>
         <div className="flex w-full items-center gap-3 sm:w-auto">
           {status === "required" ? (
             <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">Required</span>
@@ -314,8 +314,8 @@ function DocumentRow({
           >
             {primaryLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+        </motionlessTeamSnapshot>
+      </motionlessTeamSnapshot>
+    </motionlessTeamSnapshot>
   );
 }

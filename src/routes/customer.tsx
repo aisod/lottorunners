@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { reconcileCloudAuthSession } from "@/lib/auth/cloud-session";
+import { getAuthSession } from "@/lib/auth-session";
 import { useCustomerApp } from "@/lib/customer-store";
 import { getRoleHomePath } from "@/lib/store";
 
@@ -12,9 +12,9 @@ const PUBLIC_CUSTOMER_AUTH_PATHS = new Set([
 ]);
 
 export const Route = createFileRoute("/customer")({
-  beforeLoad: async ({ location }) => {
+  beforeLoad: ({ location }) => {
     const path = location.pathname.replace(/\/$/, "") || "/";
-    const session = await reconcileCloudAuthSession();
+    const session = getAuthSession();
 
     if (PUBLIC_CUSTOMER_AUTH_PATHS.has(path)) {
       if (session && session.activeRole !== "customer") {
@@ -24,13 +24,7 @@ export const Route = createFileRoute("/customer")({
     }
 
     if (!session) {
-      throw redirect({
-        to: "/customer/signin",
-        search: {
-          notice:
-            "Your session on this site expired or was from another preview. Sign in with your Lovable Cloud email and password.",
-        },
-      });
+      throw redirect({ to: "/customer/signin" });
     }
 
     if (session.activeRole !== "customer") {

@@ -65,7 +65,7 @@ function AdminJobsPage() {
           </p>
         </PortalSection>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <motionlessTeamSnapshot className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PortalSection title="Live job board">
             <div className="space-y-3">
               {jobs.map((job) => (
@@ -79,7 +79,7 @@ function AdminJobsPage() {
                   )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                    <motionlessTeamSnapshot>
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {SERVICES[job.serviceType].label} · #{job.id.slice(-8)}
                       </p>
@@ -88,9 +88,9 @@ function AdminJobsPage() {
                         {job.customerName}
                         {job.runnerName ? ` → ${job.runnerName}` : " · awaiting runner"}
                       </p>
-                    </div>
+                    </motionlessTeamSnapshot>
                     <StatusPill label={jobStatusLabel(job.status)} tone={statusTone(job.status)} />
-                  </div>
+                  </motionlessTeamSnapshot>
                 </button>
               ))}
             </div>
@@ -104,7 +104,7 @@ function AdminJobsPage() {
                   <Detail icon={<ShieldCheck className="h-4 w-4" />} label="Status" value={jobStatusLabel(selectedJob.status)} />
                   <Detail icon={<MapPin className="h-4 w-4" />} label="Pickup" value={selectedJob.pickupAddress} />
                   <Detail icon={<RouteIcon className="h-4 w-4" />} label="Drop-off" value={selectedJob.dropoffAddress} />
-                </div>
+                </motionlessTeamSnapshot>
                 <Detail icon={<MessageSquareText className="h-4 w-4" />} label="Customer" value={selectedJob.customerName} />
                 {selectedJob.runnerName ? (
                   <Detail icon={<MessageSquareText className="h-4 w-4" />} label="Runner" value={selectedJob.runnerName} />
@@ -115,21 +115,21 @@ function AdminJobsPage() {
                 {selectedJob.proofPhotoUrl ? (
                   <img src={selectedJob.proofPhotoUrl} alt="Proof" className="max-h-48 w-full rounded-xl object-cover" />
                 ) : null}
-              </div>
+              </motionlessTeamSnapshot>
             </PortalSection>
           ) : null}
-        </div>
+        </motionlessTeamSnapshot>
       )}
-    </div>
+    </motionlessTeamSnapshot>
   );
 }
 
 function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-xl border bg-card p-3">
-      <div className="flex items-center gap-2 text-primary">{icon}</div>
+      <div className="flex items-center gap-2 text-primary">{icon}</motionlessTeamSnapshot>
       <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold">{value}</p>
-    </div>
+    </motionlessTeamSnapshot>
   );
 }
