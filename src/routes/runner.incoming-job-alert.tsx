@@ -66,10 +66,10 @@ function RunnerIncomingJobAlertPage() {
     const runnerName = getUserDisplayName(currentRunnerId) ?? "Runner";
     setAccepting(true);
     setError(null);
-    void acceptJob(job.id, currentRunnerId, runnerName).then((updated) => {
+    void acceptJob(job.id, currentRunnerId, runnerName).then((result) => {
       setAccepting(false);
-      if (!updated) {
-        setError("Could not accept this job. It may have been taken already or you are not approved.");
+      if (!result.ok) {
+        setError(result.message);
         return;
       }
       navigate({ to: "/runner/active-job", search: { jobId: job.id } });

@@ -43,6 +43,7 @@ import { Route as CustomerTruckSizeRouteImport } from './routes/customer.truck-s
 import { Route as CustomerTrackingRunnerRouteImport } from './routes/customer.tracking-runner'
 import { Route as CustomerSubscriptionPackagesRouteImport } from './routes/customer.subscription-packages'
 import { Route as CustomerSigninRouteImport } from './routes/customer.signin'
+import { Route as CustomerScheduledBookingRouteImport } from './routes/customer.scheduled-booking'
 import { Route as CustomerSavedAddressesRouteImport } from './routes/customer.saved-addresses'
 import { Route as CustomerReviewScheduleRouteImport } from './routes/customer.review-schedule'
 import { Route as CustomerRateRunnerRouteImport } from './routes/customer.rate-runner'
@@ -258,6 +259,12 @@ const CustomerSigninRoute = CustomerSigninRouteImport.update({
   path: '/signin',
   getParentRoute: () => CustomerRoute,
 } as any)
+const CustomerScheduledBookingRoute =
+  CustomerScheduledBookingRouteImport.update({
+    id: '/scheduled-booking',
+    path: '/scheduled-booking',
+    getParentRoute: () => CustomerRoute,
+  } as any)
 const CustomerSavedAddressesRoute = CustomerSavedAddressesRouteImport.update({
   id: '/saved-addresses',
   path: '/saved-addresses',
@@ -534,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/customer/rate-runner': typeof CustomerRateRunnerRoute
   '/customer/review-schedule': typeof CustomerReviewScheduleRoute
   '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
+  '/customer/scheduled-booking': typeof CustomerScheduledBookingRoute
   '/customer/signin': typeof CustomerSigninRoute
   '/customer/subscription-packages': typeof CustomerSubscriptionPackagesRoute
   '/customer/tracking-runner': typeof CustomerTrackingRunnerRoute
@@ -613,6 +621,7 @@ export interface FileRoutesByTo {
   '/customer/rate-runner': typeof CustomerRateRunnerRoute
   '/customer/review-schedule': typeof CustomerReviewScheduleRoute
   '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
+  '/customer/scheduled-booking': typeof CustomerScheduledBookingRoute
   '/customer/signin': typeof CustomerSigninRoute
   '/customer/subscription-packages': typeof CustomerSubscriptionPackagesRoute
   '/customer/tracking-runner': typeof CustomerTrackingRunnerRoute
@@ -693,6 +702,7 @@ export interface FileRoutesById {
   '/customer/rate-runner': typeof CustomerRateRunnerRoute
   '/customer/review-schedule': typeof CustomerReviewScheduleRoute
   '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
+  '/customer/scheduled-booking': typeof CustomerScheduledBookingRoute
   '/customer/signin': typeof CustomerSigninRoute
   '/customer/subscription-packages': typeof CustomerSubscriptionPackagesRoute
   '/customer/tracking-runner': typeof CustomerTrackingRunnerRoute
@@ -774,6 +784,7 @@ export interface FileRouteTypes {
     | '/customer/rate-runner'
     | '/customer/review-schedule'
     | '/customer/saved-addresses'
+    | '/customer/scheduled-booking'
     | '/customer/signin'
     | '/customer/subscription-packages'
     | '/customer/tracking-runner'
@@ -853,6 +864,7 @@ export interface FileRouteTypes {
     | '/customer/rate-runner'
     | '/customer/review-schedule'
     | '/customer/saved-addresses'
+    | '/customer/scheduled-booking'
     | '/customer/signin'
     | '/customer/subscription-packages'
     | '/customer/tracking-runner'
@@ -932,6 +944,7 @@ export interface FileRouteTypes {
     | '/customer/rate-runner'
     | '/customer/review-schedule'
     | '/customer/saved-addresses'
+    | '/customer/scheduled-booking'
     | '/customer/signin'
     | '/customer/subscription-packages'
     | '/customer/tracking-runner'
@@ -1216,6 +1229,13 @@ declare module '@tanstack/react-router' {
       path: '/signin'
       fullPath: '/customer/signin'
       preLoaderRoute: typeof CustomerSigninRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/scheduled-booking': {
+      id: '/customer/scheduled-booking'
+      path: '/scheduled-booking'
+      fullPath: '/customer/scheduled-booking'
+      preLoaderRoute: typeof CustomerScheduledBookingRouteImport
       parentRoute: typeof CustomerRoute
     }
     '/customer/saved-addresses': {
@@ -1595,6 +1615,7 @@ interface CustomerRouteChildren {
   CustomerRateRunnerRoute: typeof CustomerRateRunnerRoute
   CustomerReviewScheduleRoute: typeof CustomerReviewScheduleRoute
   CustomerSavedAddressesRoute: typeof CustomerSavedAddressesRoute
+  CustomerScheduledBookingRoute: typeof CustomerScheduledBookingRoute
   CustomerSigninRoute: typeof CustomerSigninRoute
   CustomerSubscriptionPackagesRoute: typeof CustomerSubscriptionPackagesRoute
   CustomerTrackingRunnerRoute: typeof CustomerTrackingRunnerRoute
@@ -1623,6 +1644,7 @@ const CustomerRouteChildren: CustomerRouteChildren = {
   CustomerRateRunnerRoute: CustomerRateRunnerRoute,
   CustomerReviewScheduleRoute: CustomerReviewScheduleRoute,
   CustomerSavedAddressesRoute: CustomerSavedAddressesRoute,
+  CustomerScheduledBookingRoute: CustomerScheduledBookingRoute,
   CustomerSigninRoute: CustomerSigninRoute,
   CustomerSubscriptionPackagesRoute: CustomerSubscriptionPackagesRoute,
   CustomerTrackingRunnerRoute: CustomerTrackingRunnerRoute,

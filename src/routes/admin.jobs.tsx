@@ -115,6 +115,15 @@ function AdminJobsPage() {
                 {selectedJob.proofPhotoUrl ? (
                   <img src={selectedJob.proofPhotoUrl} alt="Proof" className="max-h-48 w-full rounded-xl object-cover" />
                 ) : null}
+                {selectedJob.cargoPhotoUrls ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(selectedJob.cargoPhotoUrls).map(([slot, url]) =>
+                      url ? (
+                        <img key={slot} src={url} alt={slot} className="aspect-square w-full rounded-lg object-cover" />
+                      ) : null,
+                    )}
+                  </div>
+                ) : null}
               </div>
             </PortalSection>
           ) : null}

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { BriefcaseBusiness, Car, Clock3, Truck, Venus, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
-import { AddressSearchInput } from "@/components/address-search-input";
+import { CustomerRouteStopsCard, CustomerRouteStopsHeroSection } from "@/components/customer-route-stops-card";
 import { CustomerFixedFooter, CustomerPageShell } from "@/components/customer-page-shell";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
@@ -96,30 +96,15 @@ function CustomerChooseServicePage() {
         }}
       />
 
-      <section className="-mx-4 overflow-hidden border-y border-border bg-secondary sm:-mx-6">
-        <div className="relative h-64 w-full">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_35%,oklch(0.9_0.05_250),transparent_40%),radial-gradient(circle_at_75%_70%,oklch(0.8_0.06_200),transparent_45%)]" />
-          <div className="absolute inset-x-4 bottom-4 rounded-xl border bg-card/95 p-4 shadow">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Pickup</p>
-            <p className="font-semibold">{pickupLabel}</p>
-            <AddressSearchInput
-              near={userLocation}
-              field="pickup"
-              className="mt-2"
-              onPick={(r) => setPickupDraft({ label: r.shortLabel, coord: r.coord })}
-            />
-            <div className="my-2 h-px bg-border" />
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Destination</p>
-            <p className="font-semibold">{destinationLabel}</p>
-            <AddressSearchInput
-              near={userLocation}
-              field="destination"
-              className="mt-2"
-              onPick={(r) => setDestinationDraft({ label: r.shortLabel, coord: r.coord })}
-            />
-          </div>
-        </div>
-      </section>
+      <CustomerRouteStopsHeroSection>
+        <CustomerRouteStopsCard
+          near={userLocation}
+          pickupLabel={pickupLabel}
+          destinationLabel={destinationLabel}
+          onPickPickup={(r) => setPickupDraft({ label: r.shortLabel, coord: r.coord })}
+          onPickDestination={(r) => setDestinationDraft({ label: r.shortLabel, coord: r.coord })}
+        />
+      </CustomerRouteStopsHeroSection>
 
       <section className="space-y-3 py-6">
         <div className="flex items-center justify-between">

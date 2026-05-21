@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Box, FileText, HelpCircle, Package } from "lucide-react";
-import { useState } from "react";
-import { AddressRouteField } from "@/components/address-route-field";
+import { useEffect, useState } from "react";
+import { CustomerRouteStopsCard } from "@/components/customer-route-stops-card";
 import { CustomerHeaderLogo } from "@/components/customer-header-logo";
 import { CustomerFixedFooter, CustomerPageShell, CustomerStickyHeader } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
@@ -19,20 +19,41 @@ export const Route = createFileRoute("/customer/delivery-request")({
 function CustomerDeliveryRequestPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const { setPickup, setDestination, setSelectedService, setStatus, setScheduleMode, setErrandDescription, userLocation } =
-    useCustomerApp();
+  const {
+    pickup,
+    destination,
+    setPickup,
+    setDestination,
+    setSelectedService,
+    setStatus,
+    setScheduleMode,
+    setErrandDescription,
+    userLocation,
+  } = useCustomerApp();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [deliveryType, setDeliveryType] = useState<"instant" | "scheduled">("instant");
-  const [pickupAddress, setPickupAddress] = useState("");
-  const [recipientAddress, setRecipientAddress] = useState("");
-  const [pickupStop, setPickupStop] = useState<RouteStop | null>(null);
-  const [destinationStop, setDestinationStop] = useState<RouteStop | null>(null);
+  const [pickupDraft, setPickupDraft] = useState<RouteStop | null>(pickup);
+  const [destinationDraft, setDestinationDraft] = useState<RouteStop | null>(destination);
   const [packageSize, setPackageSize] = useState<"document" | "small_box" | "medium_box">("document");
   const [instructions, setInstructions] = useState("");
 
+  useEffect(() => {
+    setScheduleMode("now");
+  }, [setScheduleMode]);
+
+  useEffect(() => {
+    setPickupDraft((prev) => prev ?? pickup);
+  }, [pickup]);
+
+  useEffect(() => {
+    setDestinationDraft((prev) => prev ?? destination);
+  }, [destination]);
+
+  const pickupLabel = pickupDraft?.label ?? pickup?.label ?? "Set pickup location";
+  const destinationLabel = destinationDraft?.label ?? destination?.label ?? "Set destination location";
+
   const submit = async () => {
-    const validation = validateDeliveryStep(pickupAddress, recipientAddress, instructions);
+    const validation = validateDeliveryStep(pickupDraft, destinationDraft, instructions);
     if (!validation.ok) {
       setErrors(validation.errors);
       return;
@@ -42,14 +63,14 @@ function CustomerDeliveryRequestPage() {
     setErrors({});
 
     try {
-      const pickup = await resolveRouteStop(pickupStop, pickupAddress, userLocation);
-      const destination = await resolveRouteStop(destinationStop, recipientAddress, userLocation);
+      const pickupResolved = await resolveRouteStop(pickupDraft, pickupLabel, userLocation);
+      const destinationResolved = await resolveRouteStop(destinationDraft, destinationLabel, userLocation);
 
       const nextErrors: Record<string, string> = {};
-      if (!pickup) {
+      if (!pickupResolved) {
         nextErrors.pickup = "Could not find pickup location. Pick a search result or refine the address.";
       }
-      if (!destination) {
+      if (!destinationResolved) {
         nextErrors.dropoff = "Could not find delivery destination. Pick a search result or refine the address.";
       }
       if (Object.keys(nextErrors).length > 0) {
@@ -58,10 +79,10 @@ function CustomerDeliveryRequestPage() {
       }
 
       setErrandDescription(instructions);
-      setPickup(pickup!);
-      setDestination(destination!);
+      setPickup(pickupResolved!);
+      setDestination(destinationResolved!);
       setSelectedService("delivery");
-      setScheduleMode(deliveryType === "scheduled" ? "later" : "now");
+      setScheduleMode("now");
       setStatus("estimating");
       navigate({ to: "/customer/review-schedule" });
     } finally {
@@ -98,59 +119,16 @@ function CustomerDeliveryRequestPage() {
       </CustomerStickyHeader>
 
       <main className="space-y-6 py-6">
-        <section className="rounded-xl bg-secondary/60 p-1">
-          <div className="grid grid-cols-2 gap-1">
-            <button
-              type="button"
-              onClick={() => setDeliveryType("instant")}
-              className={`h-10 rounded-lg text-sm font-semibold transition ${
-                deliveryType === "instant" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"
-              }`}
-            >
-              Instant
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeliveryType("scheduled")}
-              className={`h-10 rounded-lg text-sm font-semibold transition ${
-                deliveryType === "scheduled" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"
-              }`}
-            >
-              Scheduled
-            </button>
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <AddressRouteField
-            label="Pickup Address"
-            value={pickupAddress}
-            onChange={setPickupAddress}
-            stop={pickupStop}
-            onSelectStop={(stop) => {
-              setPickupStop(stop);
-              setPickupAddress(stop.label);
-            }}
+        <section className="space-y-2">
+          <CustomerRouteStopsCard
             near={userLocation}
-            field="pickup"
-            placeholder="Enter pickup location"
-            error={errors.pickup}
+            pickupLabel={pickupLabel}
+            destinationLabel={destinationLabel}
+            onPickPickup={(r) => setPickupDraft({ label: r.shortLabel, coord: r.coord })}
+            onPickDestination={(r) => setDestinationDraft({ label: r.shortLabel, coord: r.coord })}
           />
-
-          <AddressRouteField
-            label="Recipient Address"
-            value={recipientAddress}
-            onChange={setRecipientAddress}
-            stop={destinationStop}
-            onSelectStop={(stop) => {
-              setDestinationStop(stop);
-              setRecipientAddress(stop.label);
-            }}
-            near={userLocation}
-            field="destination"
-            placeholder="Enter delivery destination"
-            error={errors.dropoff}
-          />
+          {errors.pickup ? <p className="text-sm text-destructive">{errors.pickup}</p> : null}
+          {errors.dropoff ? <p className="text-sm text-destructive">{errors.dropoff}</p> : null}
         </section>
 
         <section className="space-y-3">

@@ -1,6 +1,12 @@
+import { getUserDisplayName } from "./auth-users";
+import { isWithinRadiusKm } from "./geo-utils";
+import { listPendingJobs } from "./jobs-service";
 import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
+import { normalizeRunnerId } from "./supabase/session";
 import {
+  fetchAllRunnerLocationsRemote,
   fetchRunnerLocationRemote,
+  subscribeAllRunnerLocationsRemote,
   subscribeRunnerLocationRemote,
   upsertRunnerLocationRemote,
 } from "./supabase/runner-locations-remote";
@@ -13,6 +19,10 @@ const LOCATION_CHANNEL = "lr-runner-locations-sync";
 /** Simulated drifting runners only when cloud is off and local dev is explicitly enabled. */
 export function shouldUseSimulatedRunners(): boolean {
   return !isSupabaseConfigured() && isLocalDevAuthAllowed();
+}
+
+function readAllLocalLocations(): RunnerLiveLocation[] {
+  return Object.values(readLocalLocations());
 }
 
 function readLocalLocations(): Record<string, RunnerLiveLocation> {
@@ -42,9 +52,10 @@ export async function upsertRunnerLocation(
   runnerId: string,
   coord: LatLng,
   heading?: number,
-): Promise<boolean> {
+): Promise<{ ok: true } | { ok: false; unauthorized: boolean; message: string }> {
+  const runnerKey = normalizeRunnerId(runnerId);
   const loc: RunnerLiveLocation = {
-    runnerId,
+    runnerId: runnerKey,
     coord,
     heading,
     updatedAt: Date.now(),
@@ -53,10 +64,10 @@ export async function upsertRunnerLocation(
   writeLocalLocation(loc);
 
   if (isSupabaseConfigured()) {
-    return upsertRunnerLocationRemote(runnerId, coord, heading);
+    return upsertRunnerLocationRemote(runnerKey, coord, heading);
   }
 
-  return true;
+  return { ok: true };
 }
 
 export async function fetchRunnerLocation(runnerId: string): Promise<RunnerLiveLocation | null> {
@@ -126,4 +137,73 @@ export function formatLocationFreshness(updatedAt: number): string {
 
 export function isLocationFresh(updatedAt: number, maxAgeMs = 120_000): boolean {
   return Date.now() - updatedAt <= maxAgeMs;
+}
+
+export type NearbyRunnersQuery = {
+  center: LatLng;
+  excludeRunnerId?: string | null;
+  radiusKm?: number;
+  maxAgeMs?: number;
+};
+
+const DEFAULT_NEARBY_RADIUS_KM = 12;
+const DEFAULT_MAX_AGE_MS = 120_000;
+
+function normalizeRunnerKey(id: string): string {
+  return id.trim().toLowerCase();
+}
+
+async function loadAllRunnerLocations(): Promise<RunnerLiveLocation[]> {
+  if (isSupabaseConfigured()) {
+    return fetchAllRunnerLocationsRemote();
+  }
+  return readAllLocalLocations();
+}
+
+export async function fetchNearbyRunnerLocations(query: NearbyRunnersQuery): Promise<RunnerLiveLocation[]> {
+  const radiusKm = query.radiusKm ?? DEFAULT_NEARBY_RADIUS_KM;
+  const maxAgeMs = query.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
+  const exclude = query.excludeRunnerId ? normalizeRunnerKey(query.excludeRunnerId) : null;
+
+  const all = await loadAllRunnerLocations();
+
+  return all.filter((loc) => {
+    if (!isLocationFresh(loc.updatedAt, maxAgeMs)) return false;
+    if (exclude && normalizeRunnerKey(loc.runnerId) === exclude) return false;
+    return isWithinRadiusKm(query.center, loc.coord, radiusKm);
+  });
+}
+
+export function subscribeNearbyRunnerLocations(
+  listener: () => void,
+): () => void {
+  if (isSupabaseConfigured()) {
+    return subscribeAllRunnerLocationsRemote(listener);
+  }
+
+  let channel: BroadcastChannel | null = null;
+  if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
+    channel = new BroadcastChannel(LOCATION_CHANNEL);
+    channel.onmessage = () => listener();
+  }
+
+  return () => channel?.close();
+}
+
+function runnerDisplayName(runnerId: string): string {
+  return getUserDisplayName(runnerId) ?? runnerId.split("@")[0] ?? "Runner";
+}
+
+export function nearbyLocationsToMapRunners(locations: RunnerLiveLocation[]): Runner[] {
+  return locations.map((loc) =>
+    runnerLocationToMapRunner(loc, {
+      name: runnerDisplayName(loc.runnerId),
+      vehicle: "delivery",
+    }),
+  );
+}
+
+/** Pending customer requests with pickup inside radius (demand indicator). */
+export function countPendingDemandNear(center: LatLng, radiusKm = DEFAULT_NEARBY_RADIUS_KM): number {
+  return listPendingJobs().filter((job) => isWithinRadiusKm(center, job.pickup, radiusKm)).length;
 }

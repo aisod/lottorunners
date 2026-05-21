@@ -9,13 +9,18 @@ import {
 } from "./auth-session";
 import type { AppRole } from "./store";
 import type { RunnerOnboardingStatus } from "./runner-account";
-import { migrateLegacyRunnerAccount, syncRunnerDeviceStateFromUser } from "./runner-account";
+import {
+  migrateLegacyRunnerAccount,
+  notifyRunnerAccountChanged,
+  syncRunnerDeviceStateFromUser,
+} from "./runner-account";
 import { isValidPhone, normalizePhone } from "./phone-utils";
 import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
 import { getSupabaseClient } from "./supabase/client";
 import {
   fetchProfileByEmail,
   fetchProfileByUserId,
+  ensureBootstrapAdmin,
   rowToStoredShape,
   signInRemote,
   signOutRemote,
@@ -205,6 +210,7 @@ export function applyRemoteProfileToLocalSession(
     migrateLegacyRunnerAccount(user.email);
     syncRunnerDeviceStateFromUser(user);
   }
+  notifyRunnerAccountChanged();
 }
 
 export async function syncCurrentUserProfileToRemote(
@@ -382,7 +388,10 @@ export async function loginUser(input: { email: string; password: string }): Pro
       return { ok: false, error: remote.error };
     }
 
-    const profile = remote.profile;
+    await ensureBootstrapAdmin();
+
+    const freshRow = await fetchProfileByUserId(remote.userId);
+    const profile = freshRow ? rowToStoredShape(freshRow) : remote.profile;
     const user: StoredUser = migrateUserRecord({
       email: profile.email,
       password: "",
@@ -477,6 +486,8 @@ export async function refreshAuthSessionFromProfile(): Promise<boolean> {
   const { data } = await supabase.auth.getSession();
   const userId = data.session?.user?.id;
   if (!userId) return false;
+
+  await ensureBootstrapAdmin();
 
   const row = await fetchProfileByUserId(userId);
   if (!row) return false;

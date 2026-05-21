@@ -1,7 +1,22 @@
 import { getSupabaseClient } from "./client";
-import { isSupabaseConfigured } from "./config";
+import { getSupabaseUrl, isSupabaseConfigured } from "./config";
 
 const UPLOAD_BUCKET = "uploads";
+
+export function isUploadBucketMissingError(message: string): boolean {
+  return /bucket not found|not set up/i.test(message);
+}
+
+function storageSetupErrorMessage(): string {
+  let host = "your Supabase project";
+  try {
+    const url = getSupabaseUrl();
+    if (url) host = new URL(url).hostname;
+  } catch {
+    /* ignore */
+  }
+  return `Storage bucket "uploads" is missing on ${host}. In Lovable Cloud → SQL, run the migration supabase/migrations/20260519160000_storage_uploads_bucket.sql (or create a public bucket named "uploads" in Storage).`;
+}
 
 export type UploadResult =
   | { ok: true; path: string; publicUrl: string }
@@ -38,7 +53,11 @@ export async function uploadUserFile(
   });
 
   if (uploadError) {
-    return { ok: false, error: uploadError.message };
+    const message = uploadError.message;
+    if (isUploadBucketMissingError(message)) {
+      return { ok: false, error: storageSetupErrorMessage() };
+    }
+    return { ok: false, error: message };
   }
 
   const { data: urlData } = supabase.storage.from(UPLOAD_BUCKET).getPublicUrl(path);

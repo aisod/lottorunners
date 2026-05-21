@@ -31,3 +31,13 @@ export type DataSyncMode = "cloud" | "local-only";
 export function getDataSyncMode(): DataSyncMode {
   return isSupabaseConfigured() ? "cloud" : "local-only";
 }
+
+/** Comma-separated admin emails (local hint only — Supabase `app_config.admin_emails` is source of truth). */
+export function getAdminBootstrapEmails(): string[] {
+  const raw = import.meta.env.VITE_ADMIN_EMAILS;
+  if (!raw || typeof raw !== "string") return [];
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}

@@ -16,6 +16,7 @@ import {
   TRUCK_LABOUR_FEE_NAD,
   TRUCK_SIZE_BASE_NAD,
 } from "./services";
+import type { CargoPhotoSlotId, CargoPhotoUrls } from "./cargo-photos";
 import { estimateErrandPrice, type ErrandCategoryId, type PriceQuote } from "./errand-categories";
 import {
   clearCustomerBookingDraft,
@@ -47,6 +48,7 @@ function draftSnapshot(state: CustomerAppState): CustomerBookingDraft {
     truckLabour: state.truckLabour,
     truckExtraHelpers: state.truckExtraHelpers,
     movingNotes: state.movingNotes,
+    cargoPhotos: state.cargoPhotos,
     paymentMethod: state.paymentMethod,
     rideSubType: state.rideSubType,
     scheduleMode: state.scheduleMode,
@@ -88,6 +90,9 @@ export interface CustomerAppState {
   setTruckExtraHelpers: (n: number) => void;
   movingNotes: string;
   setMovingNotes: (s: string) => void;
+
+  cargoPhotos: CargoPhotoUrls;
+  setCargoPhoto: (slot: CargoPhotoSlotId, url: string | null) => void;
 
   paymentMethod: PaymentMethod;
   setPaymentMethod: (p: PaymentMethod) => void;
@@ -158,6 +163,15 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
   movingNotes: initialDraft?.movingNotes ?? "",
   setMovingNotes: (s) => set({ movingNotes: s }),
 
+  cargoPhotos: initialDraft?.cargoPhotos ?? {},
+  setCargoPhoto: (slot, url) =>
+    set((s) => {
+      const next = { ...s.cargoPhotos };
+      if (url) next[slot] = url;
+      else delete next[slot];
+      return { cargoPhotos: next };
+    }),
+
   paymentMethod: initialDraft?.paymentMethod ?? "momo",
   setPaymentMethod: (p) => set({ paymentMethod: p }),
 
@@ -217,6 +231,7 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
       truckLabour: draft.truckLabour,
       truckExtraHelpers: draft.truckExtraHelpers,
       movingNotes: draft.movingNotes,
+      cargoPhotos: draft.cargoPhotos ?? {},
       paymentMethod: draft.paymentMethod,
       rideSubType: draft.rideSubType ?? null,
       scheduleMode: draft.scheduleMode ?? "now",
@@ -342,6 +357,7 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
       truckLabour: false,
       truckExtraHelpers: 0,
       movingNotes: "",
+      cargoPhotos: {},
       paymentMethod: "momo",
       scheduleMode: "now",
       scheduledAt: null,

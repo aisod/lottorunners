@@ -24,6 +24,7 @@ import {
 } from "@/lib/jobs-service";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
+import { CARGO_PHOTO_SLOTS } from "@/lib/cargo-photos";
 import { SERVICES } from "@/lib/services";
 import type { MarketplaceJobStatus } from "@/lib/jobs-types";
 import { useGeolocation } from "@/lib/use-geolocation";
@@ -109,6 +110,11 @@ function RunnerActiveJobPage() {
       : pickup ?? activeRunner?.position ?? userLocation;
 
   const serviceLabel = job ? SERVICES[job.serviceType].label : "Active job";
+  const cargoPhotos = job?.cargoPhotoUrls;
+  const showCargoPhotos =
+    job?.serviceType === "truck" &&
+    cargoPhotos &&
+    CARGO_PHOTO_SLOTS.some((slot) => Boolean(cargoPhotos[slot.id]));
 
   const phaseContent: Record<RunnerPhase, PhaseConfig> = {
     arrived: {
@@ -272,6 +278,28 @@ function RunnerActiveJobPage() {
               <PhaseMetricCard key={card.label} label={card.label} value={card.value} icon={card.icon} />
             ))}
           </div>
+
+          {showCargoPhotos ? (
+            <div className="space-y-2 rounded-xl border border-border/50 bg-muted/30 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Customer cargo photos
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {CARGO_PHOTO_SLOTS.map((slot) => {
+                  const url = cargoPhotos?.[slot.id];
+                  if (!url) return null;
+                  return (
+                    <div key={slot.id} className="overflow-hidden rounded-lg border border-border/40 bg-card">
+                      <img src={url} alt={slot.label} className="aspect-square w-full object-cover" />
+                      <p className="truncate px-1.5 py-1 text-center text-[10px] font-medium text-muted-foreground">
+                        {slot.label}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {phaseContent.showProof ? (
             <div className="rounded-xl border border-border/50 bg-muted/40 px-4 py-3">

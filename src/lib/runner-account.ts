@@ -9,6 +9,7 @@ import {
 import { isSupabaseConfigured } from "./supabase/config";
 import {
   fetchProfileByEmail,
+  ensureBootstrapAdmin,
   updateRemoteRunnerStatus,
 } from "./supabase/profiles-remote";
 function clearRunnerOnlineLocal(): void {
@@ -85,6 +86,19 @@ export function canRunnerAcceptJobs(email?: string): boolean {
   return isRunnerFullyApproved(email);
 }
 
+const runnerAccountListeners = new Set<() => void>();
+
+/** Fired when runner approval/stage changes locally (e.g. after profile sync from Supabase). */
+export function subscribeRunnerAccount(listener: () => void): () => void {
+  runnerAccountListeners.add(listener);
+  listener();
+  return () => runnerAccountListeners.delete(listener);
+}
+
+export function notifyRunnerAccountChanged(): void {
+  runnerAccountListeners.forEach((listener) => listener());
+}
+
 function patchRunnerUser(
   email: string,
   patch: Partial<Pick<StoredUserWithRunner, "runnerStatus" | "runnerStage" | "supabaseId">>,
@@ -95,6 +109,7 @@ function patchRunnerUser(
 
   users[index] = { ...users[index], ...patch };
   writeUsers(users);
+  notifyRunnerAccountChanged();
   return users[index];
 }
 
@@ -162,9 +177,10 @@ async function persistRunnerStatusForEmail(
       return { ok: false, error: "Runner profile not found in Supabase." };
     }
 
+    await ensureBootstrapAdmin();
     const saved = await updateRemoteRunnerStatus(profile.id, runnerStatus);
-    if (!saved) {
-      return { ok: false, error: "Could not update runner status in Supabase." };
+    if (!saved.ok) {
+      return { ok: false, error: saved.error };
     }
 
     user = patchRunnerUser(normalizedEmail, {

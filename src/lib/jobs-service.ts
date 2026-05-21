@@ -1,12 +1,14 @@
 import { getUserDisplayName, getUserPhone } from "./auth-users";
 import { getAuthSession } from "./auth-session";
 import { SERVICES } from "./services";
+import type { CargoPhotoUrls } from "./cargo-photos";
 import { ERRAND_CATEGORIES } from "./errand-categories";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
 import type { TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
+import { ensureSupabaseAuthSession, normalizeRunnerId } from "./supabase/session";
 
 const JOBS_STORAGE_KEY = "lr-marketplace-jobs-v1";
 const JOBS_CHANNEL_NAME = "lr-marketplace-jobs-sync";
@@ -91,11 +93,12 @@ function normalizeJob(job: MarketplaceJob): MarketplaceJob {
   };
 }
 
-export async function hydrateJobsFromRemote(): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-  const remote = await fetchRemoteJobs();
-  if (remote.length === 0) return;
-  notifyJobsChanged(remote);
+export async function hydrateJobsFromRemote(): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured()) return { ok: true };
+  const result = await fetchRemoteJobs();
+  if (!result.ok) return { ok: false, error: result.error };
+  notifyJobsChanged(result.jobs);
+  return { ok: true };
 }
 
 export function readJobs(): MarketplaceJob[] {
@@ -215,6 +218,7 @@ export type CreateJobBookingInput = {
   durationMin: number;
   truckSizeId: import("./types").TruckSizeId | null;
   movingNotes: string;
+  cargoPhotos: CargoPhotoUrls;
   paymentMethod: import("./types").PaymentMethod;
   scheduleMode: import("./types").ScheduleMode;
   scheduledAt: number | null;
@@ -258,6 +262,11 @@ export async function createJobFromCustomerBooking(
     state.movingNotes?.trim(),
   ].filter(Boolean);
 
+  const cargoPhotoUrls =
+    state.cargoPhotos && Object.values(state.cargoPhotos).some(Boolean)
+      ? { ...state.cargoPhotos }
+      : undefined;
+
   const job: MarketplaceJob = {
     id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     customerId: customerEmail,
@@ -281,6 +290,7 @@ export async function createJobFromCustomerBooking(
     basketValue: state.basketValue || undefined,
     durationMin: state.durationMin,
     errandCategory: state.errandCategory ?? undefined,
+    cargoPhotoUrls,
     createdAt: Date.now(),
   };
 
@@ -297,22 +307,40 @@ export async function createJobFromCustomerBooking(
   return { job };
 }
 
+export type AcceptJobResult =
+  | { ok: true; job: MarketplaceJob }
+  | { ok: false; message: string };
+
 export async function acceptJob(
   jobId: string,
   runnerId: string,
   runnerName: string,
-): Promise<MarketplaceJob | null> {
-  if (!canRunnerAcceptJobs(runnerId)) return null;
+): Promise<AcceptJobResult> {
+  const runnerKey = normalizeRunnerId(runnerId);
 
-  if (getRunnerActiveJob(runnerId)) return null;
+  if (!canRunnerAcceptJobs(runnerKey)) {
+    return { ok: false, message: "Your runner profile must be approved before you can accept jobs." };
+  }
 
-  const runnerPhone = getUserPhone(runnerId) ?? undefined;
-  const runnerEmail = runnerId;
+  const active = getRunnerActiveJob(runnerKey);
+  if (active) {
+    return {
+      ok: false,
+      message: `You already have an active job (${active.id.slice(-8)}). Finish it before accepting another.`,
+    };
+  }
+
+  const runnerPhone = getUserPhone(runnerKey) ?? undefined;
+  const runnerEmail = runnerKey;
 
   if (isSupabaseConfigured()) {
-    const remote = await acceptJobRemote(jobId, runnerId, runnerName, runnerPhone);
-    if (!remote) return null;
-    const normalized = normalizeJob(remote);
+    const auth = await ensureSupabaseAuthSession();
+    if (!auth.ok) return { ok: false, message: auth.message };
+
+    const remote = await acceptJobRemote(jobId, runnerKey, runnerName, runnerPhone);
+    if (!remote.ok) return { ok: false, message: remote.message };
+
+    const normalized = normalizeJob(remote.job);
     const jobs = readJobs();
     const index = jobs.findIndex((j) => j.id === jobId);
     if (index === -1) {
@@ -321,20 +349,32 @@ export async function acceptJob(
       jobs[index] = normalized;
       writeJobs(jobs, { skipRemote: true });
     }
-    return normalized;
+    return { ok: true, job: normalized };
   }
 
   const fresh = getJob(jobId);
-  if (!fresh || fresh.status !== "pending" || fresh.runnerId) return null;
+  if (!fresh) {
+    return { ok: false, message: "Job not found on this device." };
+  }
+  if (fresh.status !== "pending" || fresh.runnerId) {
+    return {
+      ok: false,
+      message: "This job is no longer available. It may have been taken or cancelled.",
+    };
+  }
 
-  return patchJob(jobId, {
-    runnerId,
+  const patched = patchJob(jobId, {
+    runnerId: runnerKey,
     runnerEmail,
     runnerName,
     runnerPhone,
     status: "accepted",
     acceptedAt: Date.now(),
   });
+  if (!patched) {
+    return { ok: false, message: "Could not accept this job locally." };
+  }
+  return { ok: true, job: patched };
 }
 
 export function listActiveJobs(): MarketplaceJob[] {
@@ -497,7 +537,7 @@ export async function insertBusinessJobs(jobs: MarketplaceJob[]): Promise<Busine
 export function getCurrentRunnerId(): string | null {
   const session = getAuthSession();
   if (!session || session.activeRole !== "runner") return null;
-  return session.email;
+  return normalizeRunnerId(session.email);
 }
 
 export function jobStatusLabel(status: MarketplaceJobStatus): string {

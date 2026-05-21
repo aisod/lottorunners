@@ -11,6 +11,10 @@ import { getRoleHomePath } from "@/lib/store";
 import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 export const Route = createFileRoute("/customer/signin")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    reason: typeof search.reason === "string" ? search.reason : undefined,
+    role: typeof search.role === "string" ? search.role : undefined,
+  }),
   beforeLoad: () => {
     clearPendingAuth();
 
@@ -24,9 +28,14 @@ export const Route = createFileRoute("/customer/signin")({
 
 function CustomerSignInPage() {
   const navigate = useNavigate();
+  const { reason } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const sessionNotice =
+    reason === "session_expired"
+      ? "Your server session expired. Sign in again to accept jobs and share live location."
+      : null;
 
   const signIn = () => {
     setError(null);
@@ -49,6 +58,12 @@ function CustomerSignInPage() {
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
               <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue with Lotto Runners</p>
             </div>
+
+            {sessionNotice ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                {sessionNotice}
+              </p>
+            ) : null}
 
             <div className="space-y-3">
               <AuthField

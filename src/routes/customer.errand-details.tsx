@@ -91,6 +91,12 @@ function CustomerErrandDetailsPage() {
             />
           </div>
           {errors.description ? <p className="text-sm text-destructive">{errors.description}</p> : null}
+          {(errors.pickup || errors.dropoff) && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {errors.pickup ? <p>{errors.pickup}</p> : null}
+              {errors.dropoff ? <p>{errors.dropoff}</p> : null}
+            </div>
+          )}
 
           <label className="block pt-1 text-sm font-semibold">Budget estimate (N$)</label>
           <div className="relative">
@@ -115,11 +121,17 @@ function CustomerErrandDetailsPage() {
             onChange={(event) => setDurationMin(Number(event.target.value) || 30)}
             className="h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none ring-primary/30 transition focus:ring"
           />
+          {errors.duration ? <p className="text-sm text-destructive">{errors.duration}</p> : null}
         </section>
       </main>
 
       <CustomerFixedFooter width="md">
-        {Object.keys(errors).length > 0 && !errors.description && !errors.budget ? (
+        {Object.keys(errors).length > 0 &&
+        !errors.description &&
+        !errors.budget &&
+        !errors.duration &&
+        !errors.pickup &&
+        !errors.dropoff ? (
           <p className="mb-2 text-sm text-destructive">{Object.values(errors)[0]}</p>
         ) : null}
         <Button

@@ -2,7 +2,7 @@ import type { AccountRole, PublicRole } from "../auth-session";
 import type { RunnerOnboardingStatus } from "../runner-account";
 import type { RunnerStage } from "../store";
 import { getSupabaseClient } from "./client";
-import { isSupabaseConfigured } from "./config";
+import { getAdminBootstrapEmails, isSupabaseConfigured } from "./config";
 
 export type RemoteProfileRow = {
   id: string;
@@ -58,6 +58,37 @@ export async function fetchProfileByEmail(email: string): Promise<RemoteProfileR
   return data as RemoteProfileRow;
 }
 
+function formatAdminModerationError(message: string, code?: string): string {
+  const lower = message.toLowerCase();
+  if (code === "PGRST202" || lower.includes("admin_set_runner_status") || lower.includes("schema cache")) {
+    return "Admin moderation is not set up in Supabase yet. Run migrations 20260519170000 and 20260519180000 in the SQL editor, then add your email to app_config (admin_emails).";
+  }
+  if (message === "Admin role required") {
+    const hint =
+      getAdminBootstrapEmails().length > 0
+        ? ` Add the same email to Supabase: insert into app_config (key, value) values ('admin_emails', '${getAdminBootstrapEmails().join(",")}') on conflict (key) do update set value = excluded.value;`
+        : " Run: insert into app_config (key, value) values ('admin_emails', 'your@email.com') on conflict (key) do update set value = excluded.value;";
+    return `Your signed-in account is not an admin in Supabase.${hint} Then sign out and sign in again.`;
+  }
+  return message;
+}
+
+/** Promotes auth.uid() to admin when listed in app_config.admin_emails (see migration 20260519180000). */
+export async function ensureBootstrapAdmin(): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  const { data, error } = await supabase.rpc("ensure_bootstrap_admin");
+  if (error) {
+    const missing =
+      error.code === "PGRST202" ||
+      error.message.toLowerCase().includes("ensure_bootstrap_admin");
+    if (!missing) return false;
+    return false;
+  }
+  return data === true;
+}
+
 export async function fetchProfilesForAdmin(): Promise<RemoteProfileRow[]> {
   const supabase = getSupabaseClient();
   if (!supabase) return [];
@@ -74,9 +105,33 @@ export async function fetchProfilesForAdmin(): Promise<RemoteProfileRow[]> {
 export async function updateRemoteRunnerStatus(
   userId: string,
   runnerStatus: RunnerOnboardingStatus,
-): Promise<boolean> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = getSupabaseClient();
-  if (!supabase) return false;
+  if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionUserId = sessionData.session?.user.id;
+
+  if (sessionUserId && sessionUserId !== userId) {
+    await ensureBootstrapAdmin();
+
+    const attempt = async () =>
+      supabase.rpc("admin_set_runner_status", {
+        p_target_user_id: userId,
+        p_runner_status: runnerStatus,
+      });
+
+    let { error } = await attempt();
+    if (error?.message === "Admin role required") {
+      await ensureBootstrapAdmin();
+      ({ error } = await attempt());
+    }
+
+    if (error) {
+      return { ok: false, error: formatAdminModerationError(error.message, error.code) };
+    }
+    return { ok: true };
+  }
 
   const runnerStage =
     runnerStatus === "approved"
@@ -85,16 +140,20 @@ export async function updateRemoteRunnerStatus(
         ? "verification"
         : null;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .update({
       runner_status: runnerStatus,
       runner_stage: runnerStage,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", userId);
+    .eq("id", userId)
+    .select("id")
+    .maybeSingle();
 
-  return !error;
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "Could not update runner status in Supabase." };
+  return { ok: true };
 }
 
 export async function fetchProfileByUserId(userId: string): Promise<RemoteProfileRow | null> {
@@ -298,6 +357,18 @@ export async function signOutRemote(): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) return;
   await supabase.auth.signOut();
+}
+
+export async function fetchRemoteDocuments(userId: string): Promise<Record<string, string>> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return {};
+
+  const { data, error } = await supabase.from("profiles").select("documents").eq("id", userId).maybeSingle();
+  if (error || !data?.documents) return {};
+
+  const docs = data.documents;
+  if (typeof docs !== "object" || docs === null || Array.isArray(docs)) return {};
+  return docs as Record<string, string>;
 }
 
 export async function mergeRemoteDocuments(

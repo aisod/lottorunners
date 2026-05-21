@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, GraduationCap, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { RunnerOnboardingProgress } from "@/components/runner-onboarding-progress";
+import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import { persistRunnerOnboardingStage } from "@/lib/runner-account";
 
@@ -25,7 +26,7 @@ function RunnerOnboardingTrainingPage() {
           </Button>
           <h1 className="text-lg font-bold text-primary">Runner setup</h1>
         </div>
-        <div className="h-9 w-9 rounded-full bg-secondary" />
+        <RunnerProfileAvatar size="sm" />
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-5 py-6">

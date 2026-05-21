@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { format } from "date-fns";
 import { ArrowLeft, Bell, ChevronRight, Clock3, Wallet } from "lucide-react";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -119,22 +120,34 @@ function RunnerEarningsPage() {
           </div>
 
           <div className="space-y-3">
-            {JOB_BREAKDOWN.map((job) => (
-              <div key={`${job.service}-${job.completedAt}`} className="rounded-2xl border bg-secondary/20 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold">{job.service}</p>
-                    <p className="text-sm text-muted-foreground">{job.completedAt}</p>
+            {jobRows.length === 0 ? (
+              <p className="rounded-2xl border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                No completed trips yet. Finish a job to see your per-trip breakdown here.
+              </p>
+            ) : (
+              jobRows.map((row) => {
+                const completedAt = row.job.completedAt ?? row.job.createdAt;
+                const serviceLabel = SERVICES[row.job.serviceType].label;
+                return (
+                  <div key={row.job.id} className="rounded-2xl border bg-secondary/20 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold">{serviceLabel}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(completedAt), "EEE d MMM yyyy, HH:mm")}
+                        </p>
+                      </div>
+                      <p className="font-semibold text-primary">N$ {row.net.toFixed(2)}</p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                      <MiniStat label="Gross" value={`N$ ${row.gross.toFixed(2)}`} />
+                      <MiniStat label="Platform fee" value={`N$ ${row.fee.toFixed(2)}`} />
+                      <MiniStat label="Net" value={`N$ ${row.net.toFixed(2)}`} />
+                    </div>
                   </div>
-                  <p className="font-semibold text-primary">{job.net}</p>
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
-                  <MiniStat label="Gross" value={job.gross} />
-                  <MiniStat label="Platform fee" value={job.fee} />
-                  <MiniStat label="Net" value={job.net} />
-                </div>
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -147,20 +160,10 @@ function RunnerEarningsPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {PAYOUT_HISTORY.map((payout) => (
-              <div key={`${payout.title}-${payout.date}`} className="flex items-center justify-between rounded-xl border bg-secondary/20 p-4">
-                <div>
-                  <p className="font-semibold">{payout.title}</p>
-                  <p className="text-sm text-muted-foreground">{payout.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-primary">{payout.amount}</p>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{payout.status}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="rounded-xl border bg-secondary/20 p-4 text-sm text-muted-foreground">
+            Bank transfers are not recorded in the app yet. Update your payout account under Settings → Payout
+            details; weekly transfers will show here once payout processing is connected.
+          </p>
         </section>
       </main>
 

@@ -1,5 +1,6 @@
+import { ERRAND_CATEGORIES, type ErrandCategoryId } from "./errand-categories";
+import type { RouteStop } from "./geocode-address";
 import { isValidRouteStop } from "./geocode-address";
-import type { ErrandCategoryId } from "./errand-categories";
 import type { BookingValidationResult } from "./jobs-types";
 import type { LatLng, PaymentMethod, ScheduleMode, ServiceType, TruckSizeId } from "./types";
 
@@ -36,7 +37,8 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
   const needsDropoff =
     snapshot.selectedService === "ride" ||
     snapshot.selectedService === "delivery" ||
-    snapshot.selectedService === "truck";
+    snapshot.selectedService === "truck" ||
+    snapshot.selectedService === "errand";
 
   if (needsDropoff && !snapshot.destination?.label?.trim()) {
     errors.dropoff = "Drop-off address is required.";
@@ -53,13 +55,17 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
       if (!snapshot.errandCategory) {
         errors.errandType = "Select an errand type.";
       }
+      const cat = snapshot.errandCategory ? ERRAND_CATEGORIES[snapshot.errandCategory] : null;
       const desc = snapshot.errandDescription?.trim() ?? "";
       const store = snapshot.storePreference?.trim() ?? "";
       if (!desc && !store) {
         errors.description = "Add a shopping list or task description.";
       }
-      if (snapshot.errandCategory === "shopping" && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
-        errors.budget = "Enter a budget estimate for shopping errands.";
+      if (cat?.needsBasketValue && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
+        errors.budget = "Enter a budget estimate for this errand type.";
+      }
+      if (cat?.needsDuration && (!snapshot.durationMin || snapshot.durationMin <= 0)) {
+        errors.duration = "Enter how long the runner should wait or hold the spot (minutes).";
       }
       break;
     }
@@ -104,33 +110,46 @@ export function validateBooking(snapshot: BookingSnapshot): BookingValidationRes
 export function validateErrandDetailsStep(snapshot: BookingSnapshot): BookingValidationResult {
   const errors: Record<string, string> = {};
   if (!snapshot.pickup?.label?.trim()) {
-    errors.pickup = "Set a pickup location on the home map or errand screen.";
+    errors.pickup = "Set a pickup location on the errand screen or home map.";
   } else if (!isValidRouteStop(snapshot.pickup)) {
     errors.pickup = "Pickup needs map coordinates — search an address or use the home map.";
+  }
+  if (!snapshot.destination?.label?.trim()) {
+    errors.dropoff = "Set a destination on the errand type screen or home map.";
+  } else if (!isValidRouteStop(snapshot.destination)) {
+    errors.dropoff = "Destination needs coordinates — pick a search result or use the home map.";
   }
   if (!snapshot.errandCategory) {
     errors.errandType = "Select an errand type.";
   }
+  const cat = snapshot.errandCategory ? ERRAND_CATEGORIES[snapshot.errandCategory] : null;
   const desc = snapshot.errandDescription?.trim() ?? "";
   const store = snapshot.storePreference?.trim() ?? "";
   if (!desc && !store) {
     errors.description = "Add a shopping list or task description.";
   }
-  if (snapshot.errandCategory === "shopping" && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
-    errors.budget = "Enter a budget estimate for shopping errands.";
+  if (cat?.needsBasketValue && (!snapshot.basketValue || snapshot.basketValue <= 0)) {
+    errors.budget = "Enter a budget estimate for this errand type.";
+  }
+  if (cat?.needsDuration && (!snapshot.durationMin || snapshot.durationMin <= 0)) {
+    errors.duration = "Enter how long the runner should wait or hold the spot (minutes).";
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true };
 }
 
 export function validateDeliveryStep(
-  pickupAddress: string,
-  recipientAddress: string,
+  pickupStop: RouteStop | null,
+  destinationStop: RouteStop | null,
   instructions: string,
 ): BookingValidationResult {
   const errors: Record<string, string> = {};
-  if (!pickupAddress.trim()) errors.pickup = "Pickup address is required.";
-  if (!recipientAddress.trim()) errors.dropoff = "Recipient address is required.";
+  if (!isValidRouteStop(pickupStop)) {
+    errors.pickup = "Choose a pickup from search (or set a pin on the home map).";
+  }
+  if (!isValidRouteStop(destinationStop)) {
+    errors.dropoff = "Choose a drop-off from search (or set a pin on the home map).";
+  }
   if (!instructions.trim()) errors.parcel = "Add delivery instructions or parcel details.";
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true };

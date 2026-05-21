@@ -2,6 +2,9 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { RunnerLocationSync } from "@/components/runner-location-sync";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { restoreSupabaseSession } from "@/lib/supabase/profiles-remote";
+import { hasSupabaseAuthSession } from "@/lib/supabase/session";
 import {
   getRoleHomePath,
   getRunnerHomePath,
@@ -33,7 +36,7 @@ const RUNNER_ONBOARDING_PATHS = new Set([
 ]);
 
 export const Route = createFileRoute("/runner")({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     const session = getAuthSession();
     if (!session) {
       throw redirect({ to: "/customer/signin" });
@@ -44,6 +47,17 @@ export const Route = createFileRoute("/runner")({
     }
 
     const path = location.pathname.replace(/\/$/, "") || "/";
+
+    if (isSupabaseConfigured() && RUNNER_CONSOLE_PATHS.has(path)) {
+      await restoreSupabaseSession();
+      const cloudSession = await hasSupabaseAuthSession();
+      if (!cloudSession) {
+        throw redirect({
+          to: "/customer/signin",
+          search: { reason: "session_expired", role: "runner" },
+        });
+      }
+    }
 
     if (!getStoredRunnerStage()) {
       setStoredRunnerStage("service-selection");

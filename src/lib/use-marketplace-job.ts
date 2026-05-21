@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
 import {
   getCurrentRunnerId,
   getJob,
+  hydrateJobsFromRemote,
   listAvailableJobsForRunner,
   subscribeToJobs,
   type MarketplaceJob,
 } from "./jobs-service";
-import { canRunnerAcceptJobs } from "./runner-account";
+import { canRunnerAcceptJobs, subscribeRunnerAccount } from "./runner-account";
+import { isSupabaseConfigured } from "./supabase/config";
 
 export function useMarketplaceJob(jobId: string | null | undefined): MarketplaceJob | null {
   const [job, setJob] = useState<MarketplaceJob | null>(() => (jobId ? getJob(jobId) : null));
@@ -25,21 +28,59 @@ export function useMarketplaceJob(jobId: string | null | undefined): Marketplace
   return job;
 }
 
-/** Pending marketplace jobs for approved runners (excludes locally declined). */
-export function useRunnerAvailableJobs(): MarketplaceJob[] {
-  const [jobs, setJobs] = useState<MarketplaceJob[]>(() =>
-    canRunnerAcceptJobs() ? listAvailableJobsForRunner(getCurrentRunnerId()) : [],
-  );
+function readAvailableJobs(): MarketplaceJob[] {
+  if (!canRunnerAcceptJobs()) return [];
+  return listAvailableJobsForRunner(getCurrentRunnerId());
+}
 
-  useEffect(() => {
-    return subscribeToJobs(() => {
-      if (!canRunnerAcceptJobs()) {
-        setJobs([]);
-        return;
-      }
-      setJobs(listAvailableJobsForRunner(getCurrentRunnerId()));
-    });
+/** Pending jobs + remote sync for approved runners. */
+export function useRunnerJobFeed(): { jobs: MarketplaceJob[]; syncError: string | null } {
+  const [jobs, setJobs] = useState<MarketplaceJob[]>(() => readAvailableJobs());
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    setJobs(readAvailableJobs());
   }, []);
 
-  return jobs;
+  useEffect(() => {
+    const pullRemote = async () => {
+      if (!isSupabaseConfigured()) {
+        refresh();
+        return;
+      }
+      const result = await hydrateJobsFromRemote();
+      if (!result.ok) {
+        setSyncError(result.error);
+        refresh();
+        return;
+      }
+      setSyncError(null);
+      refresh();
+    };
+
+    void refreshAuthSessionFromProfile().then(() => pullRemote());
+
+    const unsubJobs = subscribeToJobs(refresh);
+    const unsubAccount = subscribeRunnerAccount(() => {
+      void refreshAuthSessionFromProfile().then(() => pullRemote());
+    });
+
+    const onFocus = () => {
+      void refreshAuthSessionFromProfile().then(() => pullRemote());
+    };
+    window.addEventListener("focus", onFocus);
+
+    const interval = window.setInterval(() => {
+      void pullRemote();
+    }, 30_000);
+
+    return () => {
+      unsubJobs();
+      unsubAccount();
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(interval);
+    };
+  }, [refresh]);
+
+  return { jobs, syncError };
 }

@@ -1,20 +1,28 @@
 import type { MarketplaceJob } from "../jobs-types";
 import { getSupabaseClient } from "./client";
+import { isUnauthorizedSupabaseError } from "./session";
 
-export async function fetchRemoteJobs(): Promise<MarketplaceJob[]> {
+export type FetchRemoteJobsResult =
+  | { ok: true; jobs: MarketplaceJob[] }
+  | { ok: false; error: string };
+
+export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
   const supabase = getSupabaseClient();
-  if (!supabase) return [];
+  if (!supabase) return { ok: false, error: "Supabase client unavailable." };
 
   const { data, error } = await supabase
     .from("marketplace_jobs")
     .select("payload, updated_at")
     .order("updated_at", { ascending: false });
 
-  if (error || !data) return [];
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: true, jobs: [] };
 
-  return data
+  const jobs = data
     .map((row) => row.payload as MarketplaceJob)
     .filter((job): job is MarketplaceJob => Boolean(job?.id));
+
+  return { ok: true, jobs };
 }
 
 export async function upsertRemoteJob(job: MarketplaceJob): Promise<void> {
@@ -42,15 +50,21 @@ export async function upsertRemoteJobs(jobs: MarketplaceJob[]): Promise<void> {
   await supabase.from("marketplace_jobs").upsert(rows);
 }
 
+export type AcceptJobRemoteResult =
+  | { ok: true; job: MarketplaceJob }
+  | { ok: false; message: string };
+
 /** Atomic accept: only succeeds if job is still pending. */
 export async function acceptJobRemote(
   jobId: string,
   runnerId: string,
   runnerName: string,
   runnerPhone?: string,
-): Promise<MarketplaceJob | null> {
+): Promise<AcceptJobRemoteResult> {
   const supabase = getSupabaseClient();
-  if (!supabase) return null;
+  if (!supabase) {
+    return { ok: false, message: "Could not connect to the server." };
+  }
 
   const { data: row, error: readError } = await supabase
     .from("marketplace_jobs")
@@ -58,10 +72,30 @@ export async function acceptJobRemote(
     .eq("id", jobId)
     .maybeSingle();
 
-  if (readError || !row) return null;
+  if (readError) {
+    if (isUnauthorizedSupabaseError(readError)) {
+      return {
+        ok: false,
+        message: "Your session expired or you are not signed in to the server. Sign out, then sign in again.",
+      };
+    }
+    return { ok: false, message: readError.message || "Could not load this job from the server." };
+  }
+
+  if (!row) {
+    return {
+      ok: false,
+      message: "This job was not found on the server. Ask the customer to submit again or refresh the dashboard.",
+    };
+  }
 
   const current = row.payload as MarketplaceJob;
-  if (current.status !== "pending" || current.runnerId) return null;
+  if (current.status !== "pending" || current.runnerId) {
+    return {
+      ok: false,
+      message: "This job is no longer available. It may have been taken or cancelled.",
+    };
+  }
 
   const updated: MarketplaceJob = {
     ...current,
@@ -84,8 +118,24 @@ export async function acceptJobRemote(
     .select("payload")
     .maybeSingle();
 
-  if (writeError || !patched) return null;
-  return patched.payload as MarketplaceJob;
+  if (writeError) {
+    if (isUnauthorizedSupabaseError(writeError)) {
+      return {
+        ok: false,
+        message: "Your session expired or you are not signed in to the server. Sign out, then sign in again.",
+      };
+    }
+    return { ok: false, message: writeError.message || "Could not accept this job on the server." };
+  }
+
+  if (!patched) {
+    return {
+      ok: false,
+      message: "Could not accept this job. Another runner may have taken it just now.",
+    };
+  }
+
+  return { ok: true, job: patched.payload as MarketplaceJob };
 }
 
 export function subscribeRemoteJobs(onChange: () => void): () => void {

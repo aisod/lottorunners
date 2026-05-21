@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
-import { AddressSearchInput } from "@/components/address-search-input";
+import { CustomerRouteStopsCard } from "@/components/customer-route-stops-card";
 import { isValidRouteStop } from "@/lib/geocode-address";
 import { cn } from "@/lib/utils";
-import type { LatLng } from "@/lib/types";
 
 export function LocationPicker() {
   const {
@@ -26,8 +25,6 @@ export function LocationPicker() {
     reset,
   } = useCustomerApp();
 
-  const [field, setField] = useState<"pickup" | "destination">(pickup ? "destination" : "pickup");
-
   useEffect(() => {
     if (!pickup && userLocation) {
       setPickup({ coord: userLocation, label: "Current location" });
@@ -46,15 +43,6 @@ export function LocationPicker() {
 
   const canContinue =
     isValidRouteStop(pickup) && isValidRouteStop(destination) && detailsValid;
-
-  const pick = (label: string, coord: LatLng) => {
-    if (field === "pickup") {
-      setPickup({ coord, label });
-      setField("destination");
-    } else {
-      setDestination({ coord, label });
-    }
-  };
 
   return (
     <div>
@@ -81,49 +69,20 @@ export function LocationPicker() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-secondary/40 p-3">
-        <button
-          onClick={() => setField("pickup")}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors",
-            field === "pickup" && "bg-card shadow-sm",
-          )}
-        >
-          <div className="h-3 w-3 rounded-full bg-[oklch(0.55_0.2_250)]" />
-          <div className="flex-1 truncate">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              {cat?.id === "queue_sitting" ? "You / where to meet" : "Pickup"}
-            </div>
-            <div className="truncate text-sm font-medium">{pickup?.label ?? "Set pickup"}</div>
-          </div>
-        </button>
-        <div className="ml-[7px] my-1 h-3 w-px bg-border" />
-        <button
-          onClick={() => setField("destination")}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors",
-            field === "destination" && "bg-card shadow-sm",
-          )}
-        >
-          <div className="h-3 w-3 rotate-45 bg-accent" />
-          <div className="flex-1 truncate">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              {cat?.id === "queue_sitting"
-                ? "Office / venue to wait at"
-                : cat?.id === "personal_shopper"
-                ? "Shop to buy from"
-                : "Destination"}
-            </div>
-            <div className="truncate text-sm font-medium">{destination?.label ?? "Where to?"}</div>
-          </div>
-        </button>
-      </div>
-
-      <AddressSearchInput
+      <CustomerRouteStopsCard
         near={userLocation}
-        field={field}
-        className="mt-3"
-        onPick={(r) => pick(r.shortLabel, r.coord)}
+        pickupHeading={cat?.id === "queue_sitting" ? "You / where to meet" : "Pick up"}
+        destinationHeading={
+          cat?.id === "queue_sitting"
+            ? "Office / venue to wait at"
+            : cat?.id === "personal_shopper"
+              ? "Shop to buy from"
+              : "Destination"
+        }
+        pickupLabel={pickup?.label ?? "Set pickup"}
+        destinationLabel={destination?.label ?? "Where to?"}
+        onPickPickup={(r) => setPickup({ label: r.shortLabel, coord: r.coord })}
+        onPickDestination={(r) => setDestination({ label: r.shortLabel, coord: r.coord })}
       />
 
       {selectedService === "errand" && cat && (
@@ -211,3 +170,4 @@ export function LocationPicker() {
       </button>
     </div>
   );
+}

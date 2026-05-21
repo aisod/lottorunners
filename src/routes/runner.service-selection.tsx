@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Car, CheckCircle2, Info, Package, ShoppingBasket, Truck } from "lucide-react";
 import { useMemo } from "react";
 import { RunnerOnboardingProgress } from "@/components/runner-onboarding-progress";
+import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import { persistRunnerOnboardingStage } from "@/lib/runner-account";
 import { getStoredRunnerStage } from "@/lib/store";
@@ -75,7 +76,7 @@ function RunnerServiceSelectionPage() {
           </Button>
           <h1 className="text-lg font-extrabold text-primary">Runner setup</h1>
         </div>
-        <div className="h-9 w-9 rounded-full bg-secondary" />
+        <RunnerProfileAvatar size="sm" />
       </header>
 
       <main className="mx-auto max-w-4xl space-y-6 px-5 py-8">

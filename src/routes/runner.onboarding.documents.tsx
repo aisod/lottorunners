@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, BadgeCheck, Bell, Car, CheckCircle2, FileText, HelpCircle, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RunnerOnboardingProgress } from "@/components/runner-onboarding-progress";
+import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import { getAuthSession } from "@/lib/auth-session";
 import { getSupabaseUserId } from "@/lib/auth-users";
@@ -14,7 +15,7 @@ import {
 } from "@/lib/runner-documents";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { mergeRemoteDocuments } from "@/lib/supabase/profiles-remote";
-import { readFileAsDataUrl, uploadUserFile } from "@/lib/supabase/storage";
+import { isUploadBucketMissingError, readFileAsDataUrl, uploadUserFile } from "@/lib/supabase/storage";
 
 export const Route = createFileRoute("/runner/onboarding/documents")({
   component: RunnerOnboardingDocumentsPage,
@@ -71,6 +72,15 @@ function RunnerOnboardingDocumentsPage() {
       if (isSupabaseConfigured()) {
         const result = await uploadUserFile(file, `runner-documents/${key}`);
         if (!result.ok) {
+          if (isUploadBucketMissingError(result.error)) {
+            publicUrl = await readFileAsDataUrl(file);
+            const next = writeLocalRunnerDocuments(session.email, { [key]: publicUrl });
+            setUrls(next);
+            setUploadError(
+              `${result.error} Document is saved on this device only until the uploads bucket exists.`,
+            );
+            return;
+          }
           setUploadError(result.error);
           return;
         }
@@ -117,11 +127,7 @@ function RunnerOnboardingDocumentsPage() {
           >
             <Bell className="h-5 w-5 opacity-50" />
           </Button>
-          {urls.profilePhoto ? (
-            <img src={urls.profilePhoto} alt="" className="h-9 w-9 rounded-full object-cover" />
-          ) : (
-            <div className="h-9 w-9 rounded-full bg-secondary" />
-          )}
+          <RunnerProfileAvatar size="sm" photoUrl={urls.profilePhoto} />
         </div>
       </header>
 

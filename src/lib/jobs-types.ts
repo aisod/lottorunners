@@ -1,3 +1,4 @@
+import type { CargoPhotoUrls } from "./cargo-photos";
 import type { ErrandCategoryId } from "./errand-categories";
 import type { LatLng, PaymentMethod, ScheduleMode, ServiceType } from "./types";
 
@@ -46,6 +47,8 @@ export interface MarketplaceJob {
   rating?: number;
   runnerRating?: number;
   proofPhotoUrl?: string;
+  /** Customer-uploaded cargo photos (truck / moving). */
+  cargoPhotoUrls?: CargoPhotoUrls;
   errandCategory?: ErrandCategoryId;
   /** Who created the job — customer app vs business portal. */
   source?: "customer" | "business";

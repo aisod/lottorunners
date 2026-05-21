@@ -1,3 +1,4 @@
+import type { CargoPhotoUrls } from "./cargo-photos";
 import type { ErrandCategoryId } from "./errand-categories";
 import type { PaymentMethod, ScheduleMode, ServiceType, TruckSizeId } from "./types";
 
@@ -16,6 +17,7 @@ export type CustomerBookingDraft = {
   truckLabour: boolean;
   truckExtraHelpers: number;
   movingNotes: string;
+  cargoPhotos: CargoPhotoUrls;
   paymentMethod: PaymentMethod;
   rideSubType: string | null;
   scheduleMode: ScheduleMode;

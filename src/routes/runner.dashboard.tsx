@@ -3,9 +3,15 @@ import { BriefcaseBusiness, ShieldAlert } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { LiveMapClient } from "@/components/live-map-client";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
+import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
-import { getCurrentRunnerId, getRunnerActiveJob, listJobsForRunner } from "@/lib/jobs-service";
-import { useRunnerAvailableJobs } from "@/lib/use-marketplace-job";
+import { formatMapZoneLabel } from "@/lib/geo-utils";
+import { getCurrentRunnerId, listJobsForRunner, subscribeToJobs } from "@/lib/jobs-service";
+import { countPendingDemandNear } from "@/lib/runner-location-service";
+import { getRunnerEarningsSummary } from "@/lib/runner-earnings";
+import { useNearbyRunners } from "@/lib/use-nearby-runners";
+import { useRunnerJobFeed } from "@/lib/use-marketplace-job";
+import { useRunnerOnboardingStatus } from "@/lib/use-runner-onboarding-status";
 import {
   getRunnerBankDetails,
   getRunnerOnline,
@@ -13,12 +19,10 @@ import {
   setRunnerOnline,
 } from "@/lib/runner-workflow";
 import { SERVICES } from "@/lib/services";
-import { getRunnerOnboardingStatus } from "@/lib/runner-account";
 import { setStoredRunnerStage } from "@/lib/store";
 import { requestCurrentPosition } from "@/lib/geolocation-utils";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useGeolocation } from "@/lib/use-geolocation";
-import { useSimulatedRunners } from "@/lib/use-simulated-runners";
 import type { Runner } from "@/lib/types";
 
 export const Route = createFileRoute("/runner/dashboard")({
@@ -28,17 +32,16 @@ export const Route = createFileRoute("/runner/dashboard")({
 function RunnerDashboardPage() {
   const navigate = useNavigate();
   const [online, setOnlineState] = useState(() => getRunnerOnline());
-  const geo = useGeolocation({ fallbackOnError: false, watch: online });
+  const geo = useGeolocation({ fallbackOnError: false, watch: true });
   const [locationGateError, setLocationGateError] = useState<string | null>(null);
-  const [runnerStatus, setRunnerStatus] = useState(getRunnerOnboardingStatus);
+  const runnerStatus = useRunnerOnboardingStatus();
   const canReceiveJobs = runnerStatus === "approved";
   const isPending = runnerStatus === "pending_verification";
   const isRejected = runnerStatus === "rejected";
 
-  const pendingJobs = useRunnerAvailableJobs();
+  const { jobs: pendingJobs, syncError: jobsSyncError } = useRunnerJobFeed();
   const nextJob = pendingJobs[0] ?? null;
   const runnerId = getCurrentRunnerId();
-  const activeJob = runnerId ? getRunnerActiveJob(runnerId) : null;
   const recentCompleted = runnerId
     ? listJobsForRunner(runnerId)
         .filter((job) => job.status === "completed")
@@ -62,7 +65,23 @@ function RunnerDashboardPage() {
   };
 
   const userLocation = geo.location;
-  const runners = useSimulatedRunners(userLocation);
+  const earnings = getRunnerEarningsSummary(runnerId ?? undefined);
+  const { runners: nearbyRunners } = useNearbyRunners({
+    center: userLocation,
+    excludeRunnerId: runnerId,
+    enabled: Boolean(userLocation),
+  });
+  const [demandNearby, setDemandNearby] = useState(0);
+
+  useEffect(() => {
+    if (!userLocation) {
+      setDemandNearby(0);
+      return;
+    }
+    const refreshDemand = () => setDemandNearby(countPendingDemandNear(userLocation));
+    refreshDemand();
+    return subscribeToJobs(refreshDemand);
+  }, [userLocation?.lat, userLocation?.lng]);
   const selfMarker: Runner | null =
     userLocation && runnerId
       ? {
@@ -75,7 +94,8 @@ function RunnerDashboardPage() {
           heading: 0,
         }
       : null;
-  const mapRunners = selfMarker ? [selfMarker, ...runners] : runners;
+  const mapRunners = selfMarker ? [selfMarker, ...nearbyRunners] : nearbyRunners;
+  const zoneLabel = formatMapZoneLabel(userLocation);
   const payoutDetails = getRunnerBankDetails();
 
   useEffect(() => {
@@ -86,7 +106,7 @@ function RunnerDashboardPage() {
     <div className="min-h-dvh bg-background pb-24">
       <header className="fixed inset-x-0 top-0 z-20 flex h-16 items-center justify-between border-b bg-background px-5">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-secondary" />
+          <RunnerProfileAvatar size="md" />
           <h1 className="text-lg font-bold text-primary">Runner Dashboard</h1>
         </div>
         <Button variant="ghost" asChild className="h-9 px-3 text-sm font-semibold text-primary">
@@ -110,6 +130,12 @@ function RunnerDashboardPage() {
             {isSupabaseConfigured() ? null : (
               <p className="mt-2 text-xs opacity-80">Live GPS sharing requires Lovable Cloud / Supabase.</p>
             )}
+          </section>
+        ) : null}
+
+        {jobsSyncError && canReceiveJobs ? (
+          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            Could not load customer requests from the server. Check your connection and refresh the page.
           </section>
         ) : null}
 
@@ -179,13 +205,17 @@ function RunnerDashboardPage() {
             </div>
             <p className="text-sm font-semibold text-muted-foreground">Today&apos;s earnings</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-2">
-              <p className="text-3xl font-bold text-primary">N$ 1,240.50</p>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">14 completed jobs</span>
+              <p className="text-3xl font-bold text-primary">N$ {earnings.today.toFixed(2)}</p>
+              {earnings.tripCount > 0 ? (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  {earnings.tripCount} completed {earnings.tripCount === 1 ? "job" : "jobs"}
+                </span>
+              ) : null}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3 border-t pt-4">
-              <Stat label="This week" value="N$ 4,865" />
-              <Stat label="Hours online" value="32.5h" />
-              <Stat label="Bonus earned" value="N$ 150" highlight />
+              <Stat label="This week" value={`N$ ${earnings.week.toFixed(2)}`} />
+              <Stat label="This month" value={`N$ ${earnings.month.toFixed(2)}`} />
+              <Stat label="Avg per trip" value={`N$ ${earnings.avgPerTrip.toFixed(2)}`} highlight />
             </div>
             <Button variant="link" className="mt-4 h-auto p-0 text-primary" onClick={() => navigate({ to: "/runner/earnings" })}>
               Open earnings and payouts
@@ -225,7 +255,7 @@ function RunnerDashboardPage() {
                 <h2 className="text-sm font-semibold text-primary">Runner map</h2>
                 <p className="text-xs text-muted-foreground">Live nearby activity around your current zone.</p>
               </div>
-              <span className="text-xs text-muted-foreground">Windhoek, Central</span>
+              <span className="text-xs text-muted-foreground">{zoneLabel}</span>
             </div>
             <div className="relative h-80">
               <LiveMapClient
@@ -248,47 +278,13 @@ function RunnerDashboardPage() {
               )}
 
               <div className="pointer-events-none absolute inset-x-4 top-4 z-10 grid gap-3 md:grid-cols-3">
-                <OverlayBadge title="Demand zone" value="Central Windhoek" />
-                <OverlayBadge title="Nearby runners" value={`${runners.length}`} />
+                <OverlayBadge
+                  title="Open requests"
+                  value={demandNearby > 0 ? `${demandNearby} nearby` : "None nearby"}
+                />
+                <OverlayBadge title="Nearby runners" value={`${nearbyRunners.length} online`} />
                 <OverlayBadge title="Next payout" value={`Fri -> ${maskAccountNumber(payoutDetails.accountNumber)}`} />
               </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border bg-card p-5 md:col-span-12">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current workflow</p>
-                <h3 className="mt-1 text-lg font-bold">Job handling</h3>
-              </div>
-              <div className="rounded-full bg-primary/10 p-2 text-primary">
-                <BriefcaseBusiness className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-4 space-y-3">
-              <WorkflowRow label="Incoming alert" value="Review job details and respond before the timer ends." />
-              <WorkflowRow label="Accepted job" value="Switch to active job mode with route guidance and status controls." />
-              <WorkflowRow label="Completion" value="Upload proof if needed, complete the task, and rate the customer." />
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Button
-                variant="outline"
-                disabled={!canReceiveJobs || !online || !nextJob}
-                onClick={() =>
-                  nextJob && navigate({ to: "/runner/incoming-job-alert", search: { jobId: nextJob.id } })
-                }
-              >
-                Open job alert
-              </Button>
-              <Button
-                variant="outline"
-                disabled={!canReceiveJobs || !activeJob}
-                onClick={() =>
-                  activeJob && navigate({ to: "/runner/active-job", search: { jobId: activeJob.id } })
-                }
-              >
-                Open active job
-              </Button>
             </div>
           </section>
 
@@ -356,15 +352,6 @@ function OverlayBadge({ title, value }: { title: string; value: string }) {
     <div className="pointer-events-auto rounded-xl border bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <p className="text-sm font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function WorkflowRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border bg-secondary/20 p-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>
   );
 }

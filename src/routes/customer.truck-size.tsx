@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowRight, CheckCircle2, Truck, Users } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowRight, CheckCircle2, Truck } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { CustomerFixedFooter, CustomerPageShell } from "@/components/customer-page-shell";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
 import { goBackOrFallback } from "@/lib/customer-navigation";
 import { cn } from "@/lib/utils";
-import { TRUCK_LABOUR_FEE_NAD, TRUCK_SIZE_BASE_NAD } from "@/lib/services";
+import { TRUCK_SIZE_BASE_NAD } from "@/lib/services";
 import { useCustomerApp } from "@/lib/customer-store";
 import type { TruckSizeId } from "@/lib/types";
 
@@ -46,18 +46,18 @@ function CustomerTruckSizePage() {
   const {
     truckSizeId,
     setTruckSizeId,
-    truckLabour,
-    setTruckLabour,
     selectedService,
     setSelectedService,
+    setTruckLabour,
     restoreHomeUi,
   } = useCustomerApp();
 
+  useEffect(() => {
+    setTruckLabour(false);
+  }, [setTruckLabour]);
+
   const tier = truckSizeId ?? "small";
-  const subtotal = useMemo(() => {
-    const base = TRUCK_SIZE_BASE_NAD[tier];
-    return base + (truckLabour ? TRUCK_LABOUR_FEE_NAD : 0);
-  }, [tier, truckLabour]);
+  const subtotal = useMemo(() => TRUCK_SIZE_BASE_NAD[tier], [tier]);
 
   return (
     <CustomerPageShell width="lg" variant="plain" className="pb-36">
@@ -111,43 +111,6 @@ function CustomerTruckSizePage() {
             );
           })}
         </div>
-
-        <section className="rounded-xl border border-border/50 bg-secondary/40 p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Users className="h-6 w-6" />
-              </div>
-              <div>
-                <h4 className="font-semibold">Add labour assistance</h4>
-                <p className="text-sm text-muted-foreground">Driver + 1 assistant to help with loading and unloading.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={truckLabour}
-              onClick={() => setTruckLabour(!truckLabour)}
-              className={cn(
-                "relative inline-flex h-8 w-14 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                truckLabour ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-7 w-7 rounded-full bg-white shadow transition-transform",
-                  truckLabour ? "translate-x-6" : "translate-x-0.5",
-                )}
-              />
-            </button>
-          </div>
-          {truckLabour ? (
-            <div className="mt-4 flex justify-between border-t border-border/40 pt-4 text-sm">
-              <span className="text-muted-foreground">Labour fee</span>
-              <span className="font-semibold">+ N$ {TRUCK_LABOUR_FEE_NAD.toFixed(2)}</span>
-            </div>
-          ) : null}
-        </section>
       </main>
 
       <CustomerFixedFooter width="lg">

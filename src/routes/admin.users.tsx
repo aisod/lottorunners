@@ -6,7 +6,8 @@ import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/co
 import { listUsersForDirectory } from "@/lib/auth-users";
 import { approveRunnerAccount, rejectRunnerAccount } from "@/lib/runner-account";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { fetchProfilesForAdmin } from "@/lib/supabase/profiles-remote";
+import { ensureBootstrapAdmin, fetchProfilesForAdmin } from "@/lib/supabase/profiles-remote";
+import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -149,6 +150,10 @@ function AdminUsersPage() {
     let cancelled = false;
 
     async function load() {
+      if (isSupabaseConfigured()) {
+        await ensureBootstrapAdmin();
+        await refreshAuthSessionFromProfile();
+      }
       if (!cancelled) await reload();
     }
 

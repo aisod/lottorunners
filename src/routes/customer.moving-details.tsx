@@ -1,23 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  Bolt,
-  CalendarDays,
-  Camera,
-  Flag,
-  MapPin,
-  Minus,
-  Plus,
-  Truck,
-  Users,
-} from "lucide-react";
-import { useState } from "react";
-import { AddressSearchInput } from "@/components/address-search-input";
+import { Minus, Plus, Truck, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CargoPhotoSlots } from "@/components/cargo-photo-slots";
+import { CustomerRouteStopsCard } from "@/components/customer-route-stops-card";
+import type { CargoPhotoSlotId } from "@/lib/cargo-photos";
 import { CustomerFixedFooter, CustomerPageShell } from "@/components/customer-page-shell";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
 import { validateMovingStep } from "@/lib/booking-validation";
 import { useCustomerApp } from "@/lib/customer-store";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/customer/moving-details")({
   component: CustomerMovingDetailsPage,
@@ -28,6 +19,8 @@ function CustomerMovingDetailsPage() {
   const {
     movingNotes,
     setMovingNotes,
+    cargoPhotos,
+    setCargoPhoto,
     truckExtraHelpers,
     setTruckExtraHelpers,
     pickup,
@@ -40,8 +33,11 @@ function CustomerMovingDetailsPage() {
     setScheduleMode,
   } = useCustomerApp();
 
-  const [timing, setTiming] = useState<"now" | "schedule">("now");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setScheduleMode("now");
+  }, [setScheduleMode]);
 
   const submit = () => {
     const result = validateMovingStep(useCustomerApp.getState());
@@ -51,7 +47,7 @@ function CustomerMovingDetailsPage() {
     }
     setErrors({});
     setSelectedService("truck");
-    setScheduleMode(timing === "schedule" ? "later" : "now");
+    setScheduleMode("now");
     setStatus("estimating");
     navigate({ to: "/customer/review-schedule" });
   };
@@ -68,34 +64,15 @@ function CustomerMovingDetailsPage() {
           </p>
         </section>
 
-        <section className="space-y-3">
+        <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Route details</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
-              <MapPin className="h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Pickup location</p>
-                <p className="font-semibold">{pickup?.label ?? "Use home map or confirm on review"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
-              <Flag className="h-5 w-5 shrink-0 text-destructive" />
-              <div>
-                <p className="text-xs text-muted-foreground">Drop-off destination</p>
-                <p className="font-semibold">{destination?.label ?? "Use home map or confirm on review"}</p>
-              </div>
-            </div>
-            <AddressSearchInput
-              near={userLocation}
-              field="pickup"
-              onPick={(r) => setPickup({ label: r.shortLabel, coord: r.coord })}
-            />
-            <AddressSearchInput
-              near={userLocation}
-              field="destination"
-              onPick={(r) => setDestination({ label: r.shortLabel, coord: r.coord })}
-            />
-          </div>
+          <CustomerRouteStopsCard
+            near={userLocation}
+            pickupLabel={pickup?.label ?? "Set pickup location"}
+            destinationLabel={destination?.label ?? "Set destination location"}
+            onPickPickup={(r) => setPickup({ label: r.shortLabel, coord: r.coord })}
+            onPickDestination={(r) => setDestination({ label: r.shortLabel, coord: r.coord })}
+          />
         </section>
 
         <section className="space-y-2">
@@ -113,50 +90,13 @@ function CustomerMovingDetailsPage() {
 
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Item photos</h3>
-          <div className="grid grid-cols-3 gap-3">
-            {["Main item", "Side view", "Obstacles"].map((label) => (
-              <button
-                key={label}
-                type="button"
-                className="flex aspect-square flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-secondary/40 text-muted-foreground transition hover:bg-secondary/70"
-              >
-                <Camera className="mb-1 h-5 w-5" />
-                <span className="px-1 text-center text-xs font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs italic text-muted-foreground">Photos of stairs, doorways, or lift points help the crew prepare.</p>
-        </section>
-
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Timing</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setTiming("now")}
-              className={cn(
-                "flex flex-col items-center rounded-xl border-2 p-4 transition active:scale-[0.98]",
-                timing === "now" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-secondary/50",
-              )}
-            >
-              <Bolt className="mb-2 h-6 w-6" />
-              <span className="font-semibold">Immediate</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTiming("schedule")}
-              className={cn(
-                "flex flex-col items-center rounded-xl border-2 p-4 transition active:scale-[0.98]",
-                timing === "schedule"
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:bg-secondary/50",
-              )}
-            >
-              <CalendarDays className="mb-2 h-6 w-6" />
-              <span className="font-semibold">Schedule</span>
-              <span className="mt-1 text-xs opacity-90">Pick date on review</span>
-            </button>
-          </div>
+          <CargoPhotoSlots
+            photos={cargoPhotos}
+            onChange={(slot: CargoPhotoSlotId, url) => setCargoPhoto(slot, url)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional. Uploads are saved to your account and attached to the job for the crew. Sign in if upload fails.
+          </p>
         </section>
 
         <section className="flex items-center justify-between rounded-xl border bg-secondary/40 p-4">

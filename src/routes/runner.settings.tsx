@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Banknote, Car, CheckCircle2, Package, ShieldCheck, ShoppingBasket, Truck, UserRound } from "lucide-react";
+import { ArrowLeft, Banknote, Car, CheckCircle2, Package, ShieldCheck, ShoppingBasket, Truck } from "lucide-react";
 import { useMemo } from "react";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { RoleSwitcher } from "@/components/role-switcher";
+import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type RunnerOfferedServiceId, useRunnerSettings } from "@/lib/runner-settings";
@@ -50,9 +51,7 @@ function RunnerSettingsPage() {
         <RoleSwitcher />
         <section className="rounded-3xl border bg-card p-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-primary">
-              <UserRound className="h-7 w-7" />
-            </div>
+            <RunnerProfileAvatar size="lg" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Runner profile</p>
               <h2 className="mt-1 text-xl font-black">Lukas Shilongo</h2>

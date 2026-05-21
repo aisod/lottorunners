@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, GraduationCap, Headset, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RunnerOnboardingProgress } from "@/components/runner-onboarding-progress";
+import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import {
   getRunnerOnboardingStatus,
@@ -48,10 +49,10 @@ function RunnerOnboardingVerificationPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background pb-28">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background px-5">
-        <motion.div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-secondary" />
+        <div className="flex items-center gap-3">
+          <RunnerProfileAvatar size="sm" />
           <h1 className="text-lg font-bold text-primary">Runner setup</h1>
-        </motion.div>
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -173,7 +174,7 @@ function TimelineStep({
       <div className="flex flex-col items-center">
         <StepDot state={state} />
         {showLine ? (
-          <motion.div
+          <div
             className={`mt-1 h-10 w-0.5 ${state === "done" ? "bg-primary" : state === "rejected" ? "bg-destructive" : "bg-border"}`}
           />
         ) : null}

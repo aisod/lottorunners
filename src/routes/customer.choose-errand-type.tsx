@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { FileText, Hourglass, Pill, Receipt, Search, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
+import { CustomerRouteStopsCard, CustomerRouteStopsHeroSection } from "@/components/customer-route-stops-card";
 import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import {
@@ -32,8 +33,17 @@ export const Route = createFileRoute("/customer/choose-errand-type")({
 function CustomerChooseErrandTypePage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const { setErrandCategory, setSelectedService, setStatus, pickup, destination, restoreHomeUi } =
-    useCustomerApp();
+  const {
+    setErrandCategory,
+    setSelectedService,
+    setStatus,
+    pickup,
+    destination,
+    setPickup,
+    setDestination,
+    restoreHomeUi,
+    userLocation,
+  } = useCustomerApp();
   const [query, setQuery] = useState("");
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -50,7 +60,11 @@ function CustomerChooseErrandTypePage() {
 
   const pickCategory = (id: ErrandCategoryId) => {
     if (!isValidRouteStop(pickup)) {
-      setLocationError("Set a pickup location on the home map before choosing an errand.");
+      setLocationError("Set a pickup using search above or a pin on the home map.");
+      return;
+    }
+    if (!isValidRouteStop(destination)) {
+      setLocationError("Set a destination using search above or a pin on the home map.");
       return;
     }
     setLocationError(null);
@@ -72,16 +86,15 @@ function CustomerChooseErrandTypePage() {
       />
 
       <main className="flex flex-col gap-6 pb-8 pt-6">
-        <section className="relative h-44 w-full overflow-hidden rounded-xl border bg-secondary">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_35%,oklch(0.9_0.05_250),transparent_40%),radial-gradient(circle_at_75%_70%,oklch(0.8_0.06_200),transparent_45%)]" />
-          <div className="absolute inset-x-4 bottom-4 rounded-xl border bg-card/95 p-4 shadow">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Pickup</p>
-            <p className="font-semibold">{pickup?.label ?? "Set pickup location"}</p>
-            <div className="my-2 h-px bg-border" />
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Destination</p>
-            <p className="font-semibold">{destination?.label ?? "Set destination location"}</p>
-          </div>
-        </section>
+        <CustomerRouteStopsHeroSection>
+          <CustomerRouteStopsCard
+            near={userLocation}
+            pickupLabel={pickup?.label ?? "Set pickup location"}
+            destinationLabel={destination?.label ?? "Set destination location"}
+            onPickPickup={(r) => setPickup({ label: r.shortLabel, coord: r.coord })}
+            onPickDestination={(r) => setDestination({ label: r.shortLabel, coord: r.coord })}
+          />
+        </CustomerRouteStopsHeroSection>
 
         {locationError ? <p className="text-sm text-destructive">{locationError}</p> : null}
 
