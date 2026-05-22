@@ -1,3 +1,4 @@
+import { ensureSupabaseAuthSession as ensureSupabaseAuthSessionCore } from "@/lib/auth/ensure-session";
 import { getSupabaseClient } from "./client";
 import { isSupabaseConfigured } from "./config";
 
@@ -14,15 +15,18 @@ export async function hasSupabaseAuthSession(): Promise<boolean> {
   return !error && Boolean(data.session?.access_token);
 }
 
+/** @returns ok + user-facing message for UI */
 export async function ensureSupabaseAuthSession(): Promise<
   { ok: true } | { ok: false; message: string }
 > {
   if (!isSupabaseConfigured()) return { ok: true };
-  const ok = await hasSupabaseAuthSession();
+
+  const ok = await ensureSupabaseAuthSessionCore();
   if (ok) return { ok: true };
+
   return {
     ok: false,
-    message: "Your session expired or you are not signed in to the server. Sign out, then sign in again.",
+    message: "Session expired. Please sign in again.",
   };
 }
 

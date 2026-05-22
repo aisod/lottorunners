@@ -1,3 +1,4 @@
+import { getVerifiedRunnerId } from "./auth/get-verified-runner-id";
 import { getUserDisplayName } from "./auth-users";
 import { isWithinRadiusKm } from "./geo-utils";
 import { listPendingJobs } from "./jobs-service";
@@ -64,7 +65,15 @@ export async function upsertRunnerLocation(
   writeLocalLocation(loc);
 
   if (isSupabaseConfigured()) {
-    return upsertRunnerLocationRemote(runnerKey, coord, heading);
+    const verified = await getVerifiedRunnerId();
+    if (!verified) {
+      return {
+        ok: false,
+        unauthorized: true,
+        message: "Session expired. Please sign in again.",
+      };
+    }
+    return upsertRunnerLocationRemote(verified, coord, heading);
   }
 
   return { ok: true };

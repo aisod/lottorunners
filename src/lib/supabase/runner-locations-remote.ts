@@ -1,3 +1,4 @@
+import { ensureSupabaseAuthSession } from "@/lib/auth/ensure-session";
 import type { RunnerLiveLocation } from "../runner-location-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError, normalizeRunnerId } from "./session";
@@ -58,6 +59,15 @@ export async function upsertRunnerLocationRemote(
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { ok: false, unauthorized: false, message: "Supabase client unavailable." };
+  }
+
+  const authed = await ensureSupabaseAuthSession();
+  if (!authed) {
+    return {
+      ok: false,
+      unauthorized: true,
+      message: "Session expired. Please sign in again.",
+    };
   }
 
   const { error } = await supabase.from("runner_locations").upsert(

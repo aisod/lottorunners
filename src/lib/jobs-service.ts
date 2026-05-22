@@ -8,7 +8,9 @@ import type { TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
-import { ensureSupabaseAuthSession, normalizeRunnerId } from "./supabase/session";
+import { ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool } from "./auth/ensure-session";
+import { getVerifiedRunnerId } from "./auth/get-verified-runner-id";
+import { normalizeRunnerId } from "./supabase/session";
 
 const JOBS_STORAGE_KEY = "lr-marketplace-jobs-v1";
 const JOBS_CHANNEL_NAME = "lr-marketplace-jobs-sync";
@@ -316,7 +318,13 @@ export async function acceptJob(
   runnerId: string,
   runnerName: string,
 ): Promise<AcceptJobResult> {
-  const runnerKey = normalizeRunnerId(runnerId);
+  const runnerKey = isSupabaseConfigured()
+    ? await getVerifiedRunnerId()
+    : normalizeRunnerId(runnerId);
+
+  if (!runnerKey) {
+    return { ok: false, message: "Session expired. Please sign in again." };
+  }
 
   if (!canRunnerAcceptJobs(runnerKey)) {
     return { ok: false, message: "Your runner profile must be approved before you can accept jobs." };
@@ -334,8 +342,10 @@ export async function acceptJob(
   const runnerEmail = runnerKey;
 
   if (isSupabaseConfigured()) {
-    const auth = await ensureSupabaseAuthSession();
-    if (!auth.ok) return { ok: false, message: auth.message };
+    const authed = await ensureSupabaseAuthSessionBool();
+    if (!authed) {
+      return { ok: false, message: "Session expired. Please sign in again." };
+    }
 
     const remote = await acceptJobRemote(jobId, runnerKey, runnerName, runnerPhone);
     if (!remote.ok) return { ok: false, message: remote.message };

@@ -1,3 +1,4 @@
+import { ensureSupabaseAuthSession } from "@/lib/auth/ensure-session";
 import type { MarketplaceJob } from "../jobs-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError } from "./session";
@@ -64,6 +65,14 @@ export async function acceptJobRemote(
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { ok: false, message: "Could not connect to the server." };
+  }
+
+  const authed = await ensureSupabaseAuthSession();
+  if (!authed) {
+    return {
+      ok: false,
+      message: "Your session expired. Sign out and sign in again.",
+    };
   }
 
   const { data: row, error: readError } = await supabase

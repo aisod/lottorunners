@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { getCurrentRunnerId, getRunnerActiveJob } from "./jobs-service";
+import { getVerifiedRunnerId } from "@/lib/auth/get-verified-runner-id";
+import { getRunnerActiveJob } from "./jobs-service";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { upsertRunnerLocation } from "./runner-location-service";
-import { ensureSupabaseAuthSession } from "./supabase/session";
 import { isSupabaseConfigured } from "./supabase/config";
 import { getRunnerOnline } from "./runner-workflow";
 import type { LatLng } from "./types";
@@ -15,6 +15,7 @@ const MIN_UPLOAD_INTERVAL_MS = 10_000;
 export function useRunnerLocationPublisher(): { publishing: boolean; error: string | null } {
   const [error, setError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [runnerId, setRunnerId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -28,14 +29,27 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
   }, []);
 
   useEffect(() => {
-    const runnerId = getCurrentRunnerId();
+    let cancelled = false;
+    void getVerifiedRunnerId().then((id) => {
+      if (!cancelled) setRunnerId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  useEffect(() => {
     const online = getRunnerOnline();
     const activeJob = runnerId ? getRunnerActiveJob(runnerId) : null;
     const shouldPublish = Boolean(runnerId && canRunnerAcceptJobs(runnerId) && (online || activeJob));
 
     if (!shouldPublish) {
       setPublishing(false);
-      setError(null);
+      if (!runnerId && isSupabaseConfigured() && online) {
+        setError("Session expired. Please sign in again.");
+      } else if (!runnerId) {
+        setError(null);
+      }
       return;
     }
 
@@ -49,46 +63,21 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
     let lastUpload = 0;
     let watchId: number | null = null;
 
-    const startWatch = () => {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (cancelled) return;
-          setError(null);
-          void upload(
-            { lat: pos.coords.latitude, lng: pos.coords.longitude },
-            pos.coords.heading ?? undefined,
-          );
-        },
-        (err) => {
-          if (cancelled) return;
-          setPublishing(false);
-          if (err.code === err.PERMISSION_DENIED) {
-            setError("Location permission denied. Enable location to share live position with customers.");
-            return;
-          }
-          setError("Could not read GPS position.");
-        },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
-      );
-    };
-
     const upload = async (coord: LatLng, heading?: number) => {
       const now = Date.now();
       if (now - lastUpload < MIN_UPLOAD_INTERVAL_MS) return;
       lastUpload = now;
 
-      if (isSupabaseConfigured()) {
-        const auth = await ensureSupabaseAuthSession();
-        if (!auth.ok) {
-          if (!cancelled) {
-            setError(auth.message);
-            setPublishing(false);
-          }
-          return;
+      const verified = await getVerifiedRunnerId();
+      if (!verified) {
+        if (!cancelled) {
+          setError("Session expired. Please sign in again.");
+          setPublishing(false);
         }
+        return;
       }
 
-      const result = await upsertRunnerLocation(runnerId!, coord, heading);
+      const result = await upsertRunnerLocation(verified, coord, heading);
       if (cancelled) return;
       if (!result.ok) {
         setError(result.message);
@@ -96,30 +85,36 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
       }
     };
 
-    void (async () => {
-      if (isSupabaseConfigured()) {
-        const auth = await ensureSupabaseAuthSession();
-        if (!auth.ok) {
-          if (!cancelled) {
-            setError(auth.message);
-            setPublishing(false);
-          }
+    setPublishing(true);
+    setError(null);
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (cancelled) return;
+        setError(null);
+        void upload(
+          { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          pos.coords.heading ?? undefined,
+        );
+      },
+      (err) => {
+        if (cancelled) return;
+        setPublishing(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setError("Location permission denied. Enable location to share live position with customers.");
           return;
         }
-      }
-
-      if (cancelled) return;
-      setPublishing(true);
-      setError(null);
-      startWatch();
-    })();
+        setError("Could not read GPS position.");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
+    );
 
     return () => {
       cancelled = true;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       setPublishing(false);
     };
-  }, [tick]);
+  }, [runnerId, tick]);
 
   return { publishing, error };
 }

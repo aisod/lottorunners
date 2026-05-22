@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Clock3, MapPin, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { getVerifiedRunnerId } from "@/lib/auth/get-verified-runner-id";
 import { acceptJob, declineJob, getCurrentRunnerId, listAvailableJobsForRunner } from "@/lib/jobs-service";
 import { canRunnerAcceptJobs } from "@/lib/runner-account";
 import { getUserDisplayName } from "@/lib/auth-users";
@@ -58,22 +59,24 @@ function RunnerIncomingJobAlertPage() {
       setError("Your runner profile must be approved before you can accept jobs.");
       return;
     }
-    const currentRunnerId = getCurrentRunnerId();
-    if (!currentRunnerId) {
-      navigate({ to: "/customer/signin" });
-      return;
-    }
-    const runnerName = getUserDisplayName(currentRunnerId) ?? "Runner";
     setAccepting(true);
     setError(null);
-    void acceptJob(job.id, currentRunnerId, runnerName).then((result) => {
+    void (async () => {
+      const currentRunnerId = await getVerifiedRunnerId();
+      if (!currentRunnerId) {
+        setAccepting(false);
+        setError("Session expired. Please sign in again.");
+        return;
+      }
+      const runnerName = getUserDisplayName(currentRunnerId) ?? "Runner";
+      const result = await acceptJob(job.id, currentRunnerId, runnerName);
       setAccepting(false);
       if (!result.ok) {
         setError(result.message);
         return;
       }
       navigate({ to: "/runner/active-job", search: { jobId: job.id } });
-    });
+    })();
   };
 
   const handleDecline = () => {
