@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
-import { getVerifiedRunnerId } from "@/lib/auth/get-verified-runner-id";
+import { useEffect, useMemo, useState } from "react";
+import { getAuthSession } from "@/lib/auth-session";
+import { normalizeRunnerId } from "@/lib/supabase/session";
+import { useSupabaseSession } from "@/hooks/useSupabaseSession";
 import { getRunnerActiveJob } from "./jobs-service";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { upsertRunnerLocation } from "./runner-location-service";
@@ -13,40 +15,37 @@ const MIN_UPLOAD_INTERVAL_MS = 10_000;
  * While the runner is online or has an active job, watch GPS and upsert to Supabase.
  */
 export function useRunnerLocationPublisher(): { publishing: boolean; error: string | null } {
+  const { session: supabaseSession } = useSupabaseSession();
   const [error, setError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const [runnerId, setRunnerId] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const [online, setOnline] = useState(() => getRunnerOnline());
+
+  const runnerId = useMemo(() => {
+    const email = supabaseSession?.user?.email ?? getAuthSession()?.email;
+    if (!email) return null;
+    const app = getAuthSession();
+    if (app && app.activeRole !== "runner") return null;
+    return normalizeRunnerId(email);
+  }, [supabaseSession?.user?.email]);
 
   useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1500);
-    const onStorage = () => setTick((t) => t + 1);
-    window.addEventListener("storage", onStorage);
+    const refresh = () => setOnline(getRunnerOnline());
+    window.addEventListener("storage", refresh);
+    window.addEventListener("lr-runner-online-changed", refresh);
     return () => {
-      window.clearInterval(id);
-      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("lr-runner-online-changed", refresh);
     };
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void getVerifiedRunnerId().then((id) => {
-      if (!cancelled) setRunnerId(id);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [tick]);
-
-  useEffect(() => {
-    const online = getRunnerOnline();
     const activeJob = runnerId ? getRunnerActiveJob(runnerId) : null;
     const shouldPublish = Boolean(runnerId && canRunnerAcceptJobs(runnerId) && (online || activeJob));
 
     if (!shouldPublish) {
       setPublishing(false);
       if (!runnerId && isSupabaseConfigured() && online) {
-        setError("Session expired. Please sign in again.");
+        setError("Sign in again to share live location.");
       } else if (!runnerId) {
         setError(null);
       }
@@ -68,16 +67,15 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
       if (now - lastUpload < MIN_UPLOAD_INTERVAL_MS) return;
       lastUpload = now;
 
-      const verified = await getVerifiedRunnerId();
-      if (!verified) {
+      if (!runnerId) {
         if (!cancelled) {
-          setError("Session expired. Please sign in again.");
+          setError("Sign in again to share live location.");
           setPublishing(false);
         }
         return;
       }
 
-      const result = await upsertRunnerLocation(verified, coord, heading);
+      const result = await upsertRunnerLocation(runnerId, coord, heading);
       if (cancelled) return;
       if (!result.ok) {
         setError(result.message);
@@ -114,7 +112,7 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       setPublishing(false);
     };
-  }, [runnerId, tick]);
+  }, [runnerId, online]);
 
   return { publishing, error };
 }

@@ -3,24 +3,50 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { normalizeRunnerId } from "@/lib/supabase/session";
 
+const RUNNER_ID_CACHE_MS = 30_000;
+
+let cached: { id: string | null; at: number } | null = null;
+
+export function invalidateVerifiedRunnerIdCache(): void {
+  cached = null;
+}
+
 /**
  * Runner identity for Supabase / RLS — from live JWT email, not lr-auth-session-v1.
  */
 export async function getVerifiedRunnerId(): Promise<string | null> {
-  if (!isSupabaseConfigured()) {
-    const session = getAuthSession();
-    if (!session || session.activeRole !== "runner") return null;
-    return normalizeRunnerId(session.email);
+  const now = Date.now();
+  if (cached && now - cached.at < RUNNER_ID_CACHE_MS) {
+    return cached.id;
   }
 
-  const supabase = getSupabaseClient();
-  if (!supabase) return null;
+  let id: string | null = null;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const email = session?.user?.email;
-  if (!email) return null;
+  if (!isSupabaseConfigured()) {
+    const session = getAuthSession();
+    if (session?.activeRole === "runner") {
+      id = normalizeRunnerId(session.email);
+    }
+  } else {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const email = session?.user?.email;
+      if (email) {
+        id = normalizeRunnerId(email);
+      }
+    }
 
-  return normalizeRunnerId(email);
+    if (!id) {
+      const appSession = getAuthSession();
+      if (appSession?.activeRole === "runner") {
+        id = normalizeRunnerId(appSession.email);
+      }
+    }
+  }
+
+  cached = { id, at: now };
+  return id;
 }

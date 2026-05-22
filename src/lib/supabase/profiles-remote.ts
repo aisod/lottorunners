@@ -1,4 +1,5 @@
 import type { AccountRole, PublicRole } from "../auth-session";
+import { markSupabaseAuthVerified } from "../auth/ensure-session";
 import type { RunnerOnboardingStatus } from "../runner-account";
 import type { RunnerStage } from "../store";
 import { getSupabaseClient } from "./client";
@@ -328,6 +329,14 @@ export async function signInRemote(
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: error.message };
   if (!data.user) return { ok: false, error: "Sign in failed." };
+  if (!data.session?.access_token) {
+    return {
+      ok: false,
+      error: "Sign-in succeeded but no session was issued. Confirm your email or try again in a moment.",
+    };
+  }
+
+  markSupabaseAuthVerified();
 
   let row = await fetchProfileByUserId(data.user.id);
   if (!row) {

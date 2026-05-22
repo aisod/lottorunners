@@ -1,6 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getAuthSession } from "@/lib/auth-session";
+import {
+  hasSupabaseAuthStorage,
+  isSupabaseAuthRateLimited,
+} from "@/lib/auth/ensure-session";
 import { useSupabaseSession } from "@/hooks/useSupabaseSession";
 
 const RUNNER_CONSOLE_PREFIXES = [
@@ -12,6 +16,8 @@ const RUNNER_CONSOLE_PREFIXES = [
   "/runner/settings",
 ];
 
+const HYDRATION_GRACE_MS = 3_000;
+
 function isRunnerConsolePath(pathname: string): boolean {
   const path = pathname.replace(/\/$/, "") || "/";
   return RUNNER_CONSOLE_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
@@ -21,23 +27,30 @@ function isRunnerConsolePath(pathname: string): boolean {
 export function RunnerSessionGate() {
   const navigate = useNavigate();
   const { session, loading, isConfigured } = useSupabaseSession();
+  const [graceElapsed, setGraceElapsed] = useState(false);
 
   useEffect(() => {
-    if (!isConfigured || loading) return;
+    const timer = window.setTimeout(() => setGraceElapsed(true), HYDRATION_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isConfigured || loading || !graceElapsed) return;
     if (typeof window === "undefined") return;
     if (!isRunnerConsolePath(window.location.pathname)) return;
+    if (isSupabaseAuthRateLimited()) return;
 
     const appSession = getAuthSession();
     if (!appSession || appSession.activeRole !== "runner") return;
 
-    if (!session) {
+    if (!session && !hasSupabaseAuthStorage()) {
       navigate({
         to: "/customer/signin",
         search: { reason: "session_expired", role: "runner" },
         replace: true,
       });
     }
-  }, [isConfigured, loading, session, navigate]);
+  }, [isConfigured, loading, graceElapsed, session, navigate]);
 
   return null;
 }

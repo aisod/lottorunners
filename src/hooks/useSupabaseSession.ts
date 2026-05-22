@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { invalidateVerifiedRunnerIdCache } from "@/lib/auth/get-verified-runner-id";
+import {
+  markSupabaseAuthVerified,
+  resetSupabaseAuthCache,
+} from "@/lib/auth/ensure-session";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -24,12 +29,21 @@ export function useSupabaseSession() {
     void supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
       setSession(data.session);
+      if (data.session?.access_token) {
+        markSupabaseAuthVerified();
+      }
       setLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      invalidateVerifiedRunnerIdCache();
+      if (nextSession?.access_token) {
+        markSupabaseAuthVerified();
+      } else if (event === "SIGNED_OUT") {
+        resetSupabaseAuthCache();
+      }
       setSession(nextSession);
       setLoading(false);
     });

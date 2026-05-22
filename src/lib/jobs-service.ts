@@ -8,7 +8,10 @@ import type { TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
-import { ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool } from "./auth/ensure-session";
+import {
+  ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool,
+  isSupabaseAuthRateLimited,
+} from "./auth/ensure-session";
 import { getVerifiedRunnerId } from "./auth/get-verified-runner-id";
 import { normalizeRunnerId } from "./supabase/session";
 
@@ -344,7 +347,12 @@ export async function acceptJob(
   if (isSupabaseConfigured()) {
     const authed = await ensureSupabaseAuthSessionBool();
     if (!authed) {
-      return { ok: false, message: "Session expired. Please sign in again." };
+      return {
+        ok: false,
+        message: isSupabaseAuthRateLimited()
+          ? "Too many requests. Wait a minute, then try accepting again."
+          : "Session expired. Please sign in again.",
+      };
     }
 
     const remote = await acceptJobRemote(jobId, runnerKey, runnerName, runnerPhone);

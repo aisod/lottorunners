@@ -3,9 +3,12 @@ import { RunnerLocationSync } from "@/components/runner-location-sync";
 import { RunnerSessionGate } from "@/components/runner-session-gate";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
-import { ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool } from "@/lib/auth/ensure-session";
+import {
+  ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool,
+  hasSupabaseAuthStorage,
+  isSupabaseAuthRateLimited,
+} from "@/lib/auth/ensure-session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { restoreSupabaseSession } from "@/lib/supabase/profiles-remote";
 import {
   getRoleHomePath,
   getRunnerHomePath,
@@ -50,9 +53,10 @@ export const Route = createFileRoute("/runner")({
     const path = location.pathname.replace(/\/$/, "") || "/";
 
     if (isSupabaseConfigured() && RUNNER_CONSOLE_PATHS.has(path)) {
-      await restoreSupabaseSession();
       const cloudSession = await ensureSupabaseAuthSessionBool();
-      if (!cloudSession) {
+      const canDefer =
+        isSupabaseAuthRateLimited() || hasSupabaseAuthStorage();
+      if (!cloudSession && !canDefer) {
         throw redirect({
           to: "/customer/signin",
           search: { reason: "session_expired", role: "runner" },

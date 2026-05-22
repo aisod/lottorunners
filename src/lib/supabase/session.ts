@@ -1,4 +1,7 @@
-import { ensureSupabaseAuthSession as ensureSupabaseAuthSessionCore } from "@/lib/auth/ensure-session";
+import {
+  ensureSupabaseAuthSession as ensureSupabaseAuthSessionCore,
+  isSupabaseAuthRateLimited,
+} from "@/lib/auth/ensure-session";
 import { getSupabaseClient } from "./client";
 import { isSupabaseConfigured } from "./config";
 
@@ -23,6 +26,13 @@ export async function ensureSupabaseAuthSession(): Promise<
 
   const ok = await ensureSupabaseAuthSessionCore();
   if (ok) return { ok: true };
+
+  if (isSupabaseAuthRateLimited()) {
+    return {
+      ok: false,
+      message: "Too many sign-in requests. Wait a minute and try again.",
+    };
+  }
 
   return {
     ok: false,
