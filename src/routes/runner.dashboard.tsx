@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BriefcaseBusiness, ShieldAlert } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { LiveMapClient } from "@/components/live-map-client";
 import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
@@ -20,7 +20,7 @@ import {
 } from "@/lib/runner-workflow";
 import { SERVICES } from "@/lib/services";
 import { setStoredRunnerStage } from "@/lib/store";
-import { requestCurrentPosition } from "@/lib/geolocation-utils";
+import { waitForGeolocationFix } from "@/lib/geolocation-utils";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useGeolocation } from "@/lib/use-geolocation";
 import type { Runner } from "@/lib/types";
@@ -33,6 +33,8 @@ function RunnerDashboardPage() {
   const navigate = useNavigate();
   const [online, setOnlineState] = useState(() => getRunnerOnline());
   const geo = useGeolocation({ fallbackOnError: false, watch: true });
+  const geoRef = useRef(geo);
+  geoRef.current = geo;
   const [locationGateError, setLocationGateError] = useState<string | null>(null);
   const runnerStatus = useRunnerOnboardingStatus();
   const canReceiveJobs = runnerStatus === "approved";
@@ -51,7 +53,7 @@ function RunnerDashboardPage() {
   const setOnline = async (next: boolean) => {
     setLocationGateError(null);
     if (next) {
-      const permission = await requestCurrentPosition();
+      const permission = await waitForGeolocationFix(() => geoRef.current);
       if (!permission.ok) {
         setLocationGateError(permission.error);
         return;
