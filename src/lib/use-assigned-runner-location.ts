@@ -19,15 +19,16 @@ export function useAssignedRunnerLocation(job: MarketplaceJob | null): {
   const [waitingForGps, setWaitingForGps] = useState(false);
 
   useEffect(() => {
-    if (!runnerEmail) {
+    if (!runnerEmail || !job) {
       setRunner(null);
       setFreshnessLabel(null);
       setWaitingForGps(false);
       return;
     }
 
+    const activeJob = job;
     const hasAssignedRunner =
-      job.status !== "pending" && job.status !== "cancelled" && job.status !== "declined";
+      activeJob.status !== "pending" && activeJob.status !== "cancelled" && activeJob.status !== "declined";
 
     if (!hasAssignedRunner) {
       setRunner(null);
@@ -48,8 +49,8 @@ export function useAssignedRunnerLocation(job: MarketplaceJob | null): {
 
       setRunner(
         runnerLocationToMapRunner(loc, {
-          name: job.runnerName ?? "Your runner",
-          vehicle: job.serviceType,
+          name: activeJob.runnerName ?? "Your runner",
+          vehicle: activeJob.serviceType,
         }),
       );
       setFreshnessLabel(
@@ -57,7 +58,7 @@ export function useAssignedRunnerLocation(job: MarketplaceJob | null): {
       );
       setWaitingForGps(!isLocationFresh(loc.updatedAt));
     });
-  }, [runnerEmail, job?.runnerName, job?.serviceType, job?.status]);
+  }, [runnerEmail, job, job?.runnerName, job?.serviceType, job?.status]);
 
   return { runner, freshnessLabel, waitingForGps };
 }
