@@ -26,7 +26,7 @@ export function useRunnerProfilePhoto(): string | null {
     let cancelled = false;
     setPhotoUrl(readLocalPhoto(currentEmail));
 
-    async function hydrate() {
+    const hydrate = async () => {
       if (!isSupabaseConfigured()) return;
 
       const userId = await getSupabaseUserId();
@@ -43,7 +43,7 @@ export function useRunnerProfilePhoto(): string | null {
         writeLocalRunnerDocuments(currentEmail, { profilePhoto: remotePhoto });
       }
       setPhotoUrl(remotePhoto);
-    }
+    };
 
     void hydrate();
     return () => {
