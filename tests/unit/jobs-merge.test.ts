@@ -16,7 +16,7 @@ function job(id: string, status: MarketplaceJob["status"], createdAt: number, se
     estimatedFare: 10,
     distanceKm: 1,
     etaMin: 5,
-    paymentMethod: "wallet",
+    paymentMethod: "cash",
     status,
     scheduleMode: "now",
     createdAt,
