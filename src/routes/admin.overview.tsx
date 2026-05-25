@@ -50,7 +50,7 @@ function AdminOverviewPage() {
 
   const mapCenter = useMemo((): LatLng => {
     const active = jobs.find((j) => j.status !== "completed" && j.status !== "cancelled");
-    return active?.pickup ?? WINDHOEK;
+    return active?.pickup ?? { lat: WINDHOEK[0], lng: WINDHOEK[1] };
   }, [jobs]);
 
   const pendingHotspot = useMemo(() => {
