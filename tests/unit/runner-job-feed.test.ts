@@ -20,7 +20,7 @@ function pendingJob(id: string, serviceType: MarketplaceJob["serviceType"]): Mar
     estimatedFare: 10,
     distanceKm: 1,
     etaMin: 5,
-    paymentMethod: "wallet",
+    paymentMethod: "cash",
     status: "pending",
     scheduleMode: "now",
     createdAt: Date.now(),

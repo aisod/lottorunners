@@ -34,7 +34,7 @@ describe("runner job acceptance (local-only mode)", () => {
         estimatedFare: 30,
         distanceKm: 2,
         etaMin: 5,
-        paymentMethod: "wallet",
+        paymentMethod: "cash",
         status: "pending",
         scheduleMode: "now",
         createdAt: Date.now(),
