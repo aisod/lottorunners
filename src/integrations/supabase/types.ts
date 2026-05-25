@@ -115,6 +115,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_marketplace_job: {
+        Args: {
+          p_job_id: string
+          p_runner_name: string
+          p_runner_phone?: string
+        }
+        Returns: Json
+      }
       admin_set_runner_status: {
         Args: { p_runner_status: string; p_target_user_id: string }
         Returns: undefined
@@ -139,6 +147,10 @@ export type Database = {
         }
         Returns: string
       }
+      job_is_open_pending: { Args: { job_payload: Json }; Returns: boolean }
+      job_owner_business_email: { Args: { job_payload: Json }; Returns: string }
+      job_owner_customer_email: { Args: { job_payload: Json }; Returns: string }
+      job_runner_email: { Args: { job_payload: Json }; Returns: string }
       parse_roles_from_metadata: { Args: { meta: Json }; Returns: string[] }
     }
     Enums: {
