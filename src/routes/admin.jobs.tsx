@@ -10,7 +10,6 @@ import {
   Truck,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
 import { jobStatusLabel } from "@/lib/jobs-service";
 import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
@@ -67,15 +66,9 @@ function AdminJobsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-<<<<<<< HEAD
         <PortalStatTile icon={ClipboardList} label="Active jobs" value={String(jobs.length)} />
         <PortalStatTile icon={Clock} label="Pending" value={String(pendingCount)} />
-        <PortalStatTile icon={Truck} label="In progress" value={String(inProgressCount)} />
-=======
-        <PortalStatTile icon={Truck} label="Active jobs" value={String(jobs.length)} />
-        <PortalStatTile icon={MessageSquareText} label="Pending" value={String(pendingCount)} />
         <PortalStatTile icon={RouteIcon} label="In progress" value={String(inProgressCount)} />
->>>>>>> 956f18ee30445551964883569046af766db985a0
         <PortalStatTile
           icon={AlertTriangle}
           label="Delayed pending"
