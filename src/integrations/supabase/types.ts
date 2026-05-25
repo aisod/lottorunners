@@ -124,6 +124,7 @@ export type Database = {
         Returns: undefined
       }
       auth_runner_id: { Args: never; Returns: string }
+      caller_can_modify_job: { Args: { p_payload: Json }; Returns: boolean }
       caller_is_admin: { Args: never; Returns: boolean }
       ensure_bootstrap_admin: { Args: never; Returns: boolean }
       ensure_profile_for_user: {
