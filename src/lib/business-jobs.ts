@@ -58,7 +58,7 @@ export async function createJobsFromBusinessBulk(
   for (let i = 0; i < validStops.length; i++) {
     const stop = validStops[i];
     const destStop = await geocodeRouteStop(stop.address.trim(), pickupStop!.coord);
-    if (!isValidRouteStop(destStop)) {
+    if (!isValidRouteStop(destStop) || !destStop) {
       errors.push(`Stop ${i + 1}: could not geocode "${stop.address}".`);
       continue;
     }
@@ -89,7 +89,7 @@ export async function createJobsFromBusinessBulk(
       estimatedFare: fare,
       distanceKm,
       etaMin: SERVICES[serviceType].etaMin + Math.round(distanceKm * 2),
-      paymentMethod: "wallet",
+      paymentMethod: "cash",
       status: "pending",
       scheduleMode: "now",
       createdAt: Date.now(),

@@ -17,15 +17,16 @@ export function useRunnerProfilePhoto(): string | null {
   const [photoUrl, setPhotoUrl] = useState<string | null>(() => (email ? readLocalPhoto(email) : null));
 
   useEffect(() => {
-    if (!email) {
+    const currentEmail = email;
+    if (!currentEmail) {
       setPhotoUrl(null);
       return;
     }
 
     let cancelled = false;
-    setPhotoUrl(readLocalPhoto(email));
+    setPhotoUrl(readLocalPhoto(currentEmail));
 
-    async function hydrate() {
+    const hydrate = async () => {
       if (!isSupabaseConfigured()) return;
 
       const userId = await getSupabaseUserId();
@@ -37,12 +38,12 @@ export function useRunnerProfilePhoto(): string | null {
       const remotePhoto = remote.profilePhoto?.trim();
       if (!remotePhoto) return;
 
-      const localPhoto = readLocalPhoto(email);
+      const localPhoto = readLocalPhoto(currentEmail);
       if (remotePhoto !== localPhoto) {
-        writeLocalRunnerDocuments(email, { profilePhoto: remotePhoto });
+        writeLocalRunnerDocuments(currentEmail, { profilePhoto: remotePhoto });
       }
       setPhotoUrl(remotePhoto);
-    }
+    };
 
     void hydrate();
     return () => {

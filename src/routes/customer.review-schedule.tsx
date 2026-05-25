@@ -192,7 +192,7 @@ function CustomerReviewSchedulePage() {
 
     setSubmitting(true);
     try {
-      const result = await createJobFromCustomerBooking(bookingState, customerId);
+      const result = await createJobFromCustomerBooking(bookingState as unknown as Parameters<typeof createJobFromCustomerBooking>[0], customerId);
       if (!result.job) {
         setFormErrors({ submit: result.error ?? "Could not create your request. Try again." });
         return;

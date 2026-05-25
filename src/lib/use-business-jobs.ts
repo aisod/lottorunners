@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getCurrentBusinessId, listJobsForBusiness, subscribeToJobs, type MarketplaceJob } from "./jobs-service";
+import { getCurrentBusinessId, listJobsForBusiness, subscribeToJobs } from "./jobs-service";
+import type { MarketplaceJob } from "./jobs-types";
 
 export function useBusinessJobs(): MarketplaceJob[] {
   const businessId = getCurrentBusinessId();

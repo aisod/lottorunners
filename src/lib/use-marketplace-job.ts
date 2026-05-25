@@ -6,8 +6,8 @@ import {
   hydrateJobsFromRemote,
   listAvailableJobsForRunner,
   subscribeToJobs,
-  type MarketplaceJob,
 } from "./jobs-service";
+import type { MarketplaceJob } from "./jobs-types";
 import { canRunnerAcceptJobs, subscribeRunnerAccount } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 
