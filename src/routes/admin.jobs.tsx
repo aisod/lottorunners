@@ -52,10 +52,10 @@ function AdminJobsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <PortalStatTile label="Active jobs" value={String(jobs.length)} />
-        <PortalStatTile label="Pending" value={String(pendingCount)} />
-        <PortalStatTile label="In progress" value={String(inProgressCount)} />
-        <PortalStatTile label="Delayed" value="0" hint="Set when SLA rules are added" />
+        <PortalStatTile icon={Truck} label="Active jobs" value={String(jobs.length)} />
+        <PortalStatTile icon={MessageSquareText} label="Pending" value={String(pendingCount)} />
+        <PortalStatTile icon={RouteIcon} label="In progress" value={String(inProgressCount)} />
+        <PortalStatTile icon={AlertTriangle} label="Delayed" value="0" meta="Set when SLA rules are added" />
       </div>
 
       {jobs.length === 0 ? (
