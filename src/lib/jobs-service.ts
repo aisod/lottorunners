@@ -4,7 +4,8 @@ import { SERVICES } from "./services";
 import type { CargoPhotoUrls } from "./cargo-photos";
 import { ERRAND_CATEGORIES } from "./errand-categories";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
-import type { TripRequest } from "./types";
+import { type RunnerOfferedServiceId, useRunnerSettings } from "./runner-settings";
+import type { ServiceType, TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
@@ -173,14 +174,28 @@ export function listPendingJobs(): MarketplaceJob[] {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/** Runner UI uses `taxi`; marketplace jobs use `ride`. */
+function runnerOfferedIdToServiceType(id: RunnerOfferedServiceId): ServiceType {
+  return id === "taxi" ? "ride" : id;
+}
+
+function getRunnerOfferedServiceTypes(): Set<ServiceType> {
+  const { selectedServiceIds } = useRunnerSettings.getState();
+  if (!selectedServiceIds.length) return new Set();
+  return new Set(selectedServiceIds.map(runnerOfferedIdToServiceType));
+}
+
 /**
  * Pending jobs a runner may respond to. Empty unless the runner is approved.
  * Skips jobs this runner declined locally (pass without accepting).
+ * Only includes jobs whose serviceType matches the runner's offered services.
  */
 export function listAvailableJobsForRunner(runnerId?: string | null): MarketplaceJob[] {
   if (!canRunnerAcceptJobs(runnerId ?? undefined)) return [];
+  const offered = getRunnerOfferedServiceTypes();
+  if (offered.size === 0) return [];
   const declined = runnerId ? readDeclinedJobIds(runnerId) : new Set<string>();
-  return listPendingJobs().filter((j) => !declined.has(j.id));
+  return listPendingJobs().filter((j) => !declined.has(j.id) && offered.has(j.serviceType));
 }
 
 export function listJobsForCustomer(customerId: string): MarketplaceJob[] {
