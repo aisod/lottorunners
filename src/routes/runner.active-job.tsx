@@ -157,18 +157,20 @@ function RunnerActiveJobPage() {
 
   const handlePrimaryAction = () => {
     if (!job || !runnerId) return;
-    if (phaseContent.primaryAction === "progress") {
-      const updated = advanceRunnerJobStatus(job.id, runnerId);
-      if (updated) setJobPhase(marketplaceToPhase(updated.status));
-      return;
-    }
-    let current = job;
-    while (current && current.status !== "completed") {
-      const updated = advanceRunnerJobStatus(current.id, runnerId);
-      if (!updated || updated.status === current.status) break;
-      current = updated;
-    }
-    navigate({ to: "/runner/rate-customer", search: { jobId: current?.id ?? job.id } });
+    void (async () => {
+      if (phaseContent.primaryAction === "progress") {
+        const updated = await advanceRunnerJobStatus(job.id, runnerId);
+        if (updated) setJobPhase(marketplaceToPhase(updated.status));
+        return;
+      }
+      let current = job;
+      while (current && current.status !== "completed") {
+        const updated = await advanceRunnerJobStatus(current.id, runnerId);
+        if (!updated || updated.status === current.status) break;
+        current = updated;
+      }
+      navigate({ to: "/runner/rate-customer", search: { jobId: current?.id ?? job.id } });
+    })();
   };
 
   if (!job) {

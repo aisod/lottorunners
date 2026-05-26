@@ -50,6 +50,7 @@ function AdminSettingsPage() {
   }, []);
 
   const save = () => {
+    if (saving) return;
     setSaving(true);
     setError(null);
     setMessage(null);

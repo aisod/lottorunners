@@ -1,4 +1,4 @@
-import { ensureSupabaseAuthSession } from "@/lib/auth/ensure-session";
+import { ensureSupabaseAuthSession, resetSupabaseAuthCache } from "@/lib/auth/ensure-session";
 import type { RunnerLiveLocation } from "../runner-location-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError, normalizeRunnerId } from "./session";
@@ -83,6 +83,7 @@ export async function upsertRunnerLocationRemote(
 
   if (error) {
     const unauthorized = isUnauthorizedSupabaseError(error);
+    if (unauthorized) resetSupabaseAuthCache();
     return {
       ok: false,
       unauthorized,

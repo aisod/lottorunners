@@ -1,4 +1,4 @@
-import { ensureSupabaseAuthSession } from "@/lib/auth/ensure-session";
+import { ensureSupabaseAuthSession, resetSupabaseAuthCache } from "@/lib/auth/ensure-session";
 import type { MarketplaceJob } from "../jobs-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError } from "./session";
@@ -21,7 +21,10 @@ export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
     .select("payload, updated_at")
     .order("updated_at", { ascending: false });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
+    return { ok: false, error: error.message };
+  }
   if (!data) return { ok: true, rows: [] };
 
   const rows = data
@@ -47,6 +50,7 @@ export async function upsertRemoteJob(job: MarketplaceJob): Promise<UpsertRemote
   });
 
   if (error) {
+    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
     return { ok: false, error: error.message || "Could not save job to the server." };
   }
 
@@ -67,6 +71,7 @@ export async function upsertRemoteJobs(jobs: MarketplaceJob[]): Promise<UpsertRe
   const { error } = await supabase.from("marketplace_jobs").upsert(rows);
 
   if (error) {
+    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
     return { ok: false, error: error.message || "Could not save jobs to the server." };
   }
 
@@ -105,6 +110,7 @@ export async function acceptJobRemote(
 
   if (error) {
     if (isUnauthorizedSupabaseError(error)) {
+      resetSupabaseAuthCache();
       return {
         ok: false,
         message: "Your session expired or you are not signed in to the server. Sign out, then sign in again.",

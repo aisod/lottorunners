@@ -29,6 +29,7 @@ function AdminServicePricingPage() {
   }, []);
 
   const save = () => {
+    if (saving) return;
     setSaving(true);
     setError(null);
     setMessage(null);

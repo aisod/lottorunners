@@ -162,6 +162,8 @@ function CustomerReviewSchedulePage() {
       (!selectedDate || !selectedTime || !scheduledDateTime || scheduledDateTime.getTime() <= Date.now()));
 
   const handleConfirm = async () => {
+    if (submitting) return;
+
     if (scheduleMode === "later") {
       if (!scheduledDateTime) {
         setScheduleError("Select a date and time.");

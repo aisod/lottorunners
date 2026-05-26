@@ -2,37 +2,37 @@
 
 -- Reuse auth_runner_id() as normalized JWT/profile email (same as app session email).
 
-create or replace function public.job_owner_customer_email(p payload jsonb)
+create or replace function public.job_owner_customer_email(job_payload jsonb)
 returns text
 language sql
 immutable
 as $$
-  select lower(trim(coalesce(p ->> 'customerEmail', p ->> 'customerId', '')));
+  select lower(trim(coalesce(job_payload ->> 'customerEmail', job_payload ->> 'customerId', '')));
 $$;
 
-create or replace function public.job_owner_business_email(p payload jsonb)
+create or replace function public.job_owner_business_email(job_payload jsonb)
 returns text
 language sql
 immutable
 as $$
-  select lower(trim(coalesce(p ->> 'businessEmail', p ->> 'businessId', '')));
+  select lower(trim(coalesce(job_payload ->> 'businessEmail', job_payload ->> 'businessId', '')));
 $$;
 
-create or replace function public.job_runner_email(p payload jsonb)
+create or replace function public.job_runner_email(job_payload jsonb)
 returns text
 language sql
 immutable
 as $$
-  select lower(trim(coalesce(p ->> 'runnerEmail', p ->> 'runnerId', '')));
+  select lower(trim(coalesce(job_payload ->> 'runnerEmail', job_payload ->> 'runnerId', '')));
 $$;
 
-create or replace function public.job_is_open_pending(p payload jsonb)
+create or replace function public.job_is_open_pending(job_payload jsonb)
 returns boolean
 language sql
 immutable
 as $$
-  select (p ->> 'status') = 'pending'
-    and (p ->> 'runnerId' is null or trim(p ->> 'runnerId') = '');
+  select (job_payload ->> 'status') = 'pending'
+    and (job_payload ->> 'runnerId' is null or trim(job_payload ->> 'runnerId') = '');
 $$;
 
 drop policy if exists "jobs_read" on public.marketplace_jobs;

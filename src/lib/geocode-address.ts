@@ -36,6 +36,8 @@ function mapNominatimItem(it: NominatimItem): AddressResult {
   };
 }
 
+const GEOCODE_TIMEOUT_MS = 15_000;
+
 /** Geocode a free-text address via Nominatim (returns first match). */
 export async function geocodeAddress(query: string, near?: LatLng | null): Promise<AddressResult | null> {
   const q = query.trim();
@@ -53,9 +55,21 @@ export async function geocodeAddress(query: string, near?: LatLng | null): Promi
     params.set("bounded", "0");
   }
 
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    headers: { "Accept-Language": "en" },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: { "Accept-Language": "en" },
+      signal: controller.signal,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   if (!res.ok) return null;
 
   const data: NominatimItem[] = await res.json();

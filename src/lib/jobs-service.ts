@@ -4,7 +4,12 @@ import { SERVICES } from "./services";
 import type { CargoPhotoUrls } from "./cargo-photos";
 import { ERRAND_CATEGORIES } from "./errand-categories";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
-import { type RunnerOfferedServiceId, useRunnerSettings } from "./runner-settings";
+import { mergeRemoteJobRows, remoteUpdatedMs } from "./jobs-merge";
+import {
+  filterPendingJobsForRunner,
+  runnerOfferedIdsToServiceTypes,
+} from "./jobs-runner-feed";
+import { useRunnerSettings } from "./runner-settings";
 import type { ServiceType, TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
@@ -12,7 +17,9 @@ import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jo
 import {
   ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool,
   isSupabaseAuthRateLimited,
+  resetSupabaseAuthCache,
 } from "./auth/ensure-session";
+import { isUnauthorizedSupabaseError } from "./supabase/session";
 import { getVerifiedRunnerId } from "./auth/get-verified-runner-id";
 import { normalizeRunnerId } from "./supabase/session";
 
@@ -54,6 +61,9 @@ function syncJobToRemote(job: MarketplaceJob): void {
   if (!isSupabaseConfigured()) return;
   void upsertRemoteJob(job).then((result) => {
     if (!result.ok) {
+      if (result.error && isUnauthorizedSupabaseError({ message: result.error })) {
+        resetSupabaseAuthCache();
+      }
       console.warn("[jobs] remote sync failed:", result.error);
     }
   });
@@ -62,6 +72,9 @@ function syncJobToRemote(job: MarketplaceJob): void {
 async function syncJobToRemoteAwait(job: MarketplaceJob): Promise<boolean> {
   if (!isSupabaseConfigured()) return true;
   const result = await upsertRemoteJob(job);
+  if (!result.ok && result.error && isUnauthorizedSupabaseError({ message: result.error })) {
+    resetSupabaseAuthCache();
+  }
   return result.ok;
 }
 
@@ -84,34 +97,20 @@ function insertJobLocal(job: MarketplaceJob): void {
   writeJobs([job, ...readJobs()], { skipRemote: true });
 }
 
-function remoteUpdatedMs(iso: string): number {
-  const ms = new Date(iso).getTime();
-  return Number.isFinite(ms) ? ms : 0;
-}
-
 /** Replace in-memory store from remote pull (no upload); keep newer local row when ahead of server. */
 export function notifyJobsChanged(remoteRows: import("./supabase/jobs-remote").RemoteJobRow[]): void {
   const local = readJobs();
-  const map = new Map<string, MarketplaceJob>();
-  for (const j of local) map.set(j.id, j);
-
-  for (const { job, updatedAt } of remoteRows) {
-    const normalized = normalizeJob(job);
-    const remoteMs = remoteUpdatedMs(updatedAt);
-    const withMeta = { ...normalized, serverUpdatedAt: remoteMs };
-    const existing = map.get(normalized.id);
-    if (!existing) {
-      map.set(normalized.id, withMeta);
-      continue;
-    }
-    const localMs = existing.serverUpdatedAt ?? existing.createdAt ?? 0;
-    if (remoteMs >= localMs) {
-      map.set(normalized.id, withMeta);
-    }
-  }
-
-  writeJobs([...map.values()], { skipRemote: true });
+  const merged = mergeRemoteJobRows(
+    local,
+    remoteRows.map(({ job, updatedAt }) => ({
+      job: normalizeJob(job),
+      updatedAt,
+    })),
+  );
+  writeJobs(merged, { skipRemote: true });
 }
+
+export { remoteUpdatedMs, mergeRemoteJobRows };
 
 function normalizeJob(job: MarketplaceJob): MarketplaceJob {
   const customerEmail = job.customerEmail ?? job.customerId;
@@ -171,7 +170,7 @@ function writeDeclinedJobIds(runnerId: string, ids: Set<string>): void {
   window.localStorage.setItem(RUNNER_DECLINED_JOBS_KEY, JSON.stringify(map));
 }
 
-function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob | null {
+function applyJobPatchLocal(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob | null {
   const jobs = readJobs();
   const index = jobs.findIndex((j) => j.id === jobId);
   if (index === -1) return null;
@@ -183,6 +182,12 @@ function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob
   jobs[index] = next;
   persistJobsLocal(jobs);
   notifyListeners();
+  return next;
+}
+
+function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob | null {
+  const next = applyJobPatchLocal(jobId, patch);
+  if (!next) return null;
   syncJobToRemote(next);
   return next;
 }
@@ -205,17 +210,6 @@ export function listPendingJobs(): MarketplaceJob[] {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-/** Runner UI uses `taxi`; marketplace jobs use `ride`. */
-function runnerOfferedIdToServiceType(id: RunnerOfferedServiceId): ServiceType {
-  return id === "taxi" ? "ride" : id;
-}
-
-function getRunnerOfferedServiceTypes(): Set<ServiceType> {
-  const { selectedServiceIds } = useRunnerSettings.getState();
-  if (!selectedServiceIds.length) return new Set();
-  return new Set(selectedServiceIds.map(runnerOfferedIdToServiceType));
-}
-
 /**
  * Pending jobs a runner may respond to. Empty unless the runner is approved.
  * Skips jobs this runner declined locally (pass without accepting).
@@ -223,10 +217,9 @@ function getRunnerOfferedServiceTypes(): Set<ServiceType> {
  */
 export function listAvailableJobsForRunner(runnerId?: string | null): MarketplaceJob[] {
   if (!canRunnerAcceptJobs(runnerId ?? undefined)) return [];
-  const offered = getRunnerOfferedServiceTypes();
-  if (offered.size === 0) return [];
+  const offered = runnerOfferedIdsToServiceTypes(useRunnerSettings.getState().selectedServiceIds);
   const declined = runnerId ? readDeclinedJobIds(runnerId) : new Set<string>();
-  return listPendingJobs().filter((j) => !declined.has(j.id) && offered.has(j.serviceType));
+  return filterPendingJobsForRunner(listPendingJobs(), offered, declined);
 }
 
 export function listJobsForCustomer(customerId: string): MarketplaceJob[] {
@@ -500,18 +493,29 @@ const RUNNER_STATUS_FLOW: MarketplaceJobStatus[] = [
   "completed",
 ];
 
-export function advanceRunnerJobStatus(jobId: string, runnerId: string): MarketplaceJob | null {
+export async function advanceRunnerJobStatus(
+  jobId: string,
+  runnerId: string,
+): Promise<MarketplaceJob | null> {
   const job = getJob(jobId);
   if (!job || (job.runnerId !== runnerId && job.runnerEmail !== runnerId)) return null;
 
   const idx = RUNNER_STATUS_FLOW.indexOf(job.status);
   if (idx === -1 || idx >= RUNNER_STATUS_FLOW.length - 1) return job;
 
-  const next = RUNNER_STATUS_FLOW[idx + 1];
-  return patchJob(jobId, {
-    status: next,
-    completedAt: next === "completed" ? Date.now() : job.completedAt,
+  const nextStatus = RUNNER_STATUS_FLOW[idx + 1];
+  const patched = applyJobPatchLocal(jobId, {
+    status: nextStatus,
+    completedAt: nextStatus === "completed" ? Date.now() : job.completedAt,
   });
+  if (!patched) return null;
+
+  if (isSupabaseConfigured()) {
+    const synced = await syncJobToRemoteAwait(patched);
+    if (!synced) return null;
+  }
+
+  return patched;
 }
 
 export function setJobStatus(

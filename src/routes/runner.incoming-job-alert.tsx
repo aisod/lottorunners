@@ -3,11 +3,18 @@ import { Bell, Clock3, MapPin, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { getVerifiedRunnerId } from "@/lib/auth/get-verified-runner-id";
-import { acceptJob, declineJob, getCurrentRunnerId, listAvailableJobsForRunner } from "@/lib/jobs-service";
+import {
+  acceptJob,
+  declineJob,
+  getCurrentRunnerId,
+  hydrateJobsFromRemote,
+  listAvailableJobsForRunner,
+} from "@/lib/jobs-service";
 import { canRunnerAcceptJobs } from "@/lib/runner-account";
 import { getUserDisplayName } from "@/lib/auth-users";
 import { SERVICES } from "@/lib/services";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export const Route = createFileRoute("/runner/incoming-job-alert")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -17,6 +24,7 @@ export const Route = createFileRoute("/runner/incoming-job-alert")({
 });
 
 const ACCEPT_WINDOW_SECONDS = 60;
+const JOB_LOAD_TIMEOUT_MS = 10_000;
 
 function RunnerIncomingJobAlertPage() {
   const navigate = useNavigate();
@@ -28,6 +36,27 @@ function RunnerIncomingJobAlertPage() {
   const [secondsLeft, setSecondsLeft] = useState(ACCEPT_WINDOW_SECONDS);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!resolvedJobId || job) {
+      setLoadTimedOut(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setLoadTimedOut(true), JOB_LOAD_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [resolvedJobId, job]);
+
+  useEffect(() => {
+    if (!resolvedJobId || job || !isSupabaseConfigured()) return;
+    void hydrateJobsFromRemote();
+  }, [resolvedJobId, job]);
+
+  useEffect(() => {
+    if (loadTimedOut && !job) {
+      navigate({ to: "/runner/dashboard", replace: true });
+    }
+  }, [loadTimedOut, job, navigate]);
 
   useEffect(() => {
     if (!canRunnerAcceptJobs()) {
@@ -40,16 +69,26 @@ function RunnerIncomingJobAlertPage() {
   }, [resolvedJobId, job, navigate]);
 
   useEffect(() => {
+    if (accepting) return;
     if (secondsLeft <= 0) {
       navigate({ to: "/runner/dashboard", replace: true });
       return;
     }
     const timer = window.setTimeout(() => setSecondsLeft((v) => v - 1), 1000);
     return () => window.clearTimeout(timer);
-  }, [navigate, secondsLeft]);
+  }, [navigate, secondsLeft, accepting]);
 
   if (!job) {
-    return <div className="flex min-h-dvh items-center justify-center p-6 text-muted-foreground">Loading job…</div>;
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+        <p>{loadTimedOut ? "This job is no longer available." : "Loading job…"}</p>
+        {loadTimedOut ? (
+          <Button type="button" variant="outline" onClick={() => navigate({ to: "/runner/dashboard" })}>
+            Back to dashboard
+          </Button>
+        ) : null}
+      </div>
+    );
   }
 
   const serviceLabel = SERVICES[job.serviceType].label;
@@ -116,8 +155,10 @@ function RunnerIncomingJobAlertPage() {
                 <p className="mt-1 text-2xl font-bold">{job.customerName}</p>
               </div>
               <div className="rounded-2xl bg-primary-foreground/10 px-4 py-3 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-75">Expires in</p>
-                <p className="mt-1 text-2xl font-black">{secondsLeft}s</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-75">
+                  {accepting ? "Accepting…" : "Expires in"}
+                </p>
+                <p className="mt-1 text-2xl font-black">{accepting ? "—" : `${secondsLeft}s`}</p>
               </div>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
