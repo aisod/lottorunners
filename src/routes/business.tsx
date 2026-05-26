@@ -1,10 +1,11 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { BusinessConsoleShell } from "@/components/console-shell";
+import { guardCloudSessionForRole } from "@/lib/auth/require-cloud-session";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/business")({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     const session = getAuthSession();
     if (!session) {
       throw redirect({ to: "/customer/signin" });
@@ -13,6 +14,8 @@ export const Route = createFileRoute("/business")({
     if (session.activeRole !== "business") {
       throw redirect({ to: getRoleHomePath(session.activeRole) });
     }
+
+    await guardCloudSessionForRole("business");
 
     const path = location.pathname.replace(/\/$/, "") || "/";
     if (path === "/business") {

@@ -1,10 +1,11 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AdminConsoleShell } from "@/components/console-shell";
+import { guardCloudSessionForRole } from "@/lib/auth/require-cloud-session";
 import { getAuthSession, sessionHasAdminAccess, setActiveRole } from "@/lib/auth-session";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     const session = getAuthSession();
     if (!session) {
       throw redirect({ to: "/customer/signin" });
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/admin")({
     if (session.activeRole !== "admin") {
       setActiveRole("admin");
     }
+
+    await guardCloudSessionForRole("admin");
 
     const path = location.pathname.replace(/\/$/, "") || "/";
     if (path === "/admin") {

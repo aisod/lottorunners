@@ -5,8 +5,13 @@ import logo from "@/assets/lotto-runners-logo.png";
 import { AuthField } from "@/components/auth-field";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
+import {
+  ensureSupabaseAuthSession,
+  isCloudAuthAbsent,
+} from "@/lib/auth/ensure-session";
 import { clearAuthSession, clearPendingAuth, getAuthSession } from "@/lib/auth-session";
 import { loginUser } from "@/lib/auth-users";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getRoleHomePath } from "@/lib/store";
 import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
@@ -15,7 +20,7 @@ export const Route = createFileRoute("/customer/signin")({
     reason: typeof search.reason === "string" ? search.reason : undefined,
     role: typeof search.role === "string" ? search.role : undefined,
   }),
-  beforeLoad: ({ search }) => {
+  beforeLoad: async ({ search }) => {
     clearPendingAuth();
 
     // Cloud JWT dead but lr-auth still present — clear here (not on runner routes) to avoid dashboard ↔ signin loop.
@@ -25,9 +30,17 @@ export const Route = createFileRoute("/customer/signin")({
     }
 
     const session = getAuthSession();
-    if (session) {
-      throw redirect({ to: getRoleHomePath(session.activeRole) });
+    if (!session) return;
+
+    if (isSupabaseConfigured()) {
+      const authed = await ensureSupabaseAuthSession();
+      if (!authed && (await isCloudAuthAbsent())) {
+        clearAuthSession();
+        return;
+      }
     }
+
+    throw redirect({ to: getRoleHomePath(session.activeRole) });
   },
   component: CustomerSignInPage,
 });

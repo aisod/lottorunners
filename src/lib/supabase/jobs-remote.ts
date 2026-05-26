@@ -3,8 +3,13 @@ import type { MarketplaceJob } from "../jobs-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError } from "./session";
 
+export type RemoteJobRow = {
+  job: MarketplaceJob;
+  updatedAt: string;
+};
+
 export type FetchRemoteJobsResult =
-  | { ok: true; jobs: MarketplaceJob[] }
+  | { ok: true; rows: RemoteJobRow[] }
   | { ok: false; error: string };
 
 export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
@@ -17,30 +22,41 @@ export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
     .order("updated_at", { ascending: false });
 
   if (error) return { ok: false, error: error.message };
-  if (!data) return { ok: true, jobs: [] };
+  if (!data) return { ok: true, rows: [] };
 
-  const jobs = data
-    .map((row) => row.payload as MarketplaceJob)
-    .filter((job): job is MarketplaceJob => Boolean(job?.id));
+  const rows = data
+    .map((row) => ({
+      job: row.payload as MarketplaceJob,
+      updatedAt: typeof row.updated_at === "string" ? row.updated_at : new Date().toISOString(),
+    }))
+    .filter((row): row is RemoteJobRow => Boolean(row.job?.id));
 
-  return { ok: true, jobs };
+  return { ok: true, rows };
 }
 
-export async function upsertRemoteJob(job: MarketplaceJob): Promise<void> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return;
+export type UpsertRemoteJobResult = { ok: true } | { ok: false; error: string };
 
-  await supabase.from("marketplace_jobs").upsert({
+export async function upsertRemoteJob(job: MarketplaceJob): Promise<UpsertRemoteJobResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Supabase client unavailable." };
+
+  const { error } = await supabase.from("marketplace_jobs").upsert({
     id: job.id,
     payload: job,
     updated_at: new Date().toISOString(),
   });
+
+  if (error) {
+    return { ok: false, error: error.message || "Could not save job to the server." };
+  }
+
+  return { ok: true };
 }
 
-export async function upsertRemoteJobs(jobs: MarketplaceJob[]): Promise<void> {
-  if (jobs.length === 0) return;
+export async function upsertRemoteJobs(jobs: MarketplaceJob[]): Promise<UpsertRemoteJobResult> {
+  if (jobs.length === 0) return { ok: true };
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) return { ok: false, error: "Supabase client unavailable." };
 
   const rows = jobs.map((job) => ({
     id: job.id,
@@ -48,14 +64,20 @@ export async function upsertRemoteJobs(jobs: MarketplaceJob[]): Promise<void> {
     updated_at: new Date().toISOString(),
   }));
 
-  await supabase.from("marketplace_jobs").upsert(rows);
+  const { error } = await supabase.from("marketplace_jobs").upsert(rows);
+
+  if (error) {
+    return { ok: false, error: error.message || "Could not save jobs to the server." };
+  }
+
+  return { ok: true };
 }
 
 export type AcceptJobRemoteResult =
   | { ok: true; job: MarketplaceJob }
   | { ok: false; message: string };
 
-/** Atomic accept: only succeeds if job is still pending. */
+/** Atomic accept via security definer RPC (pending + approved runner only). */
 export async function acceptJobRemote(
   jobId: string,
   runnerId: string,
@@ -75,76 +97,39 @@ export async function acceptJobRemote(
     };
   }
 
-  const { data: row, error: readError } = await supabase
-    .from("marketplace_jobs")
-    .select("payload")
-    .eq("id", jobId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("accept_marketplace_job", {
+    p_job_id: jobId,
+    p_runner_name: runnerName,
+    p_runner_phone: runnerPhone ?? null,
+  });
 
-  if (readError) {
-    if (isUnauthorizedSupabaseError(readError)) {
+  if (error) {
+    if (isUnauthorizedSupabaseError(error)) {
       return {
         ok: false,
         message: "Your session expired or you are not signed in to the server. Sign out, then sign in again.",
       };
     }
-    return { ok: false, message: readError.message || "Could not load this job from the server." };
-  }
-
-  if (!row) {
-    return {
-      ok: false,
-      message: "This job was not found on the server. Ask the customer to submit again or refresh the dashboard.",
-    };
-  }
-
-  const current = row.payload as MarketplaceJob;
-  if (current.status !== "pending" || current.runnerId) {
-    return {
-      ok: false,
-      message: "This job is no longer available. It may have been taken or cancelled.",
-    };
-  }
-
-  const updated: MarketplaceJob = {
-    ...current,
-    runnerId,
-    runnerEmail: runnerId,
-    runnerName,
-    runnerPhone,
-    status: "accepted",
-    acceptedAt: Date.now(),
-  };
-
-  const { data: patched, error: writeError } = await supabase
-    .from("marketplace_jobs")
-    .update({
-      payload: updated,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", jobId)
-    .eq("payload->>status", "pending")
-    .select("payload")
-    .maybeSingle();
-
-  if (writeError) {
-    if (isUnauthorizedSupabaseError(writeError)) {
-      return {
-        ok: false,
-        message: "Your session expired or you are not signed in to the server. Sign out, then sign in again.",
-      };
+    const msg = error.message || "Could not accept this job on the server.";
+    if (msg.includes("no longer available") || msg.includes("another runner")) {
+      return { ok: false, message: "Could not accept this job. Another runner may have taken it just now." };
     }
-    return { ok: false, message: writeError.message || "Could not accept this job on the server." };
+    if (msg.includes("approved")) {
+      return { ok: false, message: "Your runner profile must be approved before you can accept jobs." };
+    }
+    return { ok: false, message: msg };
   }
 
-  if (!patched) {
-    return {
-      ok: false,
-      message: "Could not accept this job. Another runner may have taken it just now.",
-    };
+  if (!data || typeof data !== "object") {
+    return { ok: false, message: "Could not accept this job on the server." };
   }
 
-  return { ok: true, job: patched.payload as MarketplaceJob };
+  const job = data as MarketplaceJob;
+  if (!job.id) {
+    return { ok: false, message: "Could not accept this job on the server." };
+  }
+
+  return { ok: true, job: { ...job, runnerId: job.runnerId ?? runnerId, runnerEmail: job.runnerEmail ?? runnerId } };
 }
 
 export function subscribeRemoteJobs(onChange: () => void): () => void {
@@ -152,13 +137,11 @@ export function subscribeRemoteJobs(onChange: () => void): () => void {
   if (!supabase) return () => undefined;
 
   const channel = supabase
-    .channel("marketplace-jobs")
+    .channel("marketplace-jobs-changes")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "marketplace_jobs" },
-      () => {
-        onChange();
-      },
+      () => onChange(),
     )
     .subscribe();
 

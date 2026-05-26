@@ -52,17 +52,24 @@ function persistJobsLocal(jobs: MarketplaceJob[]): void {
 
 function syncJobToRemote(job: MarketplaceJob): void {
   if (!isSupabaseConfigured()) return;
-  void upsertRemoteJob(job);
+  void upsertRemoteJob(job).then((result) => {
+    if (!result.ok) {
+      console.warn("[jobs] remote sync failed:", result.error);
+    }
+  });
 }
 
 async function syncJobToRemoteAwait(job: MarketplaceJob): Promise<boolean> {
   if (!isSupabaseConfigured()) return true;
-  try {
-    await upsertRemoteJob(job);
-    return true;
-  } catch {
-    return false;
-  }
+  const result = await upsertRemoteJob(job);
+  return result.ok;
+}
+
+function removeJobLocal(jobId: string): void {
+  writeJobs(
+    readJobs().filter((j) => j.id !== jobId),
+    { skipRemote: true },
+  );
 }
 
 function writeJobs(jobs: MarketplaceJob[], options?: { skipRemote?: boolean }): void {
@@ -77,12 +84,32 @@ function insertJobLocal(job: MarketplaceJob): void {
   writeJobs([job, ...readJobs()], { skipRemote: true });
 }
 
-/** Replace in-memory store from remote pull (no upload). */
-export function notifyJobsChanged(remoteJobs: MarketplaceJob[]): void {
+function remoteUpdatedMs(iso: string): number {
+  const ms = new Date(iso).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/** Replace in-memory store from remote pull (no upload); keep newer local row when ahead of server. */
+export function notifyJobsChanged(remoteRows: import("./supabase/jobs-remote").RemoteJobRow[]): void {
   const local = readJobs();
   const map = new Map<string, MarketplaceJob>();
   for (const j of local) map.set(j.id, j);
-  for (const j of remoteJobs) map.set(j.id, normalizeJob(j));
+
+  for (const { job, updatedAt } of remoteRows) {
+    const normalized = normalizeJob(job);
+    const remoteMs = remoteUpdatedMs(updatedAt);
+    const withMeta = { ...normalized, serverUpdatedAt: remoteMs };
+    const existing = map.get(normalized.id);
+    if (!existing) {
+      map.set(normalized.id, withMeta);
+      continue;
+    }
+    const localMs = existing.serverUpdatedAt ?? existing.createdAt ?? 0;
+    if (remoteMs >= localMs) {
+      map.set(normalized.id, withMeta);
+    }
+  }
+
   writeJobs([...map.values()], { skipRemote: true });
 }
 
@@ -103,7 +130,7 @@ export async function hydrateJobsFromRemote(): Promise<{ ok: true } | { ok: fals
   if (!isSupabaseConfigured()) return { ok: true };
   const result = await fetchRemoteJobs();
   if (!result.ok) return { ok: false, error: result.error };
-  notifyJobsChanged(result.jobs);
+  notifyJobsChanged(result.rows);
   return { ok: true };
 }
 
@@ -148,7 +175,11 @@ function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob
   const jobs = readJobs();
   const index = jobs.findIndex((j) => j.id === jobId);
   if (index === -1) return null;
-  const next = normalizeJob({ ...jobs[index], ...patch });
+  const next = normalizeJob({
+    ...jobs[index],
+    ...patch,
+    serverUpdatedAt: Date.now(),
+  });
   jobs[index] = next;
   persistJobsLocal(jobs);
   notifyListeners();
@@ -318,13 +349,24 @@ export async function createJobFromCustomerBooking(
 
   const synced = await syncJobToRemoteAwait(job);
   if (!synced) {
+    removeJobLocal(job.id);
     return {
       job: null,
       error: "Could not save your request to the server. Check your connection and try again.",
     };
   }
 
-  return { job };
+  const syncedJob = { ...job, serverUpdatedAt: Date.now() };
+  patchJobLocalOnly(syncedJob);
+  return { job: syncedJob };
+}
+
+function patchJobLocalOnly(job: MarketplaceJob): void {
+  const jobs = readJobs();
+  const index = jobs.findIndex((j) => j.id === job.id);
+  if (index === -1) return;
+  jobs[index] = normalizeJob(job);
+  writeJobs(jobs, { skipRemote: true });
 }
 
 export type AcceptJobResult =
@@ -373,7 +415,10 @@ export async function acceptJob(
     const remote = await acceptJobRemote(jobId, runnerKey, runnerName, runnerPhone);
     if (!remote.ok) return { ok: false, message: remote.message };
 
-    const normalized = normalizeJob(remote.job);
+    const normalized = normalizeJob({
+      ...remote.job,
+      serverUpdatedAt: Date.now(),
+    });
     const jobs = readJobs();
     const index = jobs.findIndex((j) => j.id === jobId);
     if (index === -1) {
@@ -555,16 +600,23 @@ export async function insertBusinessJobs(jobs: MarketplaceJob[]): Promise<Busine
   }
 
   const normalized = jobs.map(normalizeJob);
-  writeJobs([...normalized, ...readJobs()], { skipRemote: true });
+  const previous = readJobs();
+  writeJobs([...normalized, ...previous], { skipRemote: true });
 
+  const syncedJobs: MarketplaceJob[] = [];
   for (const job of normalized) {
     const synced = await syncJobToRemoteAwait(job);
     if (!synced) {
+      writeJobs(previous, { skipRemote: true });
       return { ok: false, error: "Could not save jobs to the server. Check your connection and try again." };
     }
+    syncedJobs.push({ ...job, serverUpdatedAt: Date.now() });
   }
 
-  return { ok: true, jobs: normalized };
+  const merged = [...syncedJobs, ...previous];
+  writeJobs(merged, { skipRemote: true });
+
+  return { ok: true, jobs: syncedJobs };
 }
 
 export function getCurrentRunnerId(): string | null {

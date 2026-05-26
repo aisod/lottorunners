@@ -58,6 +58,8 @@ export interface MarketplaceJob {
   batchId?: string;
   batchName?: string;
   batchStopIndex?: number;
+  /** Last known server `marketplace_jobs.updated_at` (ms), for merge on hydrate. */
+  serverUpdatedAt?: number;
 }
 
 export type BookingValidationResult =

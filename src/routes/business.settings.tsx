@@ -20,6 +20,7 @@ function BusinessSettingsPage() {
   const [policy, setPolicy] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,11 +55,14 @@ function BusinessSettingsPage() {
         action={
           <Button
             type="button"
-            disabled={loading}
+            disabled={loading || saving}
             onClick={() => {
+              if (saving) return;
               setSaveError(null);
+              setSaving(true);
               void saveBusinessProfile({ company, vat, billingEmail, costCenter, policy }).then(
                 (result) => {
+                  setSaving(false);
                   if (!result.ok) {
                     setSaveError(result.error);
                     return;
@@ -69,7 +73,7 @@ function BusinessSettingsPage() {
               );
             }}
           >
-            {saved ? "Saved" : "Save changes"}
+            {saving ? "Saving…" : saved ? "Saved" : "Save changes"}
           </Button>
         }
       />

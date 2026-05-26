@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { guardCloudSessionForRole } from "@/lib/auth/require-cloud-session";
 import { getAuthSession } from "@/lib/auth-session";
 import { useCustomerApp } from "@/lib/customer-store";
 import { getRoleHomePath } from "@/lib/store";
@@ -12,7 +13,7 @@ const PUBLIC_CUSTOMER_AUTH_PATHS = new Set([
 ]);
 
 export const Route = createFileRoute("/customer")({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     const path = location.pathname.replace(/\/$/, "") || "/";
     const session = getAuthSession();
 
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/customer")({
     if (session.activeRole !== "customer") {
       throw redirect({ to: getRoleHomePath(session.activeRole) });
     }
+
+    await guardCloudSessionForRole("customer");
 
     if (path === "/customer") {
       throw redirect({ to: getRoleHomePath("customer") });

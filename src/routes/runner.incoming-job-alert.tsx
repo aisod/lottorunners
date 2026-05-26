@@ -55,6 +55,7 @@ function RunnerIncomingJobAlertPage() {
   const serviceLabel = SERVICES[job.serviceType].label;
 
   const handleAccept = () => {
+    if (accepting) return;
     if (!canRunnerAcceptJobs()) {
       setError("Your runner profile must be approved before you can accept jobs.");
       return;

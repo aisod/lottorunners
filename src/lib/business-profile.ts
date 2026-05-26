@@ -112,9 +112,8 @@ export async function saveBusinessProfile(
     return { ok: false, error: "Not signed in." };
   }
 
-  writeLocal(session.email, settings);
-
   if (!isSupabaseConfigured()) {
+    writeLocal(session.email, settings);
     return { ok: true };
   }
 
@@ -139,5 +138,6 @@ export async function saveBusinessProfile(
       .eq("id", userId);
   }
 
+  writeLocal(session.email, settings);
   return { ok: true };
 }

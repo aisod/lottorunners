@@ -56,11 +56,14 @@ export async function loadAdminPlatformSettings(): Promise<AdminPlatformSettings
 export async function saveAdminPlatformSettings(
   settings: AdminPlatformSettings,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  writeLocal(settings);
-
   if (!isSupabaseConfigured()) {
+    writeLocal(settings);
     return { ok: true };
   }
 
-  return upsertAppConfigValue(CONFIG_KEY, JSON.stringify(settings));
+  const result = await upsertAppConfigValue(CONFIG_KEY, JSON.stringify(settings));
+  if (!result.ok) return result;
+
+  writeLocal(settings);
+  return { ok: true };
 }

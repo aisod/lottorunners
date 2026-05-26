@@ -6,6 +6,7 @@ import {
   getPendingAuthRole,
   setAuthSession,
 } from "@/lib/auth-session";
+import { isLocalDevAuthAllowed } from "@/lib/supabase/config";
 import {
   getRoleHomePath,
   setCustomerOnboarded,
@@ -74,6 +75,7 @@ export function CustomerVerifyPage() {
         <button
           disabled={!valid}
           onClick={() => {
+            if (!isLocalDevAuthAllowed()) return;
             setAuthSession(loginRole);
             clearPendingAuth();
             nav({ to: getRoleHomePath(loginRole === "admin" ? "customer" : loginRole) });
@@ -97,6 +99,7 @@ export function CustomerVerifyPage() {
       {loginRole === "customer" ? (
         <button
           onClick={() => {
+            if (!isLocalDevAuthAllowed()) return;
             clearPendingAuth();
             setAuthSession("customer");
             setCustomerOnboarded(true);

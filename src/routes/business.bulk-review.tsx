@@ -19,6 +19,7 @@ function BusinessBulkReviewPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState<number | null>(null);
+  const [batchSubmitted, setBatchSubmitted] = useState(false);
   const [pickupAddress, setPickupAddress] = useState(() => draft?.pickupAddress?.trim() ?? "");
 
   const batchName = draft?.batchName ?? "Untitled batch";
@@ -27,6 +28,7 @@ function BusinessBulkReviewPage() {
   const serviceLabel = SERVICES[serviceType].label;
 
   const submitBatch = async () => {
+    if (submitting || batchSubmitted) return;
     setError(null);
     const businessId = getCurrentBusinessId();
     if (!businessId) {
@@ -49,6 +51,7 @@ function BusinessBulkReviewPage() {
         return;
       }
       setSuccessCount(result.jobs.length);
+      setBatchSubmitted(true);
       window.setTimeout(() => {
         navigate({ to: "/business/dashboard" });
       }, 1200);
@@ -153,7 +156,12 @@ function BusinessBulkReviewPage() {
           <Button variant="outline" asChild disabled={submitting}>
             <Link to="/business/bulk-request">Edit stops</Link>
           </Button>
-          <Button type="button" onClick={submitBatch} disabled={submitting || !pickupAddress} className="gap-2">
+          <Button
+            type="button"
+            onClick={submitBatch}
+            disabled={submitting || batchSubmitted || !pickupAddress}
+            className="gap-2"
+          >
             <Send className="h-4 w-4" />
             {submitting ? "Posting jobs…" : "Submit batch"}
           </Button>

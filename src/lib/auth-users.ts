@@ -198,7 +198,15 @@ export function applyRemoteProfileToLocalSession(
   });
 
   upsertLocalUser(user);
-  const activeRole = getLoginActiveRole(user);
+  const current = getAuthSession();
+  let activeRole = getLoginActiveRole(user);
+  if (
+    current &&
+    current.email.toLowerCase() === user.email.toLowerCase() &&
+    user.roles.includes(current.activeRole)
+  ) {
+    activeRole = current.activeRole;
+  }
   const session = createAuthSession({ email: user.email, roles: user.roles, activeRole });
   persistAuthSession(session);
   if (activeRole !== "admin") {

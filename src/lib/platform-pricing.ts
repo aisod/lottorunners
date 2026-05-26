@@ -171,13 +171,16 @@ export async function hydratePlatformPricing(): Promise<void> {
 export async function savePlatformPricing(
   config: PlatformPricingConfig,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  applyConfig(config);
-
   if (!isSupabaseConfigured()) {
+    applyConfig(config);
     return { ok: true };
   }
 
-  return upsertAppConfigValue(CONFIG_KEY, JSON.stringify(config));
+  const result = await upsertAppConfigValue(CONFIG_KEY, JSON.stringify(config));
+  if (!result.ok) return result;
+
+  applyConfig(config);
+  return { ok: true };
 }
 
 export function subscribePlatformPricing(listener: () => void): () => void {
