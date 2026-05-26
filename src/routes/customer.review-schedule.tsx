@@ -13,7 +13,12 @@ import { getUserPhone } from "@/lib/auth-users";
 import { validateBooking } from "@/lib/booking-validation";
 import { createJobFromCustomerBooking, getCurrentCustomerId } from "@/lib/jobs-service";
 import { useCustomerApp } from "@/lib/customer-store";
-import { SERVICES, TRUCK_EXTRA_HELPER_FEE_NAD, TRUCK_LABOUR_FEE_NAD, TRUCK_SIZE_BASE_NAD } from "@/lib/services";
+import {
+  getServices,
+  getTruckExtraHelperFeeNad,
+  getTruckLabourFeeNad,
+  getTruckSizeBaseNad,
+} from "@/lib/services";
 import { cn } from "@/lib/utils";
 import type { ServiceType } from "@/lib/types";
 
@@ -87,7 +92,9 @@ function CustomerReviewSchedulePage() {
   const tier = truckSizeId ?? "small";
   const truckFixed =
     selectedService === "truck"
-      ? TRUCK_SIZE_BASE_NAD[tier] + (truckLabour ? TRUCK_LABOUR_FEE_NAD : 0) + truckExtraHelpers * TRUCK_EXTRA_HELPER_FEE_NAD
+      ? getTruckSizeBaseNad()[tier] +
+        (truckLabour ? getTruckLabourFeeNad() : 0) +
+        truckExtraHelpers * getTruckExtraHelperFeeNad()
       : 0;
   const baseFare =
     selectedService === "truck" ? truckFixed : selectedService === "ride" ? 30 : selectedService === "delivery" ? 20 : 25;
@@ -96,9 +103,9 @@ function CustomerReviewSchedulePage() {
   const errandServiceLabel = errandCategory ? ERRAND_CATEGORIES[errandCategory]?.label ?? "Errand service" : "Errand service";
   const heroLabel =
     selectedService === "ride"
-      ? SERVICES.ride.label
+      ? getServices().ride.label
       : selectedService === "delivery"
-        ? SERVICES.delivery.label
+        ? getServices().delivery.label
         : selectedService === "truck"
           ? "Truck & moving"
           : errandServiceLabel;

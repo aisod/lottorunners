@@ -1,9 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, MapPin, MessageSquareText, Route as RouteIcon, ShieldCheck, Truck } from "lucide-react";
+import {
+  AlertTriangle,
+  ClipboardList,
+  Clock,
+  MapPin,
+  MessageSquareText,
+  Route as RouteIcon,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
-import { jobStatusLabel, listActiveJobs, subscribeToJobs } from "@/lib/jobs-service";
+import { jobStatusLabel } from "@/lib/jobs-service";
+import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
 import { SERVICES } from "@/lib/services";
 import type { MarketplaceJob } from "@/lib/jobs-types";
 import { cn } from "@/lib/utils";
@@ -19,12 +29,14 @@ function statusTone(status: MarketplaceJob["status"]): "neutral" | "primary" | "
 }
 
 function AdminJobsPage() {
-  const [jobs, setJobs] = useState<MarketplaceJob[]>([]);
-
-  useEffect(() => {
-    setJobs(listActiveJobs());
-    return subscribeToJobs(() => setJobs(listActiveJobs()));
-  }, []);
+  const allJobs = useAllMarketplaceJobs();
+  const jobs = useMemo(
+    () =>
+      allJobs.filter(
+        (j) => j.status !== "completed" && j.status !== "cancelled" && j.status !== "declined",
+      ),
+    [allJobs],
+  );
 
   const [selectedJobId, setSelectedJobId] = useState("");
   const selectedJob = useMemo(
@@ -42,6 +54,9 @@ function AdminJobsPage() {
   const inProgressCount = jobs.filter((j) =>
     ["accepted", "en_route", "arrived", "in_progress"].includes(j.status),
   ).length;
+  const delayedCount = jobs.filter(
+    (j) => j.status === "pending" && Date.now() - j.createdAt > 20 * 60_000,
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -52,10 +67,16 @@ function AdminJobsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <PortalStatTile label="Active jobs" value={String(jobs.length)} />
-        <PortalStatTile label="Pending" value={String(pendingCount)} />
-        <PortalStatTile label="In progress" value={String(inProgressCount)} />
-        <PortalStatTile label="Delayed" value="0" hint="Set when SLA rules are added" />
+        <PortalStatTile icon={ClipboardList} label="Active jobs" value={String(jobs.length)} />
+        <PortalStatTile icon={Clock} label="Pending" value={String(pendingCount)} />
+        <PortalStatTile icon={Truck} label="In progress" value={String(inProgressCount)} />
+        <PortalStatTile
+          icon={AlertTriangle}
+          label="Delayed pending"
+          value={String(delayedCount)}
+          meta="Pending > 20 minutes"
+          tone={delayedCount > 0 ? "danger" : "default"}
+        />
       </div>
 
       {jobs.length === 0 ? (
@@ -89,7 +110,7 @@ function AdminJobsPage() {
                         {job.runnerName ? ` → ${job.runnerName}` : " · awaiting runner"}
                       </p>
                     </div>
-                    <StatusPill label={jobStatusLabel(job.status)} tone={statusTone(job.status)} />
+                    <StatusPill tone={statusTone(job.status)}>{jobStatusLabel(job.status)}</StatusPill>
                   </div>
                 </button>
               ))}

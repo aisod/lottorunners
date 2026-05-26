@@ -8,6 +8,9 @@ import { approveRunnerAccount, rejectRunnerAccount } from "@/lib/runner-account"
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { ensureBootstrapAdmin, fetchProfilesForAdmin } from "@/lib/supabase/profiles-remote";
 import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
+import { runnerAvgRatingFromJobs } from "@/lib/portal-analytics";
+import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
+import type { MarketplaceJob } from "@/lib/jobs-types";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -34,6 +37,7 @@ function mapRunnerStatus(status?: string | null): Row["status"] {
 
 function profileToRows(
   profiles: Awaited<ReturnType<typeof fetchProfilesForAdmin>>,
+  jobs: MarketplaceJob[],
 ): { pending: Row[]; active: Row[] } {
   const pending: Row[] = [];
   const active: Row[] = [];
@@ -52,7 +56,10 @@ function profileToRows(
       email: profile.email,
       kind,
       status: kind === "Runner" ? mapRunnerStatus(profile.runner_status) : "Active",
-      rating: kind === "Runner" && profile.runner_status === "approved" ? "4.8" : "N/A",
+      rating:
+        kind === "Runner" && profile.runner_status === "approved"
+          ? runnerAvgRatingFromJobs(profile.email, jobs)
+          : "N/A",
       lastActive: profile.updated_at ? new Date(profile.updated_at).toLocaleString() : "—",
       flag:
         kind === "Runner" && profile.runner_status === "rejected"
@@ -70,7 +77,7 @@ function profileToRows(
   return { pending, active };
 }
 
-function localUsersToRows(): { pending: Row[]; active: Row[] } {
+function localUsersToRows(jobs: MarketplaceJob[]): { pending: Row[]; active: Row[] } {
   const pending: Row[] = [];
   const active: Row[] = [];
 
@@ -83,7 +90,7 @@ function localUsersToRows(): { pending: Row[]; active: Row[] } {
         email: user.email,
         kind: "Runner",
         status,
-        rating: status === "Active" ? "4.8" : "N/A",
+        rating: status === "Active" ? runnerAvgRatingFromJobs(user.email, jobs) : "N/A",
         lastActive: "This device",
         flag: status === "Pending" ? "Onboarding review" : "—",
       };
@@ -122,6 +129,7 @@ function localUsersToRows(): { pending: Row[]; active: Row[] } {
 }
 
 function AdminUsersPage() {
+  const jobs = useAllMarketplaceJobs();
   const [pending, setPending] = useState<Row[]>([]);
   const [activeRows, setActiveRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,13 +142,13 @@ function AdminUsersPage() {
     setActionError(null);
     if (isSupabaseConfigured()) {
       const profiles = await fetchProfilesForAdmin();
-      const mapped = profileToRows(profiles);
+      const mapped = profileToRows(profiles, jobs);
       setPending(mapped.pending);
       setActiveRows(mapped.active);
       setLoading(false);
       return;
     }
-    const mapped = localUsersToRows();
+    const mapped = localUsersToRows(jobs);
     setPending(mapped.pending);
     setActiveRows(mapped.active);
     setLoading(false);
@@ -162,6 +170,12 @@ function AdminUsersPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh ratings when job data changes
+  }, [jobs]);
 
   const approve = (id: string) => {
     const row = pending.find((entry) => entry.id === id);

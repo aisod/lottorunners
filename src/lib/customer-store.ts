@@ -12,9 +12,9 @@ import {
   estimateFare,
   haversine,
   SERVICES,
-  TRUCK_EXTRA_HELPER_FEE_NAD,
-  TRUCK_LABOUR_FEE_NAD,
-  TRUCK_SIZE_BASE_NAD,
+  getTruckExtraHelperFeeNad,
+  getTruckLabourFeeNad,
+  getTruckSizeBaseNad,
 } from "./services";
 import type { CargoPhotoSlotId, CargoPhotoUrls } from "./cargo-photos";
 import { estimateErrandPrice, type ErrandCategoryId, type PriceQuote } from "./errand-categories";
@@ -262,9 +262,9 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
 
     if (selectedService === "truck") {
       const tier = truckSizeId ?? "small";
-      const base = TRUCK_SIZE_BASE_NAD[tier];
-      const labour = truckLabour ? TRUCK_LABOUR_FEE_NAD : 0;
-      const helpers = truckExtraHelpers * TRUCK_EXTRA_HELPER_FEE_NAD;
+      const base = getTruckSizeBaseNad()[tier];
+      const labour = truckLabour ? getTruckLabourFeeNad() : 0;
+      const helpers = truckExtraHelpers * getTruckExtraHelperFeeNad();
       const distanceComponent = SERVICES.truck.perKm * Math.max(distanceKm, 0.5);
       const fare = Math.round(base + distanceComponent + labour + helpers);
       const etaBoost = tier === "large" ? 12 : tier === "medium" ? 6 : 0;

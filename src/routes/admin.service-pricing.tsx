@@ -1,120 +1,194 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { Bike, CarTaxiFront, PackageCheck, Truck } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
+import { Input } from "@/components/ui/input";
 import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
+import {
+  getPlatformPricing,
+  savePlatformPricing,
+  subscribePlatformPricing,
+  type PlatformPricingConfig,
+  type ServicePricingFields,
+} from "@/lib/platform-pricing";
+import { getServices } from "@/lib/services";
+import type { TruckSizeId } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/service-pricing")({
   component: AdminServicePricingPage,
 });
 
 function AdminServicePricingPage() {
-  const [baseTaxi, setBaseTaxi] = useState(45);
-  const [platformFeePct, setPlatformFeePct] = useState(12);
-  const [perKm, setPerKm] = useState(8);
-  const [errandMultiplier, setErrandMultiplier] = useState(1.15);
-  const [deliveryBase, setDeliveryBase] = useState(30);
-  const [deliveryPerKm, setDeliveryPerKm] = useState(6);
-  const [truckBase, setTruckBase] = useState(250);
-  const [truckPerKm, setTruckPerKm] = useState(18);
+  const [config, setConfig] = useState<PlatformPricingConfig>(() => getPlatformPricing());
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return subscribePlatformPricing(() => setConfig(getPlatformPricing()));
+  }, []);
+
+  const save = () => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    void savePlatformPricing(config).then((result) => {
+      setSaving(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setMessage("Pricing saved. Customer and business booking flows use these fares immediately.");
+    });
+  };
+
+  const services = getServices();
 
   return (
     <div className="space-y-6">
       <PortalPageIntro
         eyebrow="Pricing controls"
         title="Service & pricing configuration"
-        description="Adjust platform fees, base fares, and service defaults. Inputs stay local to this prototype."
+        description="Edit marketplace fares here. Values are stored in Supabase app_config (marketplace_pricing) and applied on every device after save."
         action={
-          <Button
-            type="button"
-            disabled
-            title={UNAVAILABLE.adminPricingSave}
-            onClick={() => notifyUnavailable(UNAVAILABLE.adminPricingSave)}
-          >
-            Save changes
+          <Button type="button" onClick={save} disabled={saving}>
+            {saving ? "Saving…" : "Save pricing"}
           </Button>
         }
       />
 
+      {error ? (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {message ? (
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">{message}</p>
+      ) : null}
+
+      <PortalSection
+        title="Platform fee"
+        description="Used in admin revenue analytics and runner payout calculations."
+        bodyClassName="grid gap-4 sm:grid-cols-2 lg:max-w-md"
+      >
+        <PricingField
+          label="Platform fee (%)"
+          value={config.platformFeePercent}
+          onChange={(v) => setConfig((c) => ({ ...c, platformFeePercent: v }))}
+        />
+      </PortalSection>
+
       <div className="grid gap-6 xl:grid-cols-4">
-        <PortalSection title="Taxi" description="Base and distance charges." className="xl:col-span-1" bodyClassName="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CarTaxiFront className="h-5 w-5" />
+        <ServiceCard
+          title="Taxi / ride"
+          description={services.ride.tagline}
+          icon={<CarTaxiFront className="h-5 w-5" />}
+          fields={config.ride}
+          onChange={(ride) => setConfig((c) => ({ ...c, ride }))}
+        />
+        <ServiceCard
+          title="Errand"
+          description={services.errand.tagline}
+          icon={<Bike className="h-5 w-5" />}
+          fields={config.errand}
+          onChange={(errand) => setConfig((c) => ({ ...c, errand }))}
+        />
+        <ServiceCard
+          title="Delivery"
+          description={services.delivery.tagline}
+          icon={<PackageCheck className="h-5 w-5" />}
+          fields={config.delivery}
+          onChange={(delivery) => setConfig((c) => ({ ...c, delivery }))}
+        />
+        <ServiceCard
+          title="Truck (per km)"
+          description={services.truck.tagline}
+          icon={<Truck className="h-5 w-5" />}
+          fields={config.truck}
+          onChange={(truck) => setConfig((c) => ({ ...c, truck }))}
+          extra={
+            <div className="space-y-3 border-t border-border/60 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Truck size base (N$)</p>
+              {(["small", "medium", "large"] as TruckSizeId[]).map((size) => (
+                <PricingField
+                  key={size}
+                  label={size}
+                  value={config.truckSizeBase[size]}
+                  onChange={(v) =>
+                    setConfig((c) => ({
+                      ...c,
+                      truckSizeBase: { ...c.truckSizeBase, [size]: v },
+                    }))
+                  }
+                />
+              ))}
+              <PricingField
+                label="Labour add-on (N$)"
+                value={config.truckLabourFee}
+                onChange={(v) => setConfig((c) => ({ ...c, truckLabourFee: v }))}
+              />
+              <PricingField
+                label="Extra helper (N$ each)"
+                value={config.truckExtraHelperFee}
+                onChange={(v) => setConfig((c) => ({ ...c, truckExtraHelperFee: v }))}
+              />
             </div>
-            <StatusPill tone="primary">Active</StatusPill>
-          </div>
-          <Field label="Base fare (N$)" value={baseTaxi} onChange={setBaseTaxi} min={0} max={200} />
-          <Field label="Per km (N$)" value={perKm} onChange={setPerKm} min={0} max={50} />
-        </PortalSection>
-
-        <PortalSection title="Errand" description="Urgency and manual handling." className="xl:col-span-1" bodyClassName="space-y-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Bike className="h-5 w-5" />
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Urgency uplift (x)</label>
-            <input
-              type="number"
-              step={0.05}
-              value={errandMultiplier}
-              onChange={(e) => setErrandMultiplier(Number(e.target.value))}
-              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:ring-2"
-            />
-          </div>
-          <Field label="Platform fee (%)" value={platformFeePct} onChange={setPlatformFeePct} min={0} max={35} />
-        </PortalSection>
-
-        <PortalSection title="Delivery" description="Parcel and document runs." className="xl:col-span-1" bodyClassName="space-y-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <PackageCheck className="h-5 w-5" />
-          </div>
-          <Field label="Base fee (N$)" value={deliveryBase} onChange={setDeliveryBase} min={0} max={200} />
-          <Field label="Per km (N$)" value={deliveryPerKm} onChange={setDeliveryPerKm} min={0} max={20} />
-        </PortalSection>
-
-        <PortalSection title="Truck" description="Large-item and heavy cargo." className="xl:col-span-1" bodyClassName="space-y-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Truck className="h-5 w-5" />
-          </div>
-          <Field label="Starting fee (N$)" value={truckBase} onChange={setTruckBase} min={0} max={2000} />
-          <Field label="Per km (N$)" value={truckPerKm} onChange={setTruckPerKm} min={0} max={40} />
-        </PortalSection>
+          }
+        />
       </div>
     </div>
   );
 }
 
-function Field({
+function ServiceCard({
+  title,
+  description,
+  icon,
+  fields,
+  onChange,
+  extra,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  fields: ServicePricingFields;
+  onChange: (next: ServicePricingFields) => void;
+  extra?: React.ReactNode;
+}) {
+  return (
+    <PortalSection title={title} description={description} className="xl:col-span-1" bodyClassName="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</div>
+        <StatusPill tone="primary">Active</StatusPill>
+      </div>
+      <PricingField label="Base fare (N$)" value={fields.baseFare} onChange={(v) => onChange({ ...fields, baseFare: v })} />
+      <PricingField label="Per km (N$)" value={fields.perKm} onChange={(v) => onChange({ ...fields, perKm: v })} />
+      <PricingField label="ETA base (min)" value={fields.etaMin} onChange={(v) => onChange({ ...fields, etaMin: v })} />
+      {extra}
+    </PortalSection>
+  );
+}
+
+function PricingField({
   label,
   value,
   onChange,
-  min,
-  max,
 }: {
   label: string;
   value: number;
-  onChange: (n: number) => void;
-  min: number;
-  max: number;
+  onChange: (value: number) => void;
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </label>
-      <div className="mt-2 flex items-center gap-3">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="h-2 flex-1 accent-primary"
-        />
-        <span className="w-12 tabular-nums text-sm font-bold text-primary">{value}</span>
-      </div>
+      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</label>
+      <Input
+        type="number"
+        min={0}
+        step={1}
+        className="mt-2"
+        value={Number.isFinite(value) ? value : 0}
+        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+      />
     </div>
   );
 }

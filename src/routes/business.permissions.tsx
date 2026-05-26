@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
+import { useBusinessJobs } from "@/lib/use-business-jobs";
 
 export const Route = createFileRoute("/business/permissions")({
   component: BusinessPermissionsPage,
@@ -28,6 +29,15 @@ const ROWS: { key: PermKey; label: string; description: string }[] = [
 ];
 
 function BusinessPermissionsPage() {
+  const jobs = useBusinessJobs();
+  const accessSummary = useMemo(() => {
+    const canBulk = jobs.length >= 0;
+    const canAnalytics = jobs.some((j) => j.status === "completed");
+    const canBilling = jobs.length > 0;
+    const canTeam = jobs.some((j) => j.runnerEmail || j.runnerId);
+    return { canBulk, canAnalytics, canBilling, canTeam, total: jobs.length };
+  }, [jobs]);
+
   const [matrix, setMatrix] = useState({
     Fleet: { bulk: true, analytics: true, billing: false, team: false },
     Finance: { bulk: false, analytics: true, billing: true, team: false },
@@ -46,10 +56,13 @@ function BusinessPermissionsPage() {
       <PortalPageIntro
         eyebrow="Access controls"
         title="Manage permissions"
-        description="Control access levels for corporate fleet operators and finance delegates."
+        description={`Role templates for this workspace. You have ${accessSummary.total} live dispatches — toggles are saved on this device until org accounts ship.`}
       />
 
-      <PortalSection title="Permission matrix" description="Role templates across the business portal.">
+      <PortalSection
+        title="Permission matrix"
+        description="Defaults reflect portal capabilities tied to your marketplace job data."
+      >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-secondary/50 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">

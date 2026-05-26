@@ -6,7 +6,7 @@ import { CustomerFlowHeader } from "@/components/customer-flow-header";
 import { Button } from "@/components/ui/button";
 import { goBackOrFallback } from "@/lib/customer-navigation";
 import { cn } from "@/lib/utils";
-import { TRUCK_SIZE_BASE_NAD } from "@/lib/services";
+import { getTruckSizeBaseNad } from "@/lib/services";
 import { useCustomerApp } from "@/lib/customer-store";
 import type { TruckSizeId } from "@/lib/types";
 
@@ -57,7 +57,7 @@ function CustomerTruckSizePage() {
   }, [setTruckLabour]);
 
   const tier = truckSizeId ?? "small";
-  const subtotal = useMemo(() => TRUCK_SIZE_BASE_NAD[tier], [tier]);
+  const subtotal = useMemo(() => getTruckSizeBaseNad()[tier], [tier]);
 
   return (
     <CustomerPageShell width="lg" variant="plain" className="pb-36">
@@ -101,7 +101,9 @@ function CustomerTruckSizePage() {
                     <h3 className="text-lg font-semibold">{t.title}</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">{t.description}</p>
-                  <p className="mt-3 text-sm font-semibold text-primary">Base fare: N$ {TRUCK_SIZE_BASE_NAD[t.id].toLocaleString()}</p>
+                  <p className="mt-3 text-sm font-semibold text-primary">
+                    Base fare: N$ {getTruckSizeBaseNad()[t.id].toLocaleString()}
+                  </p>
                   <p className="text-xs text-muted-foreground">{t.capacity}</p>
                 </div>
                 <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-lg bg-secondary/80">

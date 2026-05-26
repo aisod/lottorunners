@@ -1,0 +1,47 @@
+import { useEffect, useState } from "react";
+import { isSupabaseConfigured } from "./supabase/config";
+import {
+  ensureBootstrapAdmin,
+  fetchProfilesForAdmin,
+  type RemoteProfileRow,
+} from "./supabase/profiles-remote";
+
+export function useAdminProfiles(): {
+  profiles: RemoteProfileRow[];
+  loading: boolean;
+} {
+  const [profiles, setProfiles] = useState<RemoteProfileRow[]>([]);
+  const [loading, setLoading] = useState(isSupabaseConfigured());
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      await ensureBootstrapAdmin();
+      const rows = await fetchProfilesForAdmin();
+      if (!cancelled) {
+        setProfiles(rows);
+        setLoading(false);
+      }
+    })();
+
+    const interval = window.setInterval(() => {
+      void fetchProfilesForAdmin().then((rows) => {
+        if (!cancelled) setProfiles(rows);
+      });
+    }, 30_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  return { profiles, loading };
+}

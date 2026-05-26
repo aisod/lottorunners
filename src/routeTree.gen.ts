@@ -74,7 +74,6 @@ import { Route as BusinessBulkImportRouteImport } from './routes/business.bulk-i
 import { Route as AuthVerifyPhoneRouteImport } from './routes/auth.verify-phone'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminServicePricingRouteImport } from './routes/admin.service-pricing'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
@@ -418,11 +417,6 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSupportRoute = AdminSupportRouteImport.update({
-  id: '/support',
-  path: '/support',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -510,7 +504,6 @@ export interface FileRoutesByFullPath {
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/service-pricing': typeof AdminServicePricingRoute
   '/admin/settings': typeof AdminSettingsRoute
-  '/admin/support': typeof AdminSupportRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/verify-phone': typeof AuthVerifyPhoneRoute
@@ -590,7 +583,6 @@ export interface FileRoutesByTo {
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/service-pricing': typeof AdminServicePricingRoute
   '/admin/settings': typeof AdminSettingsRoute
-  '/admin/support': typeof AdminSupportRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/verify-phone': typeof AuthVerifyPhoneRoute
@@ -671,7 +663,6 @@ export interface FileRoutesById {
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/service-pricing': typeof AdminServicePricingRoute
   '/admin/settings': typeof AdminSettingsRoute
-  '/admin/support': typeof AdminSupportRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/verify-phone': typeof AuthVerifyPhoneRoute
@@ -753,7 +744,6 @@ export interface FileRouteTypes {
     | '/admin/payments'
     | '/admin/service-pricing'
     | '/admin/settings'
-    | '/admin/support'
     | '/admin/users'
     | '/auth/verify'
     | '/auth/verify-phone'
@@ -833,7 +823,6 @@ export interface FileRouteTypes {
     | '/admin/payments'
     | '/admin/service-pricing'
     | '/admin/settings'
-    | '/admin/support'
     | '/admin/users'
     | '/auth/verify'
     | '/auth/verify-phone'
@@ -913,7 +902,6 @@ export interface FileRouteTypes {
     | '/admin/payments'
     | '/admin/service-pricing'
     | '/admin/settings'
-    | '/admin/support'
     | '/admin/users'
     | '/auth/verify'
     | '/auth/verify-phone'
@@ -1448,13 +1436,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/support': {
-      id: '/admin/support'
-      path: '/support'
-      fullPath: '/admin/support'
-      preLoaderRoute: typeof AdminSupportRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -1550,7 +1531,6 @@ interface AdminRouteChildren {
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminServicePricingRoute: typeof AdminServicePricingRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminSupportRoute: typeof AdminSupportRoute
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
@@ -1562,7 +1542,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminServicePricingRoute: AdminServicePricingRoute,
   AdminSettingsRoute: AdminSettingsRoute,
-  AdminSupportRoute: AdminSupportRoute,
   AdminUsersRoute: AdminUsersRoute,
 }
 

@@ -1,62 +1,46 @@
 import type { ServiceConfig, ServiceType, TruckSizeId } from "./types";
+import {
+  getPlatformPricing,
+  getServices,
+  getTruckExtraHelperFeeNad,
+  getTruckLabourFeeNad,
+  getTruckSizeBaseNad,
+  hydratePlatformPricing,
+  subscribePlatformPricing,
+} from "./platform-pricing";
 
-/** Base dispatch fees by truck class (NAD). Per-km still uses `SERVICES.truck.perKm`. */
-export const TRUCK_SIZE_BASE_NAD: Record<TruckSizeId, number> = {
-  small: 250,
-  medium: 850,
-  large: 1950,
-};
+/** @deprecated Use getServices() for live fares; kept for gradual migration. */
+export const SERVICES: Record<ServiceType, ServiceConfig> = new Proxy(
+  {} as Record<ServiceType, ServiceConfig>,
+  {
+    get(_target, prop: string) {
+      return getServices()[prop as ServiceType];
+    },
+    ownKeys() {
+      return ["errand", "ride", "delivery", "truck"];
+    },
+    getOwnPropertyDescriptor(_target, prop: string) {
+      const svc = getServices()[prop as ServiceType];
+      if (!svc) return undefined;
+      return { enumerable: true, configurable: true, value: svc };
+    },
+  },
+);
 
-export const TRUCK_LABOUR_FEE_NAD = 150;
-export const TRUCK_EXTRA_HELPER_FEE_NAD = 80;
-
-export const SERVICES: Record<ServiceType, ServiceConfig> = {
-  errand: {
-    id: "errand",
-    label: "Errand Runner",
-    tagline: "A runner on foot or bike does it for you",
-    icon: "🏃",
-    baseFare: 25,
-    perKm: 8,
-    etaMin: 4,
-    color: "accent",
+/** Base dispatch fees by truck class (NAD). */
+export const TRUCK_SIZE_BASE_NAD: Record<TruckSizeId, number> = new Proxy(
+  {} as Record<TruckSizeId, number>,
+  {
+    get(_target, prop: string) {
+      return getTruckSizeBaseNad()[prop as TruckSizeId];
+    },
   },
-  ride: {
-    id: "ride",
-    label: "Ride",
-    tagline: "Get picked up by a driver",
-    icon: "🚗",
-    baseFare: 30,
-    perKm: 12,
-    etaMin: 5,
-    color: "primary",
-  },
-  delivery: {
-    id: "delivery",
-    label: "Delivery",
-    tagline: "Send a package, fast",
-    icon: "🛵",
-    baseFare: 20,
-    perKm: 10,
-    etaMin: 3,
-    color: "chart-2",
-  },
-  truck: {
-    id: "truck",
-    label: "Truck",
-    tagline: "Furniture, bulk goods, moving",
-    icon: "🚛",
-    baseFare: 120,
-    perKm: 22,
-    etaMin: 12,
-    color: "chart-3",
-  },
-};
+);
 
 export const SERVICE_ORDER: ServiceType[] = ["errand", "ride", "delivery", "truck"];
 
 export function estimateFare(service: ServiceType, distanceKm: number) {
-  const cfg = SERVICES[service];
+  const cfg = getServices()[service];
   return Math.round(cfg.baseFare + cfg.perKm * Math.max(distanceKm, 0.5));
 }
 
@@ -71,3 +55,13 @@ export function haversine(a: { lat: number; lng: number }, b: { lat: number; lng
     Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
   return 2 * R * Math.asin(Math.sqrt(h));
 }
+
+export {
+  getServices,
+  getPlatformPricing,
+  hydratePlatformPricing,
+  subscribePlatformPricing,
+  getTruckSizeBaseNad,
+  getTruckLabourFeeNad,
+  getTruckExtraHelperFeeNad,
+};

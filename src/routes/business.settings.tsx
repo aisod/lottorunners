@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Building2, Mail, ReceiptText, ShieldCheck, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PortalPageIntro, PortalSection } from "@/components/portal-primitives";
 import { Button } from "@/components/ui/button";
+import { loadBusinessProfile, saveBusinessProfile } from "@/lib/business-profile";
 
 export const Route = createFileRoute("/business/settings")({
   component: BusinessSettingsPage,
@@ -12,13 +13,30 @@ const fieldClassName =
   "mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-sm outline-none ring-primary/30 transition focus:ring-2";
 
 function BusinessSettingsPage() {
-  const [company, setCompany] = useState("Namibian Corp (Pty) Ltd");
-  const [vat, setVat] = useState("4720-198-112");
-  const [billingEmail, setBillingEmail] = useState("finance@namibcorp.na");
-  const [costCenter, setCostCenter] = useState("WIND-OPS-01");
-  const [policy, setPolicy] = useState(
-    "Require secondary approval for bulk batches over N$ 25,000. Weekend rides flagged for review.",
-  );
+  const [company, setCompany] = useState("");
+  const [vat, setVat] = useState("");
+  const [billingEmail, setBillingEmail] = useState("");
+  const [costCenter, setCostCenter] = useState("");
+  const [policy, setPolicy] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadBusinessProfile().then((profile) => {
+      if (cancelled) return;
+      setCompany(profile.company);
+      setVat(profile.vat);
+      setBillingEmail(profile.billingEmail);
+      setCostCenter(profile.costCenter);
+      setPolicy(profile.policy);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const companyInitials =
     company
       .split(/\s+/)
@@ -32,13 +50,35 @@ function BusinessSettingsPage() {
       <PortalPageIntro
         eyebrow="Configuration"
         title="Business profile"
-        description="Manage the identity, billing inbox, and operating defaults used throughout the business portal."
+        description="Synced to your Supabase profile (documents JSON) and cached on this device."
         action={
-          <Button type="button" disabled title="Business profile cloud sync is not available yet">
-            Save changes (coming soon)
+          <Button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              setSaveError(null);
+              void saveBusinessProfile({ company, vat, billingEmail, costCenter, policy }).then(
+                (result) => {
+                  if (!result.ok) {
+                    setSaveError(result.error);
+                    return;
+                  }
+                  setSaved(true);
+                  window.setTimeout(() => setSaved(false), 2500);
+                },
+              );
+            }}
+          >
+            {saved ? "Saved" : "Save changes"}
           </Button>
         }
       />
+
+      {saveError ? (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {saveError}
+        </p>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr,1.25fr]">
         <div className="space-y-6">
@@ -189,7 +229,7 @@ function BusinessSettingsPage() {
 
           <PortalSection
             title="Approval policy"
-            description="Prototype notes that travel with new bulk logistics requests."
+            description="Stored in profiles.documents — shown to reviewers on bulk requests."
             bodyClassName="space-y-4"
           >
             <div>

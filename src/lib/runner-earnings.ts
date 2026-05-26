@@ -1,7 +1,10 @@
 import { getCurrentRunnerId, listJobsForRunner } from "./jobs-service";
 import type { MarketplaceJob } from "./jobs-types";
+import { getPlatformFeePercent } from "./platform-pricing";
 
-const PLATFORM_FEE_RATE = 0.15;
+function platformFeeRate(): number {
+  return getPlatformFeePercent() / 100;
+}
 
 export type RunnerEarningsSummary = {
   today: number;
@@ -19,7 +22,7 @@ export type RunnerEarningsRow = {
 };
 
 function jobNet(job: MarketplaceJob): number {
-  return Math.round(job.estimatedFare * (1 - PLATFORM_FEE_RATE) * 100) / 100;
+  return Math.round(job.estimatedFare * (1 - platformFeeRate()) * 100) / 100;
 }
 
 function isSameDay(a: number, b: number): boolean {

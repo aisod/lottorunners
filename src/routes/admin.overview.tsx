@@ -1,63 +1,120 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CreditCard, MapPinned, ShieldAlert, Star, Truck, UserCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { LiveMapClient } from "@/components/live-map-client";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
+import { WINDHOEK } from "@/lib/geo-defaults";
+import { nearbyLocationsToMapRunners } from "@/lib/runner-location-service";
+import {
+  fetchAllRunnerLocationsRemote,
+  subscribeAllRunnerLocationsRemote,
+} from "@/lib/supabase/runner-locations-remote";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  buildAdminActivityFeed,
+  buildTopRunners,
+  computeAdminPlatformStats,
+  formatNad,
+} from "@/lib/portal-analytics";
+import { useAdminProfiles } from "@/lib/use-admin-profiles";
+import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
+import type { LatLng, Runner } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/overview")({
   component: AdminOverviewPage,
 });
 
-const ACTIVITY = [
-  { event: "Job completed · LR-9281", actor: "Lukas N. (Runner)", time: "2 mins ago", tone: "success" as const },
-  { event: "Payment failed · TX-4402", actor: "Petrus H. (User)", time: "14 mins ago", tone: "danger" as const },
-  { event: "New runner registration", actor: "Saara M. (Pending)", time: "32 mins ago", tone: "primary" as const },
-  { event: "Support escalation opened", actor: "Walvis Bay control", time: "48 mins ago", tone: "warning" as const },
-];
-
-const TOP_RUNNERS = [
-  { initials: "JK", name: "Johannes K.", meta: "4.9 · 124 jobs" },
-  { initials: "EN", name: "Esther N.", meta: "4.8 · 98 jobs" },
-  { initials: "PT", name: "Paulus T.", meta: "4.7 · 203 jobs" },
-];
-
 function AdminOverviewPage() {
+  const jobs = useAllMarketplaceJobs();
+  const { profiles } = useAdminProfiles();
+  const [runners, setRunners] = useState<Runner[]>([]);
+
+  const pendingVerifications = useMemo(
+    () =>
+      profiles.filter(
+        (p) =>
+          (p.roles ?? []).includes("runner") &&
+          p.runner_status !== "approved" &&
+          p.runner_status !== "rejected",
+      ).length,
+    [profiles],
+  );
+
+  const stats = useMemo(
+    () => computeAdminPlatformStats(jobs, pendingVerifications),
+    [jobs, pendingVerifications],
+  );
+
+  const activity = useMemo(() => buildAdminActivityFeed(jobs), [jobs]);
+  const topRunners = useMemo(() => buildTopRunners(jobs), [jobs]);
+
+  const mapCenter = useMemo((): LatLng => {
+    const active = jobs.find((j) => j.status !== "completed" && j.status !== "cancelled");
+    return active?.pickup ?? WINDHOEK;
+  }, [jobs]);
+
+  const pendingHotspot = useMemo(() => {
+    const pending = jobs.filter((j) => j.status === "pending");
+    return pending.length;
+  }, [jobs]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setRunners([]);
+      return;
+    }
+
+    let cancelled = false;
+    const refresh = () => {
+      void fetchAllRunnerLocationsRemote().then((locs) => {
+        if (!cancelled) setRunners(nearbyLocationsToMapRunners(locs));
+      });
+    };
+
+    refresh();
+    const unsub = subscribeAllRunnerLocationsRemote(refresh);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <PortalPageIntro
         eyebrow="Global monitoring"
         title="Operations command center"
-        description="Live fleet supervision, recent activity, and trust signals across the Lotto Runners network."
+        description="Live fleet supervision, recent marketplace activity, and trust signals from synced jobs."
       />
 
       <div className="grid gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-8">
           <PortalSection
-            title="Live fleet · Windhoek"
-            description="High-priority jobs, runner movement, and demand hotspots in one view."
+            title="Live fleet · marketplace"
+            description="Runner GPS (when online) and active job demand from synced marketplace_jobs."
             action={
               <div className="flex flex-wrap gap-2">
-                <StatusPill tone="primary">All runners</StatusPill>
-                <StatusPill>Active only</StatusPill>
+                <StatusPill tone="primary">{stats.uniqueRunnersActive} runners on jobs</StatusPill>
+                <StatusPill>{stats.pendingJobs} pending</StatusPill>
               </div>
             }
             bodyClassName="space-y-5"
           >
-            <div className="relative h-[420px] overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_20%_20%,rgba(0,93,152,0.18),transparent_28%),linear-gradient(135deg,#dfe8ff_0%,#eef3ff_42%,#d6e5fb_100%)]">
-              <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(0,93,152,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(0,93,152,0.14)_1px,transparent_1px)] [background-size:54px_54px]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_70%,rgba(186,26,26,0.12),transparent_18%)]" />
-              <div className="absolute left-[16%] top-[18%] rounded-full border-4 border-white bg-primary p-2 text-white shadow-lg">
-                <Truck className="h-4 w-4" />
-              </div>
-              <div className="absolute left-[56%] top-[24%] rounded-full border-4 border-white bg-primary p-2 text-white shadow-lg">
-                <MapPinned className="h-4 w-4" />
-              </div>
-              <div className="absolute right-[18%] top-[38%] rounded-full border-4 border-white bg-destructive p-2 text-white shadow-lg">
-                <ShieldAlert className="h-4 w-4" />
-              </div>
-              <div className="absolute bottom-5 left-5 max-w-xs rounded-2xl border border-white/60 bg-white/90 p-4 shadow-lg backdrop-blur">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Demand signal</p>
-                <p className="mt-1 text-lg font-bold text-primary">Windhoek CBD spike</p>
-                <p className="mt-1 text-sm text-muted-foreground">Taxi demand is up 18% versus the previous hour.</p>
-              </div>
+            <div className="relative h-[420px] overflow-hidden rounded-2xl border border-border">
+              <LiveMapClient
+                userLocation={mapCenter}
+                runners={runners}
+                followLocation={mapCenter}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-border bg-secondary/20 px-4 py-3 text-sm">
+              <p className="font-semibold text-primary">Demand signal</p>
+              <p className="mt-1 text-muted-foreground">
+                {pendingHotspot > 0
+                  ? `${pendingHotspot} open customer or business requests awaiting a runner.`
+                  : "No pending requests in the marketplace right now."}
+              </p>
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-border">
@@ -71,24 +128,24 @@ function AdminOverviewPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {ACTIVITY.map((row) => (
-                    <tr key={`${row.event}-${row.time}`} className="bg-white/80 hover:bg-secondary/30">
-                      <td className="px-4 py-3 font-semibold">{row.event}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{row.actor}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{row.time}</td>
-                      <td className="px-4 py-3">
-                        <StatusPill tone={row.tone}>
-                          {row.tone === "danger"
-                            ? "Retry required"
-                            : row.tone === "warning"
-                              ? "Escalated"
-                              : row.tone === "success"
-                                ? "Finalized"
-                                : "Verification"}
-                        </StatusPill>
+                  {activity.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                        No marketplace activity yet.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    activity.map((row) => (
+                      <tr key={row.id} className="bg-white/80 hover:bg-secondary/30">
+                        <td className="px-4 py-3 font-semibold">{row.event}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{row.actor}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{row.time}</td>
+                        <td className="px-4 py-3">
+                          <StatusPill tone={row.tone}>{row.statusLabel}</StatusPill>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -96,31 +153,69 @@ function AdminOverviewPage() {
         </div>
 
         <div className="space-y-6 xl:col-span-4">
-          <PortalStatTile icon={Truck} label="Total active jobs" value="1,248" meta="+12% vs yesterday" tone="primary" />
-          <PortalStatTile icon={CreditCard} label="Revenue today" value="N$ 14,820" meta="Wallet settlements are healthy" />
-          <PortalStatTile icon={UserCheck} label="Pending verifications" value="28" meta="Runner and business approvals" tone="danger" />
+          <PortalStatTile
+            icon={Truck}
+            label="Active jobs"
+            value={String(stats.activeJobs)}
+            meta={`${stats.inProgressJobs} in progress`}
+            tone="primary"
+          />
+          <PortalStatTile
+            icon={CreditCard}
+            label="Revenue today"
+            value={formatNad(stats.revenueToday)}
+            meta="Completed job fares"
+          />
+          <PortalStatTile
+            icon={UserCheck}
+            label="Pending verifications"
+            value={String(stats.pendingVerifications)}
+            meta="Runners awaiting approval"
+            tone="danger"
+          />
 
-          <PortalSection title="Top performing runners" description="Fastest, highest rated runners today.">
+          <PortalSection title="Top performing runners" description="By completed jobs in synced data.">
             <div className="space-y-3">
-              {TOP_RUNNERS.map((runner) => (
-                <div
-                  key={runner.initials}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-white/80 px-4 py-3"
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-sm font-bold text-primary">
-                    {runner.initials}
+              {topRunners.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No completed runner jobs yet.</p>
+              ) : (
+                topRunners.map((runner) => (
+                  <div
+                    key={runner.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-white/80 px-4 py-3"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-sm font-bold text-primary">
+                      {runner.initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{runner.name}</p>
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Star className="h-3.5 w-3.5 fill-current text-primary" />
+                        {runner.meta}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{runner.name}</p>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Star className="h-3.5 w-3.5 fill-current text-primary" />
-                      {runner.meta}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </PortalSection>
+
+          <div className="rounded-2xl border border-border bg-white/80 p-4 text-sm">
+            <p className="flex items-center gap-2 font-semibold">
+              <MapPinned className="h-4 w-4 text-primary" />
+              Platform health
+            </p>
+            <p className="mt-2 text-muted-foreground">
+              Completion rate (all time): {stats.completionRatePct}%
+              {stats.avgRating != null ? ` · Avg rating ${stats.avgRating}` : ""}
+            </p>
+            {stats.pendingJobs > 5 ? (
+              <p className="mt-2 flex items-center gap-2 text-amber-800">
+                <ShieldAlert className="h-4 w-4 shrink-0" />
+                Elevated pending queue — consider runner supply.
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

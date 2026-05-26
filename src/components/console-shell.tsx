@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
-  BookOpen,
   BriefcaseBusiness,
   ChevronRight,
   CircleHelp,
@@ -43,7 +42,6 @@ const ADMIN_PRIMARY_LINKS: NavItem[] = [
 const ADMIN_SECONDARY_LINKS: NavItem[] = [
   { to: "/admin/service-pricing", label: "Service & pricing", icon: SlidersHorizontal },
   { to: "/admin/analytics", label: "Analytics", icon: LineChart },
-  { to: "/admin/support", label: "Support", icon: BookOpen },
 ];
 
 const BUSINESS_LINKS: NavItem[] = [

@@ -38,7 +38,7 @@ export function PortalStatTile({
   tone = "default",
   className,
 }: {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   label: string;
   value: string;
   meta?: string;
@@ -71,16 +71,18 @@ export function PortalStatTile({
             <p className={cn("text-xs", tone === "primary" ? "text-primary-foreground/80" : "text-muted-foreground")}>{meta}</p>
           ) : null}
         </div>
-        <div
-          className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-xl",
-            tone === "primary" && "bg-white/15 text-primary-foreground",
-            tone === "danger" && "bg-destructive/15 text-destructive",
-            tone === "default" && "bg-secondary text-primary",
-          )}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
+        {Icon ? (
+          <div
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-xl",
+              tone === "primary" && "bg-white/15 text-primary-foreground",
+              tone === "danger" && "bg-destructive/15 text-destructive",
+              tone === "default" && "bg-secondary text-primary",
+            )}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+        ) : null}
       </div>
     </div>
   );
