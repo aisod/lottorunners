@@ -28,16 +28,44 @@ export function resetSupabaseAuthCache(): void {
   rateLimitedUntil = 0;
 }
 
+function storageHasSupabaseAuthKey(storage: Storage): boolean {
+  return Array.from({ length: storage.length }, (_, i) => storage.key(i))
+    .filter((key): key is string => key != null)
+    .some(
+      (key) =>
+        key === "supabase.auth.token" ||
+        (key.startsWith("sb-") && key.includes("auth-token")),
+    );
+}
+
 /** Whether Supabase auth tokens are persisted (refresh may still be in flight). */
 export function hasSupabaseAuthStorage(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return Object.keys(window.localStorage).some(
-      (key) => key.startsWith("sb-") && key.endsWith("-auth-token"),
-    );
+    if (storageHasSupabaseAuthKey(window.localStorage)) return true;
+    if (typeof window.sessionStorage !== "undefined") {
+      return storageHasSupabaseAuthKey(window.sessionStorage);
+    }
+    return false;
   } catch {
     return false;
   }
+}
+
+/**
+ * True only when there is no JWT and no persisted Supabase auth (safe to clear lr-auth-session).
+ * Skips while rate-limited or refresh may still be in flight.
+ */
+export async function isCloudAuthAbsent(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  if (isSupabaseAuthRateLimited()) return false;
+  if (hasSupabaseAuthStorage()) return false;
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return true;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  return !session?.access_token;
 }
 
 /**

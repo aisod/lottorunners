@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getVerifiedRunnerId } from "@/lib/auth/get-verified-runner-id";
 import { getAuthSession } from "@/lib/auth-session";
 import { normalizeRunnerId } from "@/lib/supabase/session";
 import { useSupabaseSession } from "@/hooks/useSupabaseSession";
@@ -63,6 +64,12 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
     let watchId: number | null = null;
 
     const upload = async (coord: LatLng, heading?: number) => {
+      // Don't publish without a valid JWT — RLS rejects and errors can trigger refresh storms.
+      const verifiedId = await getVerifiedRunnerId();
+      if (!verifiedId) {
+        return;
+      }
+
       const now = Date.now();
       if (now - lastUpload < MIN_UPLOAD_INTERVAL_MS) return;
       lastUpload = now;

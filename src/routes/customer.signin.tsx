@@ -5,7 +5,7 @@ import logo from "@/assets/lotto-runners-logo.png";
 import { AuthField } from "@/components/auth-field";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
-import { clearPendingAuth, getAuthSession } from "@/lib/auth-session";
+import { clearAuthSession, clearPendingAuth, getAuthSession } from "@/lib/auth-session";
 import { loginUser } from "@/lib/auth-users";
 import { getRoleHomePath } from "@/lib/store";
 import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
@@ -15,8 +15,14 @@ export const Route = createFileRoute("/customer/signin")({
     reason: typeof search.reason === "string" ? search.reason : undefined,
     role: typeof search.role === "string" ? search.role : undefined,
   }),
-  beforeLoad: () => {
+  beforeLoad: ({ search }) => {
     clearPendingAuth();
+
+    // Cloud JWT dead but lr-auth still present — clear here (not on runner routes) to avoid dashboard ↔ signin loop.
+    if (search.reason === "session_expired") {
+      clearAuthSession();
+      return;
+    }
 
     const session = getAuthSession();
     if (session) {
