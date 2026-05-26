@@ -10,7 +10,6 @@ import {
   Truck,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
 import { jobStatusLabel } from "@/lib/jobs-service";
 import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
