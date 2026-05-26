@@ -137,7 +137,17 @@ function RunnerDashboardPage() {
 
         {jobsSyncError && canReceiveJobs ? (
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            Could not load customer requests from the server. Check your connection and refresh the page.
+            <p className="font-semibold">Could not load customer requests from the server.</p>
+            <p className="mt-1 text-xs opacity-90">{jobsSyncError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => window.location.reload()}
+            >
+              Refresh page
+            </Button>
           </section>
         ) : null}
 

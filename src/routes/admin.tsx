@@ -2,6 +2,8 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AdminConsoleShell } from "@/components/console-shell";
 import { guardCloudSessionForRole } from "@/lib/auth/require-cloud-session";
 import { getAuthSession, sessionHasAdminAccess, setActiveRole } from "@/lib/auth-session";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { ensureBootstrapAdmin } from "@/lib/supabase/profiles-remote";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/admin")({
@@ -20,6 +22,10 @@ export const Route = createFileRoute("/admin")({
     }
 
     await guardCloudSessionForRole("admin");
+
+    if (isSupabaseConfigured()) {
+      await ensureBootstrapAdmin();
+    }
 
     const path = location.pathname.replace(/\/$/, "") || "/";
     if (path === "/admin") {

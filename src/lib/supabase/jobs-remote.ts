@@ -19,42 +19,94 @@ export type FetchRemoteJobsResult =
 function formatJobsFetchError(message: string, code?: string): string {
   const lower = message.toLowerCase();
   if (code === "42501" || lower.includes("permission denied")) {
-    return "Database access denied for marketplace_jobs. Run migration 20260521150000_marketplace_api_grants.sql in Supabase.";
+    return "Database access denied for marketplace_jobs. Run migrations 20260521150000_marketplace_api_grants.sql and 20260521160000_fetch_marketplace_jobs_feed_rpc.sql in Supabase.";
   }
-  if (code === "PGRST117" || code === "PGRST105" || message.includes("405")) {
-    return "marketplace_jobs API is not reachable (HTTP 405). Enable the table in Supabase API settings and run migration 20260521150000_marketplace_api_grants.sql.";
+  if (code === "PGRST117" || code === "PGRST105" || lower.includes("405")) {
+    return "marketplace_jobs REST API blocked (HTTP 405). Run migrations 20260521150000_marketplace_api_grants.sql and 20260521160000_fetch_marketplace_jobs_feed_rpc.sql in Supabase.";
+  }
+  if (code === "PGRST202" || lower.includes("fetch_marketplace_jobs_feed")) {
+    return "Job feed RPC missing. Run migration 20260521160000_fetch_marketplace_jobs_feed_rpc.sql in Supabase SQL editor.";
   }
   return message;
+}
+
+function shouldTryJobsFeedRpc(message: string, code?: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    code === "42501" ||
+    code === "PGRST117" ||
+    code === "PGRST105" ||
+    code === "PGRST301" ||
+    lower.includes("permission denied") ||
+    lower.includes("405") ||
+    lower.includes("method not allowed")
+  );
+}
+
+function mapFeedRows(
+  data: Array<{ id?: string; payload: unknown; updated_at?: string | null }>,
+): RemoteJobRow[] {
+  return data
+    .map((row) => ({
+      job: row.payload as MarketplaceJob,
+      updatedAt:
+        typeof row.updated_at === "string"
+          ? row.updated_at
+          : row.updated_at
+            ? new Date(row.updated_at).toISOString()
+            : new Date().toISOString(),
+    }))
+    .filter((row): row is RemoteJobRow => Boolean(row.job?.id));
+}
+
+async function fetchRemoteJobsViaRpc(
+  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
+): Promise<FetchRemoteJobsResult> {
+  const { data, error } = await supabase.rpc("fetch_marketplace_jobs_feed");
+
+  if (error) {
+    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
+    return { ok: false, error: formatJobsFetchError(error.message, error.code) };
+  }
+
+  if (!data || !Array.isArray(data)) return { ok: true, rows: [] };
+  return { ok: true, rows: mapFeedRows(data as Array<{ id?: string; payload: unknown; updated_at?: string | null }>) };
 }
 
 export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };
 
-  const ready = await waitForSupabaseSession(5000);
+  const ready = await waitForSupabaseSession(6000);
   if (!ready) {
-    return { ok: false, error: "Server session not ready. Wait a moment and refresh, or sign in again." };
+    return { ok: false, error: "Server session not ready. Sign out, sign in again, then refresh." };
   }
 
   const { data, error } = await supabase
     .from("marketplace_jobs")
-    .select("payload, updated_at")
+    .select("id, payload, updated_at")
     .order("updated_at", { ascending: false });
 
-  if (error) {
-    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
-    return { ok: false, error: formatJobsFetchError(error.message, error.code) };
+  if (!error) {
+    if (!data) return { ok: true, rows: [] };
+    return { ok: true, rows: mapFeedRows(data) };
   }
-  if (!data) return { ok: true, rows: [] };
 
-  const rows = data
-    .map((row) => ({
-      job: row.payload as MarketplaceJob,
-      updatedAt: typeof row.updated_at === "string" ? row.updated_at : new Date().toISOString(),
-    }))
-    .filter((row): row is RemoteJobRow => Boolean(row.job?.id));
+  if (isUnauthorizedSupabaseError(error)) {
+    resetSupabaseAuthCache();
+    return { ok: false, error: "Session expired. Sign out and sign in again." };
+  }
 
-  return { ok: true, rows };
+  if (shouldTryJobsFeedRpc(error.message, error.code)) {
+    const rpcResult = await fetchRemoteJobsViaRpc(supabase);
+    if (rpcResult.ok) return rpcResult;
+    return {
+      ok: false,
+      error: `${formatJobsFetchError(error.message, error.code)} RPC fallback: ${rpcResult.error}`,
+    };
+  }
+
+  return { ok: false, error: formatJobsFetchError(error.message, error.code) };
 }
 
 export type UpsertRemoteJobResult = { ok: true } | { ok: false; error: string };

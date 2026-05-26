@@ -71,12 +71,18 @@ export function useRunnerJobFeed(): { jobs: MarketplaceJob[]; syncError: string 
     });
 
     const onFocus = () => {
-      void pullRemote();
+      void (async () => {
+        await waitForSupabaseSession(3000);
+        await pullRemote();
+      })();
     };
     window.addEventListener("focus", onFocus);
 
     const interval = window.setInterval(() => {
-      void pullRemote();
+      void (async () => {
+        await waitForSupabaseSession(3000);
+        await pullRemote();
+      })();
     }, 45_000);
 
     return () => {

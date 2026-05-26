@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured } from "./supabase/config";
-import {
-  ensureBootstrapAdmin,
-  fetchProfilesForAdmin,
-  type RemoteProfileRow,
-} from "./supabase/profiles-remote";
+import { fetchProfilesForAdmin, type RemoteProfileRow } from "./supabase/profiles-remote";
 
 export function useAdminProfiles(): {
   profiles: RemoteProfileRow[];
@@ -23,7 +19,6 @@ export function useAdminProfiles(): {
     let cancelled = false;
 
     void (async () => {
-      await ensureBootstrapAdmin();
       const result = await fetchProfilesForAdmin();
       if (!cancelled) {
         setProfiles(result.rows);

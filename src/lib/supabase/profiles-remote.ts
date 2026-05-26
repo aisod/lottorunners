@@ -61,6 +61,9 @@ export async function fetchProfileByEmail(email: string): Promise<RemoteProfileR
 
 function formatAdminModerationError(message: string, code?: string): string {
   const lower = message.toLowerCase();
+  if (lower.includes("read-only transaction")) {
+    return "Supabase blocked a write during read (RLS). Run migration 20260521170000_fix_admin_rls_readonly.sql, then sign out and sign in again.";
+  }
   if (code === "PGRST202" || lower.includes("admin_set_runner_status") || lower.includes("schema cache")) {
     return "Admin moderation is not set up in Supabase yet. Run migrations 20260519170000 and 20260519180000 in the SQL editor, then add your email to app_config (admin_emails).";
   }
@@ -84,7 +87,11 @@ export async function ensureBootstrapAdmin(): Promise<boolean> {
     const missing =
       error.code === "PGRST202" ||
       error.message.toLowerCase().includes("ensure_bootstrap_admin");
-    if (!missing) return false;
+    if (missing) return false;
+    // Read-only replica / throttled writes: still allow reads if already admin.
+    if (error.message.toLowerCase().includes("read-only transaction")) {
+      return false;
+    }
     return false;
   }
   return data === true;
@@ -111,6 +118,11 @@ export async function fetchProfilesForAdmin(): Promise<FetchProfilesForAdminResu
 
   await ensureBootstrapAdmin();
 
+  const rpcResult = await supabase.rpc("fetch_profiles_for_admin");
+  if (!rpcResult.error && rpcResult.data && Array.isArray(rpcResult.data)) {
+    return { ok: true, rows: rpcResult.data as RemoteProfileRow[] };
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
@@ -118,6 +130,10 @@ export async function fetchProfilesForAdmin(): Promise<FetchProfilesForAdminResu
 
   if (error) {
     const msg = formatAdminModerationError(error.message, error.code);
+    if (rpcResult.error) {
+      const rpcMsg = formatAdminModerationError(rpcResult.error.message, rpcResult.error.code);
+      return { ok: false, rows: [], error: rpcMsg || msg };
+    }
     if (msg.includes("not an admin")) {
       return { ok: false, rows: [], error: msg };
     }

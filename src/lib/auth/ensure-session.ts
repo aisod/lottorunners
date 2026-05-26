@@ -68,21 +68,44 @@ export async function isCloudAuthAbsent(): Promise<boolean> {
   return !session?.access_token;
 }
 
+/** True when a JWT access token is available for REST/RPC calls. */
+export async function hasSupabaseAccessToken(): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+  const { data: { session } } = await supabase.auth.getSession();
+  return Boolean(session?.access_token);
+}
+
 /**
  * Wait for Supabase JWT after refresh (avoids false "session expired" redirects).
+ * For API calls, requires a real access_token (not just lr-auth or storage).
  */
 export async function waitForSupabaseSession(maxMs = 4000): Promise<boolean> {
   if (!isSupabaseConfigured()) return true;
 
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
   const deadline = Date.now() + maxMs;
   while (Date.now() < deadline) {
-    if (await ensureSupabaseAuthSession()) return true;
-    if (isSupabaseAuthRateLimited()) return Boolean(getAuthSession()) || hasSupabaseAuthStorage();
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      markSupabaseAuthVerified();
+      return true;
+    }
+
+    if (error && isRateLimitError(error.message)) {
+      rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
+      // Client may still attach a cached token from storage while refresh is throttled.
+      return hasSupabaseAuthStorage() && Boolean(getAuthSession());
+    }
+
     if (!hasSupabaseAuthStorage() && !getAuthSession()) return false;
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
-  return ensureSupabaseAuthSession();
+  return hasSupabaseAccessToken();
 }
 
 /**
@@ -95,11 +118,11 @@ export async function ensureSupabaseAuthSession(): Promise<boolean> {
 
   const now = Date.now();
   if (lastVerifiedAt && now - lastVerifiedAt < SESSION_CACHE_MS) {
-    return true;
+    return hasSupabaseAccessToken();
   }
 
   if (isSupabaseAuthRateLimited()) {
-    return Boolean(getAuthSession()) || hasSupabaseAuthStorage();
+    return hasSupabaseAccessToken();
   }
 
   const supabase = getSupabaseClient();
