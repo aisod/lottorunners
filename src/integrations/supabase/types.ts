@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value?: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       marketplace_jobs: {
         Row: {
           id: string
@@ -71,12 +86,60 @@ export type Database = {
         }
         Relationships: []
       }
+      runner_locations: {
+        Row: {
+          heading: number | null
+          lat: number
+          lng: number
+          runner_id: string
+          updated_at: string
+        }
+        Insert: {
+          heading?: number | null
+          lat: number
+          lng: number
+          runner_id: string
+          updated_at?: string
+        }
+        Update: {
+          heading?: number | null
+          lat?: number
+          lng?: number
+          runner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_set_runner_status: {
+        Args: { p_runner_status: string; p_target_user_id: string }
+        Returns: undefined
+      }
+      admin_upsert_app_config: {
+        Args: { p_key: string; p_value: string }
+        Returns: undefined
+      }
+      auth_runner_id: { Args: never; Returns: string }
+      caller_can_modify_job: { Args: { p_payload: Json }; Returns: boolean }
+      caller_is_admin: { Args: never; Returns: boolean }
+      ensure_bootstrap_admin: { Args: never; Returns: boolean }
+      ensure_profile_for_user: {
+        Args: {
+          p_display_name?: string
+          p_email: string
+          p_phone?: string
+          p_primary_role?: string
+          p_roles?: string[]
+          p_runner_stage?: string
+          p_runner_status?: string
+        }
+        Returns: string
+      }
+      parse_roles_from_metadata: { Args: { meta: Json }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

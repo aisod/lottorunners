@@ -136,7 +136,7 @@ function CustomerChooseServicePage() {
                 </div>
                 <div className="text-right">
                   <p className="font-semibold">N$ {option.price.toFixed(2)}</p>
-                  {option.oldPrice ? (
+                  {"oldPrice" in option && option.oldPrice ? (
                     <p className="text-xs text-muted-foreground line-through">N$ {option.oldPrice.toFixed(2)}</p>
                   ) : null}
                 </div>

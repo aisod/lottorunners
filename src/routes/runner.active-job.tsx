@@ -116,7 +116,7 @@ function RunnerActiveJobPage() {
     cargoPhotos &&
     CARGO_PHOTO_SLOTS.some((slot) => Boolean(cargoPhotos[slot.id]));
 
-  const phaseContent: Record<RunnerPhase, PhaseConfig> = {
+  const phaseContent: PhaseConfig = ({
     arrived: {
       turnLabel: "AT PICKUP",
       turnValue: job?.pickupAddress ?? "Confirm handover",
@@ -139,7 +139,7 @@ function RunnerActiveJobPage() {
       ],
       showProof: true,
     },
-  }[jobPhase];
+  } satisfies Record<RunnerPhase, PhaseConfig>)[jobPhase];
 
   const customerPhone = job?.customerPhone;
 
