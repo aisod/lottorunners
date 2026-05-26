@@ -216,12 +216,14 @@ function CustomerMatchingRunnerPage() {
 
   const handleCancelRequest = () => {
     const customerId = getCurrentCustomerId();
-    if (activeJobId && customerId) {
-      cancelJob(activeJobId, customerId);
-    }
-    setActiveJobId(null);
-    reset();
-    navigate({ to: "/customer/home" });
+    void (async () => {
+      if (activeJobId && customerId) {
+        await cancelJob(activeJobId, customerId);
+      }
+      setActiveJobId(null);
+      reset();
+      navigate({ to: "/customer/home" });
+    })();
   };
 
   const handleRunnerTap = useCallback(() => {

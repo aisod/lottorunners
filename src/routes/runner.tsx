@@ -2,12 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { RunnerLocationSync } from "@/components/runner-location-sync";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
-import {
-  hasSupabaseAuthStorage,
-  isCloudAuthAbsent,
-  isSupabaseAuthRateLimited,
-  waitForSupabaseSession,
-} from "@/lib/auth/ensure-session";
+import { isSupabaseAuthRateLimited, waitForSupabaseSession } from "@/lib/auth/ensure-session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   getRoleHomePath,
@@ -54,8 +49,7 @@ export const Route = createFileRoute("/runner")({
 
     if (isSupabaseConfigured() && RUNNER_CONSOLE_PATHS.has(path)) {
       const cloudSession = await waitForSupabaseSession(3500);
-      const canDefer = isSupabaseAuthRateLimited() || hasSupabaseAuthStorage();
-      if (!cloudSession && !canDefer && (await isCloudAuthAbsent())) {
+      if (!cloudSession && !isSupabaseAuthRateLimited()) {
         throw redirect({
           to: "/customer/signin",
           search: { reason: "session_expired", role: "runner" },

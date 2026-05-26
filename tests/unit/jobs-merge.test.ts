@@ -50,4 +50,27 @@ describe("mergeRemoteJobRows", () => {
   it("remoteUpdatedMs parses ISO timestamps", () => {
     expect(remoteUpdatedMs("2026-05-20T12:00:00.000Z")).toBeGreaterThan(0);
   });
+
+  it("applies remote accepted over local cancelled when server assigned runner", () => {
+    const local = [
+      {
+        ...job("j1", "cancelled", 5000, 9000),
+        runnerId: undefined,
+      },
+    ];
+    const merged = mergeRemoteJobRows(local, [
+      {
+        job: {
+          ...local[0],
+          status: "accepted",
+          runnerId: "runner@test.com",
+          runnerEmail: "runner@test.com",
+          runnerName: "R",
+        },
+        updatedAt: new Date(3000).toISOString(),
+      },
+    ]);
+    expect(merged[0].status).toBe("accepted");
+    expect(merged[0].runnerId).toBe("runner@test.com");
+  });
 });

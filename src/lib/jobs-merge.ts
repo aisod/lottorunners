@@ -4,17 +4,29 @@ import type { RemoteJobRow } from "./supabase/jobs-remote";
 const STATUS_RANK: Record<MarketplaceJobStatus, number> = {
   pending: 0,
   declined: 0,
+  cancelled: 0,
   accepted: 1,
   en_route: 2,
   arrived: 3,
   in_progress: 4,
   completed: 5,
-  cancelled: 5,
 };
+
+function runnerKey(job: MarketplaceJob): string {
+  return (job.runnerId ?? job.runnerEmail ?? "").trim();
+}
+
+function isAssignedJob(job: MarketplaceJob): boolean {
+  return Boolean(runnerKey(job)) && job.status !== "pending" && job.status !== "declined";
+}
 
 function shouldApplyRemoteJob(existing: MarketplaceJob, remote: MarketplaceJob, remoteMs: number): boolean {
   const localMs = existing.serverUpdatedAt ?? existing.createdAt ?? 0;
+
+  if (isAssignedJob(remote) && !isAssignedJob(existing)) return true;
+
   if (remoteMs >= localMs) return true;
+
   return (STATUS_RANK[remote.status] ?? 0) > (STATUS_RANK[existing.status] ?? 0);
 }
 

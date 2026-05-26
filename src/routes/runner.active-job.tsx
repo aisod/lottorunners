@@ -169,7 +169,9 @@ function RunnerActiveJobPage() {
         if (!updated || updated.status === current.status) break;
         current = updated;
       }
-      navigate({ to: "/runner/rate-customer", search: { jobId: current?.id ?? job.id } });
+      if (current?.status === "completed") {
+        navigate({ to: "/runner/rate-customer", search: { jobId: current.id } });
+      }
     })();
   };
 

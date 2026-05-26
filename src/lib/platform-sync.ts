@@ -9,6 +9,15 @@ import { notifyRunnerAccountChanged } from "./runner-account";
 
 let initialized = false;
 let unsubscribeRemote: (() => void) | null = null;
+let hydrateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleHydrateFromRemote(): void {
+  if (hydrateDebounceTimer) clearTimeout(hydrateDebounceTimer);
+  hydrateDebounceTimer = setTimeout(() => {
+    hydrateDebounceTimer = null;
+    void hydrateJobsFromRemote();
+  }, 400);
+}
 
 /** Pull shared jobs + Supabase session on app load; subscribe to realtime job updates. */
 export async function initPlatformSync(): Promise<void> {
@@ -23,9 +32,7 @@ export async function initPlatformSync(): Promise<void> {
     await refreshAuthSessionFromProfile(true);
     notifyRunnerAccountChanged();
     await hydrateJobsFromRemote();
-    unsubscribeRemote = subscribeRemoteJobs(() => {
-      void hydrateJobsFromRemote();
-    });
+    unsubscribeRemote = subscribeRemoteJobs(scheduleHydrateFromRemote);
     return;
   }
 
@@ -36,5 +43,7 @@ export async function initPlatformSync(): Promise<void> {
 export function teardownPlatformSync(): void {
   unsubscribeRemote?.();
   unsubscribeRemote = null;
+  if (hydrateDebounceTimer) clearTimeout(hydrateDebounceTimer);
+  hydrateDebounceTimer = null;
   initialized = false;
 }

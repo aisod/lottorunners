@@ -15,6 +15,7 @@ import {
   syncRunnerDeviceStateFromUser,
 } from "./runner-account";
 import { isValidPhone, normalizePhone } from "./phone-utils";
+import { resetSupabaseAuthCache } from "./auth/ensure-session";
 import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
 import { getSupabaseClient } from "./supabase/client";
 import {
@@ -478,10 +479,14 @@ export function switchAccountRole(role: PublicRole): AuthResult {
 
 /** Sign out of Supabase and clear the local app session mirror. */
 export async function logoutUser(): Promise<void> {
-  if (isSupabaseConfigured()) {
-    await signOutRemote();
+  try {
+    if (isSupabaseConfigured()) {
+      await signOutRemote();
+    }
+  } finally {
+    resetSupabaseAuthCache();
+    clearAuthSession();
   }
-  clearAuthSession();
 }
 
 const PROFILE_REFRESH_MIN_MS = 12_000;

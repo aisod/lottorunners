@@ -205,7 +205,7 @@ function applyJobPatchLocal(jobId: string, patch: Partial<MarketplaceJob>): Mark
   const next = normalizeJob({
     ...jobs[index],
     ...patch,
-    serverUpdatedAt: Date.now(),
+    serverUpdatedAt: patch.serverUpdatedAt ?? jobs[index].serverUpdatedAt,
   });
   jobs[index] = next;
   persistJobsLocal(jobs);
@@ -216,6 +216,18 @@ function applyJobPatchLocal(jobId: string, patch: Partial<MarketplaceJob>): Mark
 function patchJob(jobId: string, patch: Partial<MarketplaceJob>): MarketplaceJob | null {
   const next = applyJobPatchLocal(jobId, patch);
   if (!next) return null;
+  syncJobToRemote(next);
+  return next;
+}
+
+async function patchJobAwait(jobId: string, patch: Partial<MarketplaceJob>): Promise<MarketplaceJob | null> {
+  const next = applyJobPatchLocal(jobId, patch);
+  if (!next) return null;
+  if (isSupabaseConfigured()) {
+    const synced = await syncJobToRemoteAwait(next);
+    if (!synced) return null;
+    return getJob(jobId);
+  }
   syncJobToRemote(next);
   return next;
 }
@@ -514,11 +526,11 @@ export function declineJob(jobId: string, runnerId: string): void {
   notifyListeners();
 }
 
-export function cancelJob(jobId: string, customerId: string): MarketplaceJob | null {
+export async function cancelJob(jobId: string, customerId: string): Promise<MarketplaceJob | null> {
   const job = getJob(jobId);
   if (!job || (job.customerId !== customerId && job.customerEmail !== customerId)) return null;
   if (job.status !== "pending" && job.status !== "accepted") return null;
-  return patchJob(jobId, { status: "cancelled" });
+  return patchJobAwait(jobId, { status: "cancelled" });
 }
 
 const RUNNER_STATUS_FLOW: MarketplaceJobStatus[] = [
@@ -540,6 +552,7 @@ export async function advanceRunnerJobStatus(
   if (idx === -1 || idx >= RUNNER_STATUS_FLOW.length - 1) return job;
 
   const nextStatus = RUNNER_STATUS_FLOW[idx + 1];
+  const previous = { ...job };
   const patched = applyJobPatchLocal(jobId, {
     status: nextStatus,
     completedAt: nextStatus === "completed" ? Date.now() : job.completedAt,
@@ -548,7 +561,18 @@ export async function advanceRunnerJobStatus(
 
   if (isSupabaseConfigured()) {
     const synced = await syncJobToRemoteAwait(patched);
-    if (!synced) return null;
+    if (!synced) {
+      applyJobPatchLocal(jobId, {
+        status: previous.status,
+        completedAt: previous.completedAt,
+        runnerId: previous.runnerId,
+        runnerEmail: previous.runnerEmail,
+        runnerName: previous.runnerName,
+        runnerPhone: previous.runnerPhone,
+      });
+      return null;
+    }
+    return getJob(jobId);
   }
 
   return patched;
@@ -641,7 +665,6 @@ export async function insertBusinessJobs(jobs: MarketplaceJob[]): Promise<Busine
 
   const normalized = jobs.map(normalizeJob);
   const previous = readJobs();
-  writeJobs([...normalized, ...previous], { skipRemote: true });
 
   const syncedJobs: MarketplaceJob[] = [];
   for (const job of normalized) {

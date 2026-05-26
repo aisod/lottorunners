@@ -34,6 +34,7 @@ export function useAddressSearch(query: string, near: LatLng | null) {
     }
     setLoading(true);
     const ctrl = new AbortController();
+    const fetchTimeout = setTimeout(() => ctrl.abort(), 15_000);
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({
@@ -74,6 +75,7 @@ export function useAddressSearch(query: string, near: LatLng | null) {
       } catch (e) {
         if ((e as Error).name !== "AbortError") setResults([]);
       } finally {
+        clearTimeout(fetchTimeout);
         setLoading(false);
       }
     }, 350);
@@ -81,6 +83,7 @@ export function useAddressSearch(query: string, near: LatLng | null) {
     return () => {
       ctrl.abort();
       clearTimeout(timer);
+      clearTimeout(fetchTimeout);
     };
   }, [query, near?.lat, near?.lng]);
 
