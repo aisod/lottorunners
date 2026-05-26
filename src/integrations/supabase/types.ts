@@ -147,11 +147,41 @@ export type Database = {
         }
         Returns: string
       }
+      fetch_marketplace_jobs_feed: {
+        Args: never
+        Returns: {
+          id: string
+          payload: Json
+          updated_at: string
+        }[]
+      }
+      fetch_profiles_for_admin: {
+        Args: never
+        Returns: {
+          display_name: string | null
+          documents: Json
+          email: string
+          id: string
+          phone: string | null
+          primary_role: string | null
+          roles: string[]
+          runner_stage: string | null
+          runner_status: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       job_is_open_pending: { Args: { job_payload: Json }; Returns: boolean }
       job_owner_business_email: { Args: { job_payload: Json }; Returns: string }
       job_owner_customer_email: { Args: { job_payload: Json }; Returns: string }
       job_runner_email: { Args: { job_payload: Json }; Returns: string }
       parse_roles_from_metadata: { Args: { meta: Json }; Returns: string[] }
+      user_has_admin_role: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
