@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CustomerBrandMark } from "@/components/customer-header-logo";
 import { jobStatusLabel } from "@/lib/jobs-service";
-import { useMarketplaceJob } from "@/lib/use-marketplace-job";
+import { useCustomerMarketplaceJob } from "@/lib/use-marketplace-job";
 import { useCustomerApp } from "@/lib/customer-store";
 
 export const Route = createFileRoute("/customer/live-job-tracking")({
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/customer/live-job-tracking")({
 function CustomerLiveJobTrackingPage() {
   const navigate = useNavigate();
   const activeJobId = useCustomerApp((s) => s.activeJobId);
-  const job = useMarketplaceJob(activeJobId);
+  const job = useCustomerMarketplaceJob(activeJobId);
 
   useEffect(() => {
     if (!activeJobId) {

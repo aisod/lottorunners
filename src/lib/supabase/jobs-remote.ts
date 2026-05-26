@@ -73,6 +73,50 @@ async function fetchRemoteJobsViaRpc(
   return { ok: true, rows: mapFeedRows(data as Array<{ id?: string; payload: unknown; updated_at?: string | null }>) };
 }
 
+/** Pull one job by id (for customer tracking while waiting for runner accept). */
+export async function fetchRemoteJobById(
+  jobId: string,
+): Promise<{ ok: true; row: RemoteJobRow } | { ok: false; error: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Supabase client unavailable." };
+
+  const ready = await waitForSupabaseSession(6000);
+  if (!ready) {
+    return { ok: false, error: "Server session not ready." };
+  }
+
+  const { data, error } = await supabase
+    .from("marketplace_jobs")
+    .select("id, payload, updated_at")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (error) {
+    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
+    return { ok: false, error: formatJobsFetchError(error.message, error.code) };
+  }
+
+  if (!data?.payload || typeof data.payload !== "object") {
+    return { ok: false, error: "Job not found on server." };
+  }
+
+  const job = data.payload as MarketplaceJob;
+  if (!job.id) return { ok: false, error: "Job not found on server." };
+
+  return {
+    ok: true,
+    row: {
+      job,
+      updatedAt:
+        typeof data.updated_at === "string"
+          ? data.updated_at
+          : data.updated_at
+            ? new Date(data.updated_at).toISOString()
+            : new Date().toISOString(),
+    },
+  };
+}
+
 export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };

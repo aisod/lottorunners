@@ -1,5 +1,22 @@
-import type { MarketplaceJob } from "./jobs-types";
+import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
 import type { RemoteJobRow } from "./supabase/jobs-remote";
+
+const STATUS_RANK: Record<MarketplaceJobStatus, number> = {
+  pending: 0,
+  declined: 0,
+  accepted: 1,
+  en_route: 2,
+  arrived: 3,
+  in_progress: 4,
+  completed: 5,
+  cancelled: 5,
+};
+
+function shouldApplyRemoteJob(existing: MarketplaceJob, remote: MarketplaceJob, remoteMs: number): boolean {
+  const localMs = existing.serverUpdatedAt ?? existing.createdAt ?? 0;
+  if (remoteMs >= localMs) return true;
+  return (STATUS_RANK[remote.status] ?? 0) > (STATUS_RANK[existing.status] ?? 0);
+}
 
 export function remoteUpdatedMs(iso: string): number {
   const ms = new Date(iso).getTime();
@@ -22,8 +39,7 @@ export function mergeRemoteJobRows(
       map.set(job.id, withMeta);
       continue;
     }
-    const localMs = existing.serverUpdatedAt ?? existing.createdAt ?? 0;
-    if (remoteMs >= localMs) {
+    if (shouldApplyRemoteJob(existing, withMeta, remoteMs)) {
       map.set(job.id, withMeta);
     }
   }

@@ -6,14 +6,21 @@ import { ERRAND_CATEGORIES } from "./errand-categories";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
 import { mergeRemoteJobRows, remoteUpdatedMs } from "./jobs-merge";
 import {
+  countPendingHiddenByServiceFilter,
   filterPendingJobsForRunner,
+  isJobUnassigned,
   runnerOfferedIdsToServiceTypes,
 } from "./jobs-runner-feed";
 import { useRunnerSettings } from "./runner-settings";
 import type { ServiceType, TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
-import { acceptJobRemote, fetchRemoteJobs, upsertRemoteJob } from "./supabase/jobs-remote";
+import {
+  acceptJobRemote,
+  fetchRemoteJobById,
+  fetchRemoteJobs,
+  upsertRemoteJob,
+} from "./supabase/jobs-remote";
 import {
   ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool,
   isSupabaseAuthRateLimited,
@@ -115,10 +122,14 @@ export { remoteUpdatedMs, mergeRemoteJobRows };
 function normalizeJob(job: MarketplaceJob): MarketplaceJob {
   const customerEmail = job.customerEmail ?? job.customerId;
   const businessEmail = job.businessEmail ?? job.businessId;
+  const runnerId = job.runnerId?.trim() || undefined;
+  const runnerEmail =
+    job.runnerEmail?.trim() || (runnerId && job.status !== "pending" ? runnerId : undefined);
   return {
     ...job,
     customerEmail,
-    runnerEmail: job.runnerEmail ?? job.runnerId,
+    runnerId,
+    runnerEmail,
     source: job.source ?? (businessEmail ? "business" : "customer"),
     businessEmail,
     businessId: job.businessId ?? businessEmail,
@@ -131,6 +142,23 @@ export async function hydrateJobsFromRemote(): Promise<{ ok: true } | { ok: fals
   if (!result.ok) return { ok: false, error: result.error };
   notifyJobsChanged(result.rows);
   return { ok: true };
+}
+
+/** Refresh a single active customer job from Supabase (runner accept, status changes). */
+export async function syncCustomerJobFromRemote(
+  jobId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured()) return { ok: true };
+
+  const single = await fetchRemoteJobById(jobId);
+  if (single.ok) {
+    notifyJobsChanged([single.row]);
+    return { ok: true };
+  }
+
+  const bulk = await hydrateJobsFromRemote();
+  if (bulk.ok) return { ok: true };
+  return { ok: false, error: single.error };
 }
 
 export function readJobs(): MarketplaceJob[] {
@@ -206,8 +234,16 @@ export function getJob(jobId: string): MarketplaceJob | null {
 /** Pending jobs visible in the marketplace (not yet assigned). */
 export function listPendingJobs(): MarketplaceJob[] {
   return readJobs()
-    .filter((j) => j.status === "pending" && !j.runnerId)
+    .filter(isJobUnassigned)
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Pending jobs excluded from this runner's feed because of offered-service settings. */
+export function countRunnerHiddenPendingJobs(runnerId?: string | null): number {
+  if (!canRunnerAcceptJobs(runnerId ?? undefined)) return 0;
+  const offered = runnerOfferedIdsToServiceTypes(useRunnerSettings.getState().selectedServiceIds);
+  const declined = runnerId ? readDeclinedJobIds(runnerId) : new Set<string>();
+  return countPendingHiddenByServiceFilter(readJobs(), offered, declined);
 }
 
 /**

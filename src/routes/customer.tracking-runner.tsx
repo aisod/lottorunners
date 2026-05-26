@@ -9,7 +9,7 @@ import { useGeolocation } from "@/lib/use-geolocation";
 import { openPhoneCall, openPhoneSms } from "@/lib/contact-actions";
 import { jobStatusLabel } from "@/lib/jobs-service";
 import { useAssignedRunnerLocation } from "@/lib/use-assigned-runner-location";
-import { useMarketplaceJob } from "@/lib/use-marketplace-job";
+import { useCustomerMarketplaceJob } from "@/lib/use-marketplace-job";
 import { useCustomerApp } from "@/lib/customer-store";
 import { SERVICES } from "@/lib/services";
 
@@ -22,7 +22,7 @@ function CustomerTrackingRunnerPage() {
   const geo = useGeolocation({ fallbackOnError: false });
   const activeJobId = useCustomerApp((s) => s.activeJobId);
   const { userLocation, setUserLocation, pickup, destination } = useCustomerApp();
-  const job = useMarketplaceJob(activeJobId);
+  const job = useCustomerMarketplaceJob(activeJobId);
   const { runner: assignedRunner, freshnessLabel, waitingForGps } = useAssignedRunnerLocation(job);
   const [completionReady, setCompletionReady] = useState(false);
 

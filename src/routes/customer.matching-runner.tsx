@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cancelJob, getCurrentCustomerId, jobStatusLabel } from "@/lib/jobs-service";
-import { useMarketplaceJob } from "@/lib/use-marketplace-job";
+import { useCustomerMarketplaceJob } from "@/lib/use-marketplace-job";
 import { useCustomerApp } from "@/lib/customer-store";
 
 export const Route = createFileRoute("/customer/matching-runner")({
@@ -185,7 +185,7 @@ function CustomerMatchingRunnerPage() {
   const activeJobId = useCustomerApp((s) => s.activeJobId);
   const setActiveJobId = useCustomerApp((s) => s.setActiveJobId);
   const reset = useCustomerApp((s) => s.reset);
-  const job = useMarketplaceJob(activeJobId);
+  const job = useCustomerMarketplaceJob(activeJobId);
   const [statusIndex, setStatusIndex] = useState(0);
   const [honkVisible, setHonkVisible] = useState(false);
   const [wiggle, setWiggle] = useState(false);

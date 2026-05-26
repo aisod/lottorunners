@@ -4,7 +4,8 @@ import { persist } from "zustand/middleware";
 /** Runner onboarding: which customer-facing services this runner offers. */
 export type RunnerOfferedServiceId = "taxi" | "delivery" | "errand" | "truck";
 
-const DEFAULT_SELECTED: RunnerOfferedServiceId[] = ["taxi"];
+/** Match common business bulk default (`delivery`) and customer services. */
+const DEFAULT_SELECTED: RunnerOfferedServiceId[] = ["taxi", "delivery", "errand", "truck"];
 
 interface RunnerSettingsState {
   selectedServiceIds: RunnerOfferedServiceId[];

@@ -6,7 +6,12 @@ import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import { formatMapZoneLabel } from "@/lib/geo-utils";
-import { getCurrentRunnerId, listJobsForRunner, subscribeToJobs } from "@/lib/jobs-service";
+import {
+  countRunnerHiddenPendingJobs,
+  getCurrentRunnerId,
+  listJobsForRunner,
+  subscribeToJobs,
+} from "@/lib/jobs-service";
 import { countPendingDemandNear } from "@/lib/runner-location-service";
 import { getRunnerEarningsSummary } from "@/lib/runner-earnings";
 import { useNearbyRunners } from "@/lib/use-nearby-runners";
@@ -41,9 +46,10 @@ function RunnerDashboardPage() {
   const isPending = runnerStatus === "pending_verification";
   const isRejected = runnerStatus === "rejected";
 
-  const { jobs: pendingJobs, syncError: jobsSyncError } = useRunnerJobFeed();
-  const nextJob = pendingJobs[0] ?? null;
   const runnerId = getCurrentRunnerId();
+  const { jobs: pendingJobs, syncError: jobsSyncError } = useRunnerJobFeed();
+  const hiddenByServiceFilter = countRunnerHiddenPendingJobs(runnerId);
+  const nextJob = pendingJobs[0] ?? null;
   const recentCompleted = runnerId
     ? listJobsForRunner(runnerId)
         .filter((job) => job.status === "completed")
@@ -147,6 +153,28 @@ function RunnerDashboardPage() {
               onClick={() => window.location.reload()}
             >
               Refresh page
+            </Button>
+          </section>
+        ) : null}
+
+        {canReceiveJobs && hiddenByServiceFilter > 0 && !jobsSyncError ? (
+          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">
+              {hiddenByServiceFilter} request{hiddenByServiceFilter === 1 ? "" : "s"} waiting — not in your offered
+              services
+            </p>
+            <p className="mt-1 text-xs opacity-90">
+              Business and customer jobs only appear when you offer that service type (e.g. Delivery). Turn on the
+              matching services in Runner settings.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => navigate({ to: "/runner/settings" })}
+            >
+              Update offered services
             </Button>
           </section>
         ) : null}

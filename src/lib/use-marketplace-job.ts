@@ -7,6 +7,7 @@ import {
   hydrateJobsFromRemote,
   listAvailableJobsForRunner,
   subscribeToJobs,
+  syncCustomerJobFromRemote,
 } from "./jobs-service";
 import type { MarketplaceJob } from "./jobs-types";
 import { canRunnerAcceptJobs, subscribeRunnerAccount } from "./runner-account";
@@ -25,6 +26,47 @@ export function useMarketplaceJob(jobId: string | null | undefined): Marketplace
       setJob(getJob(jobId));
     });
   }, [jobId]);
+
+  return job;
+}
+
+const CUSTOMER_JOB_POLL_MS = 3_000;
+
+/**
+ * Customer active job: local store + poll Supabase while waiting for a runner (accept updates server only).
+ */
+export function useCustomerMarketplaceJob(jobId: string | null | undefined): MarketplaceJob | null {
+  const job = useMarketplaceJob(jobId);
+
+  useEffect(() => {
+    if (!jobId || !isSupabaseConfigured()) return;
+
+    let cancelled = false;
+
+    const pull = async () => {
+      if (cancelled) return;
+      await waitForSupabaseSession(4000);
+      if (cancelled) return;
+      await syncCustomerJobFromRemote(jobId);
+    };
+
+    void pull();
+
+    const interval = window.setInterval(() => {
+      const current = getJob(jobId);
+      if (current && current.status !== "pending") return;
+      void pull();
+    }, CUSTOMER_JOB_POLL_MS);
+
+    const onFocus = () => void pull();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [jobId, job?.status]);
 
   return job;
 }

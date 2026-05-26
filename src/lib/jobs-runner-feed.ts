@@ -12,6 +12,26 @@ export function runnerOfferedIdsToServiceTypes(ids: RunnerOfferedServiceId[]): S
   return new Set(ids.map(runnerOfferedIdToServiceType));
 }
 
+export function isJobUnassigned(job: MarketplaceJob): boolean {
+  const assigned = (job.runnerId ?? job.runnerEmail ?? "").trim();
+  return job.status === "pending" && !assigned;
+}
+
+/** Pending jobs in the store that this runner cannot see due to offered-service filter. */
+export function countPendingHiddenByServiceFilter(
+  jobs: MarketplaceJob[],
+  offered: Set<ServiceType>,
+  declinedIds: Set<string>,
+): number {
+  if (offered.size === 0) return 0;
+  return jobs.filter(
+    (j) =>
+      isJobUnassigned(j) &&
+      !declinedIds.has(j.id) &&
+      !offered.has(j.serviceType),
+  ).length;
+}
+
 export function filterPendingJobsForRunner(
   jobs: MarketplaceJob[],
   offered: Set<ServiceType>,
@@ -20,8 +40,7 @@ export function filterPendingJobsForRunner(
   if (offered.size === 0) return [];
   return jobs.filter(
     (j) =>
-      j.status === "pending" &&
-      !j.runnerId &&
+      isJobUnassigned(j) &&
       !declinedIds.has(j.id) &&
       offered.has(j.serviceType),
   );
