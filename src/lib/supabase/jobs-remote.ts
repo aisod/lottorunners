@@ -159,6 +159,28 @@ export async function upsertRemoteJob(job: MarketplaceJob): Promise<UpsertRemote
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };
 
+  // Assigned / in-flight jobs must UPDATE (runners are blocked by jobs_insert RLS on upsert-insert).
+  if (job.runnerId || job.status !== "pending") {
+    const { data, error } = await supabase
+      .from("marketplace_jobs")
+      .update({
+        payload: job,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
+      return { ok: false, error: error.message || "Could not update job on the server." };
+    }
+    if (!data) {
+      return { ok: false, error: "Job not found on the server." };
+    }
+    return { ok: true };
+  }
+
   const { error } = await supabase.from("marketplace_jobs").upsert({
     id: job.id,
     payload: job,
