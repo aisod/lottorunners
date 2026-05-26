@@ -23,8 +23,8 @@ export const Route = createFileRoute("/customer/signin")({
   beforeLoad: async ({ search }) => {
     clearPendingAuth();
 
-    // Cloud JWT dead but lr-auth still present — clear here (not on runner routes) to avoid dashboard ↔ signin loop.
-    if (search.reason === "session_expired") {
+    // Only clear lr-auth when cloud tokens are truly gone (JWT may still be refreshing after reload).
+    if (search.reason === "session_expired" && (await isCloudAuthAbsent())) {
       clearAuthSession();
       return;
     }

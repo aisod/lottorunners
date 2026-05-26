@@ -1,5 +1,6 @@
 import { getDataSyncMode, isSupabaseConfigured } from "./supabase/config";
 import { subscribeRemoteJobs } from "./supabase/jobs-remote";
+import { waitForSupabaseSession } from "./auth/ensure-session";
 import { refreshAuthSessionFromProfile } from "./auth-users";
 import { restoreSupabaseSession } from "./supabase/profiles-remote";
 import { hydrateJobsFromRemote } from "./jobs-service";
@@ -18,7 +19,8 @@ export async function initPlatformSync(): Promise<void> {
 
   if (isSupabaseConfigured()) {
     await restoreSupabaseSession();
-    await refreshAuthSessionFromProfile();
+    await waitForSupabaseSession(5000);
+    await refreshAuthSessionFromProfile(true);
     notifyRunnerAccountChanged();
     await hydrateJobsFromRemote();
     unsubscribeRemote = subscribeRemoteJobs(() => {

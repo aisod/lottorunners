@@ -6,7 +6,7 @@ import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/co
 import { listUsersForDirectory } from "@/lib/auth-users";
 import { approveRunnerAccount, rejectRunnerAccount } from "@/lib/runner-account";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { ensureBootstrapAdmin, fetchProfilesForAdmin } from "@/lib/supabase/profiles-remote";
+import { fetchProfilesForAdmin, type RemoteProfileRow } from "@/lib/supabase/profiles-remote";
 import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
 import { runnerAvgRatingFromJobs } from "@/lib/portal-analytics";
 import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
@@ -36,7 +36,7 @@ function mapRunnerStatus(status?: string | null): Row["status"] {
 }
 
 function profileToRows(
-  profiles: Awaited<ReturnType<typeof fetchProfilesForAdmin>>,
+  profiles: RemoteProfileRow[],
   jobs: MarketplaceJob[],
 ): { pending: Row[]; active: Row[] } {
   const pending: Row[] = [];
@@ -134,15 +134,18 @@ function AdminUsersPage() {
   const [activeRows, setActiveRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const rows = useMemo(() => [...pending, ...activeRows], [pending, activeRows]);
 
   const reload = async () => {
     setLoading(true);
     setActionError(null);
+    setLoadError(null);
     if (isSupabaseConfigured()) {
-      const profiles = await fetchProfilesForAdmin();
-      const mapped = profileToRows(profiles, jobs);
+      const result = await fetchProfilesForAdmin();
+      if (!result.ok) setLoadError(result.error);
+      const mapped = profileToRows(result.rows, jobs);
       setPending(mapped.pending);
       setActiveRows(mapped.active);
       setLoading(false);
@@ -159,8 +162,7 @@ function AdminUsersPage() {
 
     async function load() {
       if (isSupabaseConfigured()) {
-        await ensureBootstrapAdmin();
-        await refreshAuthSessionFromProfile();
+        await refreshAuthSessionFromProfile(true);
       }
       if (!cancelled) await reload();
     }
@@ -264,11 +266,14 @@ function AdminUsersPage() {
 
       <PortalSection title="Platform directory" description="Moderate access and review each account’s current state.">
         {actionError ? <p className="mb-3 text-sm text-destructive">{actionError}</p> : null}
+        {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading accounts…</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No accounts yet. Users appear here after they sign up on this device or in your Supabase project.
+            {loadError
+              ? "Could not load accounts from Supabase."
+              : "No accounts yet. Users appear here after they sign up on this device or in your Supabase project."}
           </p>
         ) : (
           <div className="overflow-x-auto">

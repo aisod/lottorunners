@@ -24,18 +24,18 @@ export function useAdminProfiles(): {
 
     void (async () => {
       await ensureBootstrapAdmin();
-      const rows = await fetchProfilesForAdmin();
+      const result = await fetchProfilesForAdmin();
       if (!cancelled) {
-        setProfiles(rows);
+        setProfiles(result.rows);
         setLoading(false);
       }
     })();
 
     const interval = window.setInterval(() => {
-      void fetchProfilesForAdmin().then((rows) => {
-        if (!cancelled) setProfiles(rows);
+      void fetchProfilesForAdmin().then((result) => {
+        if (!cancelled) setProfiles(result.rows);
       });
-    }, 30_000);
+    }, 45_000);
 
     return () => {
       cancelled = true;

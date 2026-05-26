@@ -484,9 +484,17 @@ export async function logoutUser(): Promise<void> {
   clearAuthSession();
 }
 
+const PROFILE_REFRESH_MIN_MS = 12_000;
+let lastProfileRefreshAt = 0;
+
 /** Re-load roles from Supabase `profiles` (source of truth when cloud is on). */
-export async function refreshAuthSessionFromProfile(): Promise<boolean> {
+export async function refreshAuthSessionFromProfile(force = false): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
+
+  const now = Date.now();
+  if (!force && now - lastProfileRefreshAt < PROFILE_REFRESH_MIN_MS) {
+    return Boolean(getAuthSession());
+  }
 
   const supabase = getSupabaseClient();
   if (!supabase) return false;
@@ -501,6 +509,7 @@ export async function refreshAuthSessionFromProfile(): Promise<boolean> {
   if (!row) return false;
 
   applyRemoteProfileToLocalSession(rowToStoredShape(row), userId);
+  lastProfileRefreshAt = Date.now();
   return true;
 }
 

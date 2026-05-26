@@ -7,6 +7,7 @@ import {
   hasSupabaseAuthStorage,
   isCloudAuthAbsent,
   isSupabaseAuthRateLimited,
+  waitForSupabaseSession,
 } from "@/lib/auth/ensure-session";
 
 /**
@@ -17,7 +18,7 @@ export async function guardCloudSessionForRole(role: AppRole): Promise<void> {
   if (!isSupabaseConfigured()) return;
   if (!getAuthSession()) return;
 
-  if (await ensureSupabaseAuthSession()) return;
+  if (await waitForSupabaseSession(3500)) return;
 
   if (isSupabaseAuthRateLimited() || hasSupabaseAuthStorage()) return;
 

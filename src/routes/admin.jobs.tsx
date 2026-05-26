@@ -67,7 +67,6 @@ function AdminJobsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-<<<<<<< HEAD
         <PortalStatTile icon={ClipboardList} label="Active jobs" value={String(jobs.length)} />
         <PortalStatTile icon={Clock} label="Pending" value={String(pendingCount)} />
         <PortalStatTile icon={Truck} label="In progress" value={String(inProgressCount)} />
@@ -78,12 +77,6 @@ function AdminJobsPage() {
           meta="Pending > 20 minutes"
           tone={delayedCount > 0 ? "danger" : "default"}
         />
-=======
-        <PortalStatTile icon={Truck} label="Active jobs" value={String(jobs.length)} />
-        <PortalStatTile icon={MessageSquareText} label="Pending" value={String(pendingCount)} />
-        <PortalStatTile icon={RouteIcon} label="In progress" value={String(inProgressCount)} />
-        <PortalStatTile icon={AlertTriangle} label="Delayed" value="0" meta="Set when SLA rules are added" />
->>>>>>> b393fa7ba2e919f665d26cd802681e623352e4d9
       </div>
 
       {jobs.length === 0 ? (

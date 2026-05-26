@@ -1,5 +1,5 @@
 import type { AccountRole, PublicRole } from "../auth-session";
-import { markSupabaseAuthVerified } from "../auth/ensure-session";
+import { markSupabaseAuthVerified, waitForSupabaseSession } from "../auth/ensure-session";
 import type { RunnerOnboardingStatus } from "../runner-account";
 import type { RunnerStage } from "../store";
 import { getSupabaseClient } from "./client";
@@ -90,17 +90,42 @@ export async function ensureBootstrapAdmin(): Promise<boolean> {
   return data === true;
 }
 
-export async function fetchProfilesForAdmin(): Promise<RemoteProfileRow[]> {
+export type FetchProfilesForAdminResult =
+  | { ok: true; rows: RemoteProfileRow[] }
+  | { ok: false; rows: RemoteProfileRow[]; error: string };
+
+export async function fetchProfilesForAdmin(): Promise<FetchProfilesForAdminResult> {
   const supabase = getSupabaseClient();
-  if (!supabase) return [];
+  if (!supabase) {
+    return { ok: false, rows: [], error: "Supabase client unavailable." };
+  }
+
+  const ready = await waitForSupabaseSession(5000);
+  if (!ready) {
+    return {
+      ok: false,
+      rows: [],
+      error: "Server session not ready. Refresh the page or sign in again.",
+    };
+  }
+
+  await ensureBootstrapAdmin();
 
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .order("updated_at", { ascending: false });
 
-  if (error || !data) return [];
-  return data as RemoteProfileRow[];
+  if (error) {
+    const msg = formatAdminModerationError(error.message, error.code);
+    if (msg.includes("not an admin")) {
+      return { ok: false, rows: [], error: msg };
+    }
+    return { ok: false, rows: [], error: msg || "Could not load profiles from the server." };
+  }
+
+  if (!data) return { ok: true, rows: [] };
+  return { ok: true, rows: data as RemoteProfileRow[] };
 }
 
 export async function updateRemoteRunnerStatus(

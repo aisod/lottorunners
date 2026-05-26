@@ -3,13 +3,11 @@ import { RunnerLocationSync } from "@/components/runner-location-sync";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
 import {
-  ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool,
   hasSupabaseAuthStorage,
   isCloudAuthAbsent,
   isSupabaseAuthRateLimited,
-  markSupabaseAuthVerified,
+  waitForSupabaseSession,
 } from "@/lib/auth/ensure-session";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   getRoleHomePath,
@@ -55,22 +53,13 @@ export const Route = createFileRoute("/runner")({
     const path = location.pathname.replace(/\/$/, "") || "/";
 
     if (isSupabaseConfigured() && RUNNER_CONSOLE_PATHS.has(path)) {
-      const cloudSession = await ensureSupabaseAuthSessionBool();
-      const canDefer =
-        isSupabaseAuthRateLimited() || hasSupabaseAuthStorage();
-      if (!cloudSession && !canDefer) {
-        const supabase = getSupabaseClient();
-        const recovered = supabase
-          ? (await supabase.auth.getSession()).data.session?.access_token
-          : undefined;
-        if (recovered) {
-          markSupabaseAuthVerified();
-        } else if (await isCloudAuthAbsent()) {
-          throw redirect({
-            to: "/customer/signin",
-            search: { reason: "session_expired", role: "runner" },
-          });
-        }
+      const cloudSession = await waitForSupabaseSession(3500);
+      const canDefer = isSupabaseAuthRateLimited() || hasSupabaseAuthStorage();
+      if (!cloudSession && !canDefer && (await isCloudAuthAbsent())) {
+        throw redirect({
+          to: "/customer/signin",
+          search: { reason: "session_expired", role: "runner" },
+        });
       }
     }
 

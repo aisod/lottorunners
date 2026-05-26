@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
+import { waitForSupabaseSession } from "@/lib/auth/ensure-session";
 import {
   getCurrentRunnerId,
   getJob,
@@ -58,21 +59,25 @@ export function useRunnerJobFeed(): { jobs: MarketplaceJob[]; syncError: string 
       refresh();
     };
 
-    void refreshAuthSessionFromProfile().then(() => pullRemote());
+    void (async () => {
+      await waitForSupabaseSession(5000);
+      await refreshAuthSessionFromProfile(true);
+      await pullRemote();
+    })();
 
     const unsubJobs = subscribeToJobs(refresh);
     const unsubAccount = subscribeRunnerAccount(() => {
-      void refreshAuthSessionFromProfile().then(() => pullRemote());
+      void pullRemote();
     });
 
     const onFocus = () => {
-      void refreshAuthSessionFromProfile().then(() => pullRemote());
+      void pullRemote();
     };
     window.addEventListener("focus", onFocus);
 
     const interval = window.setInterval(() => {
       void pullRemote();
-    }, 30_000);
+    }, 45_000);
 
     return () => {
       unsubJobs();

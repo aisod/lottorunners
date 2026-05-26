@@ -1,4 +1,8 @@
-import { ensureSupabaseAuthSession, resetSupabaseAuthCache } from "@/lib/auth/ensure-session";
+import {
+  ensureSupabaseAuthSession,
+  resetSupabaseAuthCache,
+  waitForSupabaseSession,
+} from "@/lib/auth/ensure-session";
 import type { MarketplaceJob } from "../jobs-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError } from "./session";
@@ -12,9 +16,25 @@ export type FetchRemoteJobsResult =
   | { ok: true; rows: RemoteJobRow[] }
   | { ok: false; error: string };
 
+function formatJobsFetchError(message: string, code?: string): string {
+  const lower = message.toLowerCase();
+  if (code === "42501" || lower.includes("permission denied")) {
+    return "Database access denied for marketplace_jobs. Run migration 20260521150000_marketplace_api_grants.sql in Supabase.";
+  }
+  if (code === "PGRST117" || code === "PGRST105" || message.includes("405")) {
+    return "marketplace_jobs API is not reachable (HTTP 405). Enable the table in Supabase API settings and run migration 20260521150000_marketplace_api_grants.sql.";
+  }
+  return message;
+}
+
 export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };
+
+  const ready = await waitForSupabaseSession(5000);
+  if (!ready) {
+    return { ok: false, error: "Server session not ready. Wait a moment and refresh, or sign in again." };
+  }
 
   const { data, error } = await supabase
     .from("marketplace_jobs")
@@ -23,7 +43,7 @@ export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
 
   if (error) {
     if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
-    return { ok: false, error: error.message };
+    return { ok: false, error: formatJobsFetchError(error.message, error.code) };
   }
   if (!data) return { ok: true, rows: [] };
 

@@ -100,7 +100,7 @@ function AdminOverviewPage() {
             }
             bodyClassName="space-y-5"
           >
-            <div className="relative h-[420px] overflow-hidden rounded-2xl border border-border">
+            <div className="relative z-0 h-[420px] overflow-hidden rounded-2xl border border-border isolate">
               <LiveMapClient
                 userLocation={mapCenter}
                 runners={runners}

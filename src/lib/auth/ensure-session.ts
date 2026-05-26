@@ -69,6 +69,23 @@ export async function isCloudAuthAbsent(): Promise<boolean> {
 }
 
 /**
+ * Wait for Supabase JWT after refresh (avoids false "session expired" redirects).
+ */
+export async function waitForSupabaseSession(maxMs = 4000): Promise<boolean> {
+  if (!isSupabaseConfigured()) return true;
+
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline) {
+    if (await ensureSupabaseAuthSession()) return true;
+    if (isSupabaseAuthRateLimited()) return Boolean(getAuthSession()) || hasSupabaseAuthStorage();
+    if (!hasSupabaseAuthStorage() && !getAuthSession()) return false;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
+  return ensureSupabaseAuthSession();
+}
+
+/**
  * Ensures a valid Supabase JWT before protected API calls.
  * Uses getSession only (no manual refreshSession) to avoid 429 loops.
  * Never clears lr-auth-session-v1 — logout is explicit only.

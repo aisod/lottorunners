@@ -111,13 +111,13 @@ function AdminChrome({ children }: { children: ReactNode }) {
     <div className="min-h-dvh bg-[linear-gradient(180deg,rgba(0,93,152,0.06)_0%,rgba(249,249,255,1)_18%)] text-foreground">
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm transition-opacity md:hidden",
+          "fixed inset-0 z-[1000] bg-foreground/40 backdrop-blur-sm transition-opacity md:hidden",
           mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         aria-hidden={!mobileNavOpen}
         onClick={() => setMobileNavOpen(false)}
       />
-      <aside className={cn("fixed left-0 top-0 z-50 flex h-full w-64 min-h-0 flex-col border-r border-border bg-[#eef3ff] p-4 shadow-lg transition-transform md:translate-x-0", mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0")}>
+      <aside className={cn("fixed left-0 top-0 z-[1001] flex h-full w-64 min-h-0 flex-col border-r border-border bg-[#eef3ff] p-4 shadow-lg transition-transform md:translate-x-0", mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0")}>
         <div className="mb-4 flex shrink-0 items-center justify-between md:hidden">
           <span className="text-sm font-bold text-primary">Menu</span>
           <Button
@@ -246,13 +246,13 @@ function BusinessChrome({ children }: { children: ReactNode }) {
     <div className="min-h-dvh bg-[linear-gradient(180deg,rgba(0,93,152,0.04)_0%,rgba(249,249,255,1)_26%)] text-foreground">
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm transition-opacity lg:hidden",
+          "fixed inset-0 z-[1000] bg-foreground/40 backdrop-blur-sm transition-opacity lg:hidden",
           mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         aria-hidden={!mobileNavOpen}
         onClick={() => setMobileNavOpen(false)}
       />
-      <aside className={cn("fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-border bg-white p-4 shadow-lg transition-transform lg:translate-x-0", mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
+      <aside className={cn("fixed left-0 top-0 z-[1001] flex h-full w-64 flex-col border-r border-border bg-white p-4 shadow-lg transition-transform lg:translate-x-0", mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
         <div className="mb-4 flex items-center justify-between lg:hidden">
           <span className="text-sm font-bold text-primary">Menu</span>
           <Button variant="ghost" size="icon" onClick={() => setMobileNavOpen(false)} aria-label="Close menu">
