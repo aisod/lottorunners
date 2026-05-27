@@ -54,14 +54,14 @@ function BusinessPermissionsPage() {
   return (
     <div className="space-y-6">
       <PortalPageIntro
-        eyebrow="Access controls"
-        title="Manage permissions"
-        description={`Role templates for this workspace. You have ${accessSummary.total} live dispatches — toggles are saved on this device until org accounts ship.`}
+        eyebrow="Workspace"
+        title="Permissions (coming soon)"
+        description={`In this build, permission toggles are placeholders and are not enforced server-side. Your ${accessSummary.total} live dispatches still use marketplace job data for access.`}
       />
 
       <PortalSection
-        title="Permission matrix"
-        description="Defaults reflect portal capabilities tied to your marketplace job data."
+        title="Access preview"
+        description="UI-only preview for future org account permissions."
       >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">

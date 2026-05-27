@@ -193,10 +193,10 @@ function BusinessBulkRequestPage() {
         </div>
 
         <div className="space-y-6">
-          <PortalSection title="Schedule & team" description="Assign service speed and ownership.">
+          <PortalSection title="Dispatch options" description="Optional service speed and team assignment (coming soon).">
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assign to team</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team assignment</label>
                 <select
                   disabled
                   title="Team assignment is not available yet"
