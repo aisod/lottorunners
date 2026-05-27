@@ -14,7 +14,7 @@ import { canRunnerAcceptJobs, subscribeRunnerAccount } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 
 export function useMarketplaceJob(jobId: string | null | undefined): MarketplaceJob | null {
-  const [job, setJob] = useState<MarketplaceJob | null>(() => (jobId ? getJob(jobId) : null));
+  const [job, setJob] = useState<MarketplaceJob | null>(null);
 
   useEffect(() => {
     if (!jobId) {
@@ -78,7 +78,7 @@ function readAvailableJobs(): MarketplaceJob[] {
 
 /** Pending jobs + remote sync for approved runners. */
 export function useRunnerJobFeed(): { jobs: MarketplaceJob[]; syncError: string | null } {
-  const [jobs, setJobs] = useState<MarketplaceJob[]>(() => readAvailableJobs());
+  const [jobs, setJobs] = useState<MarketplaceJob[]>([]);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
