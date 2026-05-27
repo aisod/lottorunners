@@ -28,8 +28,6 @@ import {
   upsertRemoteJob,
 } from "./supabase/jobs-remote";
 import {
-  ensureSupabaseAuthSession as ensureSupabaseAuthSessionBool,
-  isSupabaseAuthRateLimited,
   resetSupabaseAuthCache,
 } from "./auth/ensure-session";
 import { isUnauthorizedSupabaseError } from "./supabase/session";
@@ -449,16 +447,6 @@ export async function acceptJob(
   const runnerEmail = runnerKey;
 
   if (isSupabaseConfigured()) {
-    const authed = await ensureSupabaseAuthSessionBool();
-    if (!authed) {
-      return {
-        ok: false,
-        message: isSupabaseAuthRateLimited()
-          ? "Too many requests. Wait a minute, then try accepting again."
-          : "Session expired. Please sign in again.",
-      };
-    }
-
     const remote = await acceptJobRemote(jobId, runnerKey, runnerName, runnerPhone);
     if (!remote.ok) return { ok: false, message: remote.message };
 

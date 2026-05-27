@@ -20,6 +20,7 @@ import {
   advanceRunnerJobStatus,
   getCurrentRunnerId,
   getRunnerActiveJob,
+  hydrateJobsFromRemote,
   setJobProofPhoto,
 } from "@/lib/jobs-service";
 import { useFileUpload } from "@/hooks/use-file-upload";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/job-route-stops";
 import type { MarketplaceJobStatus } from "@/lib/jobs-types";
 import { useGeolocation } from "@/lib/use-geolocation";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Runner } from "@/lib/types";
 
 export const Route = createFileRoute("/runner/active-job")({
@@ -91,6 +93,13 @@ function RunnerActiveJobPage() {
   const [jobPhase, setJobPhase] = useState<RunnerPhase>("arrived");
   const proofUpload = useFileUpload(`job-proof/${resolvedJobId || "active"}`);
   const [showDestinationPreview, setShowDestinationPreview] = useState(false);
+  const [didFallbackHydrate, setDidFallbackHydrate] = useState(false);
+
+  useEffect(() => {
+    if (!resolvedJobId || job || didFallbackHydrate || !isSupabaseConfigured()) return;
+    setDidFallbackHydrate(true);
+    void hydrateJobsFromRemote();
+  }, [resolvedJobId, job, didFallbackHydrate]);
 
   useEffect(() => {
     if (!resolvedJobId) {

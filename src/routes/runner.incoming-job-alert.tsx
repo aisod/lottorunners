@@ -64,10 +64,15 @@ function RunnerIncomingJobAlertPage() {
       navigate({ to: "/runner/onboarding/verification", replace: true });
       return;
     }
-    if (!resolvedJobId || (job && job.status !== "pending")) {
+    if (accepting) return;
+    if (!resolvedJobId) {
+      navigate({ to: "/runner/dashboard", replace: true });
+      return;
+    }
+    if (job && job.status !== "pending" && job.status !== "accepted") {
       navigate({ to: "/runner/dashboard", replace: true });
     }
-  }, [resolvedJobId, job, navigate]);
+  }, [resolvedJobId, job, navigate, accepting]);
 
   useEffect(() => {
     if (accepting) return;
