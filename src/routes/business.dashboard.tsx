@@ -7,6 +7,7 @@ import { businessJobActivityTitle } from "@/lib/business-jobs";
 import { useBusinessJobs } from "@/lib/use-business-jobs";
 import { jobStatusLabel } from "@/lib/jobs-service";
 import { LiveMapClient } from "@/components/live-map-client";
+import { getJobActiveDropoff } from "@/lib/job-route-stops";
 import { useAssignedRunnerLocation } from "@/lib/use-assigned-runner-location";
 import type { MarketplaceJob, MarketplaceJobStatus } from "@/lib/jobs-types";
 
@@ -96,7 +97,7 @@ function BusinessDashboardPage() {
                 userLocation={null}
                 runners={assignedRunner ? [assignedRunner] : []}
                 pickup={trackingJob.pickup}
-                destination={trackingJob.dropoff}
+                destination={getJobActiveDropoff(trackingJob)}
                 activeRunner={assignedRunner}
                 followLocation={assignedRunner?.position ?? null}
               />

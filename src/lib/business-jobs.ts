@@ -1,6 +1,8 @@
 import type { BusinessBulkDraft } from "./business-bulk-draft";
 import { getUserDisplayName, getUserPhone } from "./auth-users";
 import { geocodeRouteStop, isValidRouteStop } from "./geocode-address";
+import type { JobRouteStop } from "./job-route-stops";
+import { getActiveStopIndex, getJobRouteStops, isMultiStopJob } from "./job-route-stops";
 import {
   getCurrentBusinessId,
   insertBusinessJobs,
@@ -19,6 +21,14 @@ export type BusinessBulkSubmitResult =
 
 export function businessJobActivityTitle(job: MarketplaceJob): string {
   const service = SERVICES[job.serviceType]?.label ?? "Delivery";
+  if (job.batchName && isMultiStopJob(job)) {
+    const total = getJobRouteStops(job).length;
+    const current = getActiveStopIndex(job) + 1;
+    if (job.status === "completed") {
+      return `${service} · ${job.batchName} (${total} stops)`;
+    }
+    return `${service} · ${job.batchName} (stop ${current}/${total})`;
+  }
   if (job.batchName && job.batchStopIndex != null) {
     return `${service} · ${job.batchName} (stop ${job.batchStopIndex + 1})`;
   }
@@ -52,62 +62,84 @@ export async function createJobsFromBusinessBulk(
   }
 
   const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const created: MarketplaceJob[] = [];
+  const batchName = draft.batchName.trim() || "Business batch";
+  const batchStops: JobRouteStop[] = [];
   const errors: string[] = [];
+  let totalFare = 0;
+  let totalDistanceKm = 0;
+  let totalEtaMin = 0;
+  let originCoord = pickupStop!.coord;
 
   for (let i = 0; i < validStops.length; i++) {
     const stop = validStops[i];
-    const destStop = await geocodeRouteStop(stop.address.trim(), pickupStop!.coord);
+    const destStop = await geocodeRouteStop(stop.address.trim(), originCoord);
     if (!isValidRouteStop(destStop) || !destStop) {
       errors.push(`Stop ${i + 1}: could not geocode "${stop.address}".`);
       continue;
     }
 
-    const distanceKm = haversineKm(pickupStop!.coord, destStop.coord);
+    const distanceKm = haversineKm(originCoord, destStop.coord);
     const base = SERVICES[serviceType].baseFare;
     const fare = Math.round(base + SERVICES[serviceType].perKm * Math.max(distanceKm, 0.5));
+    totalFare += fare;
+    totalDistanceKm += distanceKm;
+    totalEtaMin += SERVICES[serviceType].etaMin + Math.round(distanceKm * 2);
 
-    const job: MarketplaceJob = {
-      id: `job-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-      source: "business",
-      businessId: businessEmail,
-      businessEmail,
-      businessName,
-      batchId,
-      batchName: draft.batchName.trim() || "Business batch",
-      batchStopIndex: i,
-      customerId: businessEmail,
-      customerEmail: businessEmail,
-      customerName: businessName,
-      customerPhone: businessPhone,
-      serviceType,
-      pickupAddress: pickupStop!.label,
-      pickup: pickupStop!.coord,
-      dropoffAddress: destStop.label,
-      dropoff: destStop.coord,
-      description: stop.notes.trim() || `Business dispatch · ${draft.batchName}`,
-      estimatedFare: fare,
-      distanceKm,
-      etaMin: SERVICES[serviceType].etaMin + Math.round(distanceKm * 2),
-      paymentMethod: "cash",
-      status: "pending",
-      scheduleMode: "now",
-      createdAt: Date.now(),
-    };
-
-    created.push(job);
+    batchStops.push({
+      address: destStop.label,
+      coord: destStop.coord,
+      notes: stop.notes.trim() || undefined,
+    });
+    originCoord = destStop.coord;
   }
 
-  if (created.length === 0) {
+  if (batchStops.length === 0) {
     return {
       ok: false,
       error: errors[0] ?? "No jobs could be created. Check addresses and try again.",
     };
   }
 
-  const persist = await insertBusinessJobs(created);
+  const firstStop = batchStops[0];
+  const stopNotes = batchStops
+    .map((s, i) => (s.notes ? `Stop ${i + 1}: ${s.notes}` : null))
+    .filter(Boolean)
+    .join(" · ");
+
+  const job: MarketplaceJob = {
+    id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    source: "business",
+    businessId: businessEmail,
+    businessEmail,
+    businessName,
+    batchId,
+    batchName,
+    batchStops,
+    currentStopIndex: 0,
+    customerId: businessEmail,
+    customerEmail: businessEmail,
+    customerName: businessName,
+    customerPhone: businessPhone,
+    serviceType,
+    pickupAddress: pickupStop!.label,
+    pickup: pickupStop!.coord,
+    dropoffAddress: firstStop.address,
+    dropoff: firstStop.coord,
+    description:
+      stopNotes ||
+      `Business dispatch · ${batchName}${batchStops.length > 1 ? ` · ${batchStops.length} stops` : ""}`,
+    estimatedFare: totalFare,
+    distanceKm: Math.round(totalDistanceKm * 10) / 10,
+    etaMin: totalEtaMin,
+    paymentMethod: "cash",
+    status: "pending",
+    scheduleMode: "now",
+    createdAt: Date.now(),
+  };
+
+  const persist = await insertBusinessJobs([job]);
   if (!persist.ok) {
-    return { ok: false, error: persist.error ?? "Failed to save jobs to the server.", partial: created };
+    return { ok: false, error: persist.error ?? "Failed to save jobs to the server.", partial: [job] };
   }
 
   if (errors.length > 0) {

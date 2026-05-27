@@ -3,6 +3,12 @@ import { getAuthSession } from "./auth-session";
 import { SERVICES } from "./services";
 import type { CargoPhotoUrls } from "./cargo-photos";
 import { ERRAND_CATEGORIES } from "./errand-categories";
+import {
+  getActiveStopIndex,
+  getJobRouteStops,
+  isMultiStopJob,
+  isOnLastRouteStop,
+} from "./job-route-stops";
 import type { MarketplaceJob, MarketplaceJobStatus } from "./jobs-types";
 import { mergeRemoteJobRows, remoteUpdatedMs } from "./jobs-merge";
 import {
@@ -541,6 +547,48 @@ const RUNNER_STATUS_FLOW: MarketplaceJobStatus[] = [
   "completed",
 ];
 
+async function completeRunnerRouteStop(
+  jobId: string,
+  runnerId: string,
+  job: MarketplaceJob,
+): Promise<MarketplaceJob | null> {
+  const stops = getJobRouteStops(job);
+  const stopIdx = getActiveStopIndex(job);
+  const updatedStops = stops.map((stop, i) =>
+    i === stopIdx ? { ...stop, completedAt: Date.now() } : stop,
+  );
+  const nextIndex = stopIdx + 1;
+  const nextStop = updatedStops[nextIndex];
+  if (!nextStop) return null;
+
+  const previous = { ...job, batchStops: stops, currentStopIndex: job.currentStopIndex };
+  const patched = applyJobPatchLocal(jobId, {
+    batchStops: updatedStops,
+    currentStopIndex: nextIndex,
+    dropoff: nextStop.coord,
+    dropoffAddress: nextStop.address,
+    status: "en_route",
+  });
+  if (!patched) return null;
+
+  if (isSupabaseConfigured()) {
+    const synced = await syncJobToRemoteAwait(patched);
+    if (!synced) {
+      applyJobPatchLocal(jobId, {
+        status: previous.status,
+        batchStops: previous.batchStops,
+        currentStopIndex: previous.currentStopIndex,
+        dropoff: previous.dropoff,
+        dropoffAddress: previous.dropoffAddress,
+      });
+      return null;
+    }
+    return getJob(jobId);
+  }
+
+  return patched;
+}
+
 export async function advanceRunnerJobStatus(
   jobId: string,
   runnerId: string,
@@ -552,11 +600,24 @@ export async function advanceRunnerJobStatus(
   if (idx === -1 || idx >= RUNNER_STATUS_FLOW.length - 1) return job;
 
   const nextStatus = RUNNER_STATUS_FLOW[idx + 1];
+
+  if (nextStatus === "completed" && isMultiStopJob(job) && !isOnLastRouteStop(job)) {
+    return completeRunnerRouteStop(jobId, runnerId, job);
+  }
+
   const previous = { ...job };
-  const patched = applyJobPatchLocal(jobId, {
+  const statusPatch: Partial<MarketplaceJob> = {
     status: nextStatus,
     completedAt: nextStatus === "completed" ? Date.now() : job.completedAt,
-  });
+  };
+  if (nextStatus === "completed" && job.batchStops?.length) {
+    const stopIdx = getActiveStopIndex(job);
+    statusPatch.batchStops = getJobRouteStops(job).map((stop, i) =>
+      i === stopIdx ? { ...stop, completedAt: Date.now() } : stop,
+    );
+  }
+
+  const patched = applyJobPatchLocal(jobId, statusPatch);
   if (!patched) return null;
 
   if (isSupabaseConfigured()) {
@@ -565,6 +626,7 @@ export async function advanceRunnerJobStatus(
       applyJobPatchLocal(jobId, {
         status: previous.status,
         completedAt: previous.completedAt,
+        batchStops: previous.batchStops,
         runnerId: previous.runnerId,
         runnerEmail: previous.runnerEmail,
         runnerName: previous.runnerName,

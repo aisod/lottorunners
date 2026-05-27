@@ -50,7 +50,7 @@ function BusinessBulkReviewPage() {
         setError(result.error);
         return;
       }
-      setSuccessCount(result.jobs.length);
+      setSuccessCount(result.jobs[0]?.batchStops?.length ?? result.jobs.length);
       setBatchSubmitted(true);
       window.setTimeout(() => {
         navigate({ to: "/business/dashboard" });
@@ -105,7 +105,7 @@ function BusinessBulkReviewPage() {
           </ol>
         </PortalSection>
 
-        <PortalSection title="Dispatch summary" description="Each stop becomes one marketplace job for runners.">
+        <PortalSection title="Dispatch summary" description="One marketplace job for the whole batch; runners complete stops in order.">
           <div className="space-y-3">
             <SummaryRow label="Service" value={serviceLabel} />
             {!pickupAddress ? (
@@ -125,15 +125,15 @@ function BusinessBulkReviewPage() {
               <SummaryRow label="Pickup origin" value={pickupAddress} />
             )}
             <SummaryRow label="Input source" value={draft.fromImport ? "Spreadsheet" : "Manual entry"} />
-            <SummaryRow label="Jobs to create" value={String(stops.length)} />
+            <SummaryRow label="Stops in batch" value={String(stops.length)} />
             <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 <p className="text-sm font-semibold">Ready for dispatch</p>
               </div>
               <p className="mt-2 text-sm text-primary-foreground/85">
-                Submitting geocodes addresses and posts {stops.length} pending job{stops.length === 1 ? "" : "s"} to
-                Supabase.
+                Submitting geocodes addresses and posts one pending batch job ({stops.length} stop
+                {stops.length === 1 ? "" : "s"}) to Supabase.
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ function BusinessBulkReviewPage() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {successCount != null ? (
         <p className="text-sm font-semibold text-primary">
-          {successCount} job{successCount === 1 ? "" : "s"} posted — returning to dashboard…
+          Batch posted ({successCount} stop{successCount === 1 ? "" : "s"}) — returning to dashboard…
         </p>
       ) : null}
 

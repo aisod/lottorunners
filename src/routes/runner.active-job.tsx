@@ -26,6 +26,14 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 import { CARGO_PHOTO_SLOTS } from "@/lib/cargo-photos";
 import { SERVICES } from "@/lib/services";
+import {
+  getActiveStopIndex,
+  getJobActiveDropoff,
+  getJobActiveDropoffAddress,
+  getJobRouteStops,
+  isMultiStopJob,
+  isOnLastRouteStop,
+} from "@/lib/job-route-stops";
 import type { MarketplaceJobStatus } from "@/lib/jobs-types";
 import { useGeolocation } from "@/lib/use-geolocation";
 import type { Runner } from "@/lib/types";
@@ -102,7 +110,7 @@ function RunnerActiveJobPage() {
   }, [job, navigate, resolvedJobId]);
 
   const pickup = job?.pickup ?? null;
-  const destination = job?.dropoff ?? null;
+  const destination = job ? getJobActiveDropoff(job) : null;
   const mapFocus = showDestinationPreview
     ? destination ?? activeRunner?.position ?? userLocation
     : jobPhase === "in-progress"
@@ -116,22 +124,34 @@ function RunnerActiveJobPage() {
     cargoPhotos &&
     CARGO_PHOTO_SLOTS.some((slot) => Boolean(cargoPhotos[slot.id]));
 
+  const stopTotal = job ? getJobRouteStops(job).length : 1;
+  const stopNumber = job ? getActiveStopIndex(job) + 1 : 1;
+  const multiStop = job ? isMultiStopJob(job) : false;
+  const completeLabel =
+    multiStop && job && !isOnLastRouteStop(job)
+      ? `Complete stop ${stopNumber} of ${stopTotal}`
+      : "Complete job";
+
+  const enRouteToStop = multiStop && job?.status === "en_route";
+
   const phaseContent: PhaseConfig = ({
     arrived: {
-      turnLabel: "AT PICKUP",
-      turnValue: job?.pickupAddress ?? "Confirm handover",
+      turnLabel: enRouteToStop ? `STOP ${stopNumber} OF ${stopTotal}` : "AT PICKUP",
+      turnValue: enRouteToStop && job
+        ? getJobActiveDropoffAddress(job)
+        : job?.pickupAddress ?? "Confirm handover",
       primaryLabel: "Start task",
       primaryAction: "progress",
       cards: [
         { label: "TASK", value: serviceLabel, icon: Package2 },
-        { label: "NEXT STEP", value: "Collect and depart", icon: Clock3 },
+        { label: "NEXT STEP", value: enRouteToStop ? "Arrive and deliver" : "Collect and depart", icon: Clock3 },
       ],
       showProof: false,
     },
     "in-progress": {
-      turnLabel: "NEXT STOP",
-      turnValue: job?.dropoffAddress ?? "En route to drop-off",
-      primaryLabel: "Complete job",
+      turnLabel: multiStop ? `STOP ${stopNumber} OF ${stopTotal}` : "NEXT STOP",
+      turnValue: job ? getJobActiveDropoffAddress(job) : "En route to drop-off",
+      primaryLabel: completeLabel,
       primaryAction: "complete",
       cards: [
         { label: "TASK", value: serviceLabel, icon: Package2 },

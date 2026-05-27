@@ -1,5 +1,6 @@
 import type { CargoPhotoUrls } from "./cargo-photos";
 import type { ErrandCategoryId } from "./errand-categories";
+import type { JobRouteStop } from "./job-route-stops";
 import type { LatLng, PaymentMethod, ScheduleMode, ServiceType } from "./types";
 
 /** Shared marketplace job lifecycle (customer ↔ runner). */
@@ -57,7 +58,12 @@ export interface MarketplaceJob {
   businessName?: string;
   batchId?: string;
   batchName?: string;
+  /** @deprecated Legacy one-job-per-stop batches; use batchStops on new dispatches. */
   batchStopIndex?: number;
+  /** Ordered drop-offs for a single business batch job. */
+  batchStops?: JobRouteStop[];
+  /** Index into batchStops for the stop the runner is delivering to now. */
+  currentStopIndex?: number;
   /** Last known server `marketplace_jobs.updated_at` (ms), for merge on hydrate. */
   serverUpdatedAt?: number;
 }

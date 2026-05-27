@@ -12,6 +12,7 @@ import {
 } from "@/lib/jobs-service";
 import { canRunnerAcceptJobs } from "@/lib/runner-account";
 import { getUserDisplayName } from "@/lib/auth-users";
+import { getJobRouteStops, isMultiStopJob } from "@/lib/job-route-stops";
 import { SERVICES } from "@/lib/services";
 import { useMarketplaceJob } from "@/lib/use-marketplace-job";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -92,6 +93,8 @@ function RunnerIncomingJobAlertPage() {
   }
 
   const serviceLabel = SERVICES[job.serviceType].label;
+  const routeStops = getJobRouteStops(job);
+  const multiStop = isMultiStopJob(job);
 
   const handleAccept = () => {
     if (accepting) return;
@@ -168,7 +171,14 @@ function RunnerIncomingJobAlertPage() {
           </div>
           <div className="mt-5 space-y-3">
             <DetailRow label="Pickup" value={job.pickupAddress} />
-            <DetailRow label="Drop-off" value={job.dropoffAddress} />
+            <DetailRow
+              label={multiStop ? `Drop-offs (${routeStops.length} stops)` : "Drop-off"}
+              value={
+                multiStop
+                  ? routeStops.map((s, i) => `${i + 1}. ${s.address}`).join("\n")
+                  : job.dropoffAddress
+              }
+            />
             <DetailRow label="Task summary" value={job.description ?? serviceLabel} />
           </div>
           {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}

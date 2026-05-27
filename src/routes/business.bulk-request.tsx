@@ -254,7 +254,7 @@ function BusinessBulkRequestPage() {
               Shared marketplace dispatch
             </div>
             <p className="mt-3 text-sm text-primary-foreground/85">
-              Each stop becomes a real job in marketplace_jobs for approved runners to accept.
+              One marketplace job is created for the whole batch; runners complete each stop in order.
             </p>
           </div>
         </div>
