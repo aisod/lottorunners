@@ -1,9 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Bell,
   BriefcaseBusiness,
   ChevronRight,
-  CircleHelp,
   CreditCard,
   LayoutDashboard,
   LineChart,
@@ -11,7 +9,6 @@ import {
   Search,
   Settings,
   SlidersHorizontal,
-  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -19,7 +16,6 @@ import { useState, type ReactNode } from "react";
 import { RoleSwitcher } from "@/components/role-switcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 type NavItem = {
   to: string;
@@ -186,41 +182,7 @@ function AdminChrome({ children }: { children: ReactNode }) {
               />
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Notifications"
-              disabled
-              title={UNAVAILABLE.adminNotifications}
-              onClick={() => notifyUnavailable(UNAVAILABLE.adminNotifications)}
-            >
-              <Bell className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Help"
-              disabled
-              title={UNAVAILABLE.adminHelp}
-              onClick={() => notifyUnavailable(UNAVAILABLE.adminHelp)}
-            >
-              <CircleHelp className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Account"
-              disabled
-              title={UNAVAILABLE.adminAccount}
-              onClick={() => notifyUnavailable(UNAVAILABLE.adminAccount)}
-            >
-              <UserRound className="h-5 w-5 text-muted-foreground" />
-            </Button>
-          </div>
+          <div className="w-0" />
         </header>
 
         <main className="min-h-[calc(100dvh-4rem)] p-4 md:p-6">{children}</main>
