@@ -95,23 +95,24 @@ export function subscribeRunnerLocation(
   runnerId: string,
   listener: (location: RunnerLiveLocation | null) => void,
 ): () => void {
+  const runnerKey = normalizeRunnerId(runnerId);
   let cancelled = false;
 
   const refresh = () => {
-    void fetchRunnerLocation(runnerId).then((loc) => {
+    void fetchRunnerLocation(runnerKey).then((loc) => {
       if (!cancelled) listener(loc);
     });
   };
 
   refresh();
 
-  const unsubRemote = subscribeRunnerLocationRemote(runnerId, refresh);
+  const unsubRemote = subscribeRunnerLocationRemote(runnerKey, refresh);
 
   let channel: BroadcastChannel | null = null;
   if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
     channel = new BroadcastChannel(LOCATION_CHANNEL);
     channel.onmessage = (ev: MessageEvent<{ runnerId?: string }>) => {
-      if (ev.data?.runnerId === runnerId) refresh();
+      if (ev.data?.runnerId === runnerKey) refresh();
     };
   }
 

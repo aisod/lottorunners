@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { businessJobActivityTitle } from "@/lib/business-jobs";
 import { useBusinessJobs } from "@/lib/use-business-jobs";
 import { jobStatusLabel } from "@/lib/jobs-service";
+import { LiveMapClient } from "@/components/live-map-client";
+import { useAssignedRunnerLocation } from "@/lib/use-assigned-runner-location";
 import {
   formatLocationFreshness,
   isLocationFresh,
@@ -19,6 +21,20 @@ export const Route = createFileRoute("/business/dashboard")({
 
 function BusinessDashboardPage() {
   const jobs = useBusinessJobs();
+
+  const trackingJob = useMemo(() => {
+    return jobs.find((j) => {
+      const runnerEmail = j.runnerEmail ?? j.runnerId ?? null;
+      if (!runnerEmail) return false;
+      if (j.status === "pending") return false;
+      if (j.status === "cancelled") return false;
+      if (j.status === "declined") return false;
+      if (j.status === "completed") return false;
+      return true;
+    });
+  }, [jobs]);
+
+  const { runner: assignedRunner, freshnessLabel } = useAssignedRunnerLocation(trackingJob ?? null);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -73,6 +89,27 @@ function BusinessDashboardPage() {
           meta="All time on this account"
         />
       </div>
+
+      {trackingJob ? (
+        <PortalSection
+          title="Live runner tracking"
+          description="Track your assigned runner location in real time."
+        >
+          <div className="rounded-2xl border border-border bg-white/80 p-2">
+            <div className="h-72 overflow-hidden rounded-xl">
+              <LiveMapClient
+                userLocation={null}
+                runners={assignedRunner ? [assignedRunner] : []}
+                pickup={trackingJob.pickup}
+                destination={trackingJob.dropoff}
+              />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {freshnessLabel ?? "Waiting for runner GPS…"}
+          </p>
+        </PortalSection>
+      ) : null}
 
       <PortalSection
         title="Corporate dispatches"

@@ -5,13 +5,11 @@ import {
   ChevronRight,
   CircleHelp,
   CreditCard,
-  FileSpreadsheet,
   LayoutDashboard,
   LineChart,
   Menu,
   Search,
   Settings,
-  ShieldCheck,
   SlidersHorizontal,
   UserRound,
   Users,
@@ -46,14 +44,7 @@ const ADMIN_SECONDARY_LINKS: NavItem[] = [
 
 const BUSINESS_LINKS: NavItem[] = [
   { to: "/business/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  {
-    to: "/business/bulk-request",
-    label: "Bulk request",
-    icon: FileSpreadsheet,
-    activePrefixes: ["/business/bulk-request", "/business/bulk-import", "/business/bulk-review"],
-  },
   { to: "/business/team", label: "Team", icon: Users },
-  { to: "/business/permissions", label: "Permissions", icon: ShieldCheck },
   { to: "/business/spending-analytics", label: "Spending", icon: LineChart },
   { to: "/business/invoicing", label: "Invoicing", icon: CreditCard },
   { to: "/business/settings", label: "Profile", icon: Settings },
