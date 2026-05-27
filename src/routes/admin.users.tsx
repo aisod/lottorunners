@@ -137,6 +137,23 @@ function AdminUsersPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const rows = useMemo(() => [...pending, ...activeRows], [pending, activeRows]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"All roles" | Row["kind"]>("All roles");
+  const [statusFilter, setStatusFilter] = useState<"All statuses" | Row["status"]>("All statuses");
+
+  const filteredRows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (roleFilter !== "All roles" && row.kind !== roleFilter) return false;
+      if (statusFilter !== "All statuses" && row.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        row.name.toLowerCase().includes(q) ||
+        row.email.toLowerCase().includes(q) ||
+        row.flag.toLowerCase().includes(q)
+      );
+    });
+  }, [rows, roleFilter, statusFilter, searchQuery]);
 
   const reload = async () => {
     setLoading(true);
@@ -155,6 +172,31 @@ function AdminUsersPage() {
     setPending(mapped.pending);
     setActiveRows(mapped.active);
     setLoading(false);
+  };
+
+  const waitForRunnerStatus = async (
+    email: string,
+    expected: "approved" | "rejected",
+  ): Promise<{ ok: true } | { ok: false; error: string }> => {
+    if (!isSupabaseConfigured()) return { ok: true };
+
+    const normalized = email.trim().toLowerCase();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const result = await fetchProfilesForAdmin();
+      if (result.ok) {
+        const row = result.rows.find((p) => p.email.trim().toLowerCase() === normalized);
+        if (!row) {
+          return { ok: false, error: "Runner was updated but could not be reloaded from Supabase." };
+        }
+        if (row.runner_status === expected) return { ok: true };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+    return {
+      ok: false,
+      error:
+        "Runner status was saved, but Supabase returned stale data. Refresh once and retry if needed.",
+    };
   };
 
   useEffect(() => {
@@ -185,11 +227,15 @@ function AdminUsersPage() {
 
     setActingId(id);
     setActionError(null);
-    void approveRunnerAccount(row.email).then((result) => {
+    void approveRunnerAccount(row.email).then(async (result) => {
       setActingId(null);
       if (!result.ok) {
         setActionError(result.error);
         return;
+      }
+      const verified = await waitForRunnerStatus(row.email, "approved");
+      if (!verified.ok) {
+        setActionError(verified.error);
       }
       void reload();
     });
@@ -201,11 +247,15 @@ function AdminUsersPage() {
 
     setActingId(id);
     setActionError(null);
-    void rejectRunnerAccount(row.email).then((result) => {
+    void rejectRunnerAccount(row.email).then(async (result) => {
       setActingId(null);
       if (!result.ok) {
         setActionError(result.error);
         return;
+      }
+      const verified = await waitForRunnerStatus(row.email, "rejected");
+      if (!verified.ok) {
+        setActionError(verified.error);
       }
       void reload();
     });
@@ -247,19 +297,32 @@ function AdminUsersPage() {
           <input
             type="search"
             placeholder="Search runners, customers, or companies..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
             className="h-11 rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2"
           />
-          <select className="h-11 rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2">
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value as "All roles" | Row["kind"])}
+            className="h-11 rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2"
+          >
             <option>All roles</option>
             <option>Runner</option>
             <option>Customer</option>
             <option>Business</option>
           </select>
-          <select className="h-11 rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2">
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as "All statuses" | Row["status"])
+            }
+            className="h-11 rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2"
+          >
             <option>All statuses</option>
             <option>Active</option>
             <option>Pending</option>
             <option>Suspended</option>
+            <option>Rejected</option>
           </select>
         </div>
       </PortalSection>
@@ -269,9 +332,11 @@ function AdminUsersPage() {
         {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading accounts…</p>
-        ) : rows.length === 0 ? (
+        ) : filteredRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {loadError
+            {searchQuery || roleFilter !== "All roles" || statusFilter !== "All statuses"
+              ? "No accounts match your current filters."
+              : loadError
               ? "Could not load accounts from Supabase."
               : "No accounts yet. Users appear here after they sign up on this device or in your Supabase project."}
           </p>
@@ -290,7 +355,7 @@ function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <tr key={row.id} className="bg-white/80 hover:bg-secondary/30">
                     <td className="px-4 py-3">
                       <p className="font-semibold">{row.name}</p>
