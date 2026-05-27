@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
+import { AuthRouteHydrator } from "@/components/auth-route-hydrator";
 import { initPlatformSync } from "@/lib/platform-sync";
 import appCss from "../styles.css?url";
 
@@ -102,5 +103,10 @@ function RootComponent() {
     void import("../register-pwa");
     void initPlatformSync();
   }, []);
-  return <Outlet />;
+  return (
+    <>
+      <AuthRouteHydrator />
+      <Outlet />
+    </>
+  );
 }

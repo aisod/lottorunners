@@ -5,7 +5,8 @@ import logo from "@/assets/lotto-runners-logo.png";
 import { AuthField } from "@/components/auth-field";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
-import { ensureSupabaseAuthSession } from "@/lib/auth/ensure-session";
+import { canRunClientAuthGuard } from "@/lib/auth/client-only-guard";
+import { ensureSupabaseAuthSession, isCloudAuthAbsent } from "@/lib/auth/ensure-session";
 import { clearAuthSession, clearPendingAuth, getAuthSession } from "@/lib/auth-session";
 import { loginUser } from "@/lib/auth-users";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -18,6 +19,8 @@ export const Route = createFileRoute("/customer/signin")({
     role: typeof search.role === "string" ? search.role : undefined,
   }),
   beforeLoad: async ({ search }) => {
+    if (!canRunClientAuthGuard()) return;
+
     clearPendingAuth();
 
     // Only clear lr-auth when cloud tokens are truly gone (JWT may still be refreshing after reload).

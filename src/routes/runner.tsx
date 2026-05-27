@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { RunnerLocationSync } from "@/components/runner-location-sync";
+import { canRunClientAuthGuard } from "@/lib/auth/client-only-guard";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
 import { isSupabaseAuthRateLimited, waitForSupabaseSession } from "@/lib/auth/ensure-session";
@@ -36,6 +37,8 @@ const RUNNER_ONBOARDING_PATHS = new Set([
 
 export const Route = createFileRoute("/runner")({
   beforeLoad: async ({ location }) => {
+    if (!canRunClientAuthGuard()) return;
+
     const session = getAuthSession();
     if (!session) {
       throw redirect({ to: "/customer/signin" });

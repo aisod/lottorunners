@@ -6,12 +6,15 @@ import { AuthField } from "@/components/auth-field";
 import { CustomerPageShell } from "@/components/customer-page-shell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { canRunClientAuthGuard } from "@/lib/auth/client-only-guard";
 import { clearPendingAuth, getAuthSession } from "@/lib/auth-session";
 import { registerUser } from "@/lib/auth-users";
 import { getRoleHomePath } from "@/lib/store";
 
 export const Route = createFileRoute("/customer/welcome")({
   beforeLoad: () => {
+    if (!canRunClientAuthGuard()) return;
+
     clearPendingAuth();
 
     const session = getAuthSession();

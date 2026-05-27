@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { canRunClientAuthGuard } from "@/lib/auth/client-only-guard";
 import { guardCloudSessionForRole } from "@/lib/auth/require-cloud-session";
 import { getAuthSession } from "@/lib/auth-session";
 import { useCustomerApp } from "@/lib/customer-store";
@@ -14,6 +15,8 @@ const PUBLIC_CUSTOMER_AUTH_PATHS = new Set([
 
 export const Route = createFileRoute("/customer")({
   beforeLoad: async ({ location }) => {
+    if (!canRunClientAuthGuard()) return;
+
     const path = location.pathname.replace(/\/$/, "") || "/";
     const session = getAuthSession();
 

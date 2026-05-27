@@ -74,6 +74,7 @@ export async function isCloudAuthAbsent(): Promise<boolean> {
  * Wait for Supabase JWT after refresh (avoids false "session expired" redirects).
  */
 export async function waitForSupabaseSession(maxMs = 4000): Promise<boolean> {
+  if (typeof window === "undefined") return true;
   if (!isSupabaseConfigured()) return true;
 
   const supabase = getSupabaseClient();
