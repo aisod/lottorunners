@@ -94,6 +94,7 @@ function RunnerActiveJobPage() {
   const proofUpload = useFileUpload(`job-proof/${resolvedJobId || "active"}`);
   const [showDestinationPreview, setShowDestinationPreview] = useState(false);
   const [didFallbackHydrate, setDidFallbackHydrate] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!resolvedJobId || job || didFallbackHydrate || !isSupabaseConfigured()) return;
@@ -186,20 +187,24 @@ function RunnerActiveJobPage() {
 
   const handlePrimaryAction = () => {
     if (!job || !runnerId) return;
+    setActionError(null);
     void (async () => {
       if (phaseContent.primaryAction === "progress") {
         const updated = await advanceRunnerJobStatus(job.id, runnerId);
-        if (updated) setJobPhase(marketplaceToPhase(updated.status));
+        if (!updated) {
+          setActionError("Could not update job status. Check connection and try again.");
+          return;
+        }
+        setJobPhase(marketplaceToPhase(updated.status));
         return;
       }
-      let current = job;
-      while (current && current.status !== "completed") {
-        const updated = await advanceRunnerJobStatus(current.id, runnerId);
-        if (!updated || updated.status === current.status) break;
-        current = updated;
+      const updated = await advanceRunnerJobStatus(job.id, runnerId);
+      if (!updated) {
+        setActionError("Could not update job status. Check connection and try again.");
+        return;
       }
-      if (current?.status === "completed") {
-        navigate({ to: "/runner/rate-customer", search: { jobId: current.id } });
+      if (updated.status === "completed") {
+        navigate({ to: "/runner/rate-customer", search: { jobId: updated.id } });
       }
     })();
   };
@@ -394,6 +399,7 @@ function RunnerActiveJobPage() {
           >
             {phaseContent.primaryLabel}
           </Button>
+          {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
         </div>
       </section>
 
