@@ -1,7 +1,23 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { ensureSupabaseAuthSession, resetSupabaseAuthCache } from "@/lib/auth/ensure-session";
 import type { RunnerLiveLocation } from "../runner-location-types";
 import { getSupabaseClient } from "./client";
 import { isUnauthorizedSupabaseError, normalizeRunnerId } from "./session";
+
+type RunnerLocationListener = () => void;
+
+type RunnerLocationChannelEntry = {
+  channel: RealtimeChannel;
+  listeners: Set<RunnerLocationListener>;
+};
+
+/** One realtime channel per runner; multiple UI subscribers share it (avoids post-subscribe .on errors). */
+const runnerLocationChannels = new Map<string, RunnerLocationChannelEntry>();
+
+function realtimeEqFilter(column: string, value: string): string {
+  const escaped = value.replace(/"/g, '\\"');
+  return `${column}=eq."${escaped}"`;
+}
 
 type RunnerLocationRow = {
   runner_id: string;
@@ -121,21 +137,40 @@ export function subscribeRunnerLocationRemote(
   const supabase = getSupabaseClient();
   if (!supabase) return () => undefined;
 
-  const channel = supabase
-    .channel(`runner-location-${runnerId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "runner_locations",
-        filter: `runner_id=eq.${runnerId}`,
-      },
-      () => onChange(),
-    )
-    .subscribe();
+  const key = normalizeRunnerId(runnerId);
+  let entry = runnerLocationChannels.get(key);
+
+  if (!entry) {
+    const listeners = new Set<RunnerLocationListener>();
+    const channel = supabase
+      .channel(`runner-location-${key}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "runner_locations",
+          filter: realtimeEqFilter("runner_id", key),
+        },
+        () => {
+          listeners.forEach((listener) => listener());
+        },
+      )
+      .subscribe();
+
+    entry = { channel, listeners };
+    runnerLocationChannels.set(key, entry);
+  }
+
+  entry.listeners.add(onChange);
 
   return () => {
-    void supabase.removeChannel(channel);
+    const current = runnerLocationChannels.get(key);
+    if (!current) return;
+    current.listeners.delete(onChange);
+    if (current.listeners.size === 0) {
+      void supabase.removeChannel(current.channel);
+      runnerLocationChannels.delete(key);
+    }
   };
 }

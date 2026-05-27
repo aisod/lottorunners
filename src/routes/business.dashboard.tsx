@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, TrendingUp, Truck, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
 import { Button } from "@/components/ui/button";
 import { businessJobActivityTitle } from "@/lib/business-jobs";
@@ -8,11 +8,6 @@ import { useBusinessJobs } from "@/lib/use-business-jobs";
 import { jobStatusLabel } from "@/lib/jobs-service";
 import { LiveMapClient } from "@/components/live-map-client";
 import { useAssignedRunnerLocation } from "@/lib/use-assigned-runner-location";
-import {
-  formatLocationFreshness,
-  isLocationFresh,
-  subscribeRunnerLocation,
-} from "@/lib/runner-location-service";
 import type { MarketplaceJob, MarketplaceJobStatus } from "@/lib/jobs-types";
 
 export const Route = createFileRoute("/business/dashboard")({
@@ -102,6 +97,8 @@ function BusinessDashboardPage() {
                 runners={assignedRunner ? [assignedRunner] : []}
                 pickup={trackingJob.pickup}
                 destination={trackingJob.dropoff}
+                activeRunner={assignedRunner}
+                followLocation={assignedRunner?.position ?? null}
               />
             </div>
           </div>
@@ -135,35 +132,7 @@ function BusinessDashboardPage() {
 }
 
 function BusinessDispatchRow({ job }: { job: MarketplaceJob }) {
-  const runnerEmail = job.runnerEmail ?? job.runnerId ?? null;
-  const showLiveGps =
-    Boolean(runnerEmail) &&
-    job.status !== "pending" &&
-    job.status !== "cancelled" &&
-    job.status !== "declined" &&
-    job.status !== "completed";
-  const [gpsMeta, setGpsMeta] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!showLiveGps || !runnerEmail) {
-      setGpsMeta(null);
-      return;
-    }
-
-    return subscribeRunnerLocation(runnerEmail, (loc) => {
-      if (!loc) {
-        setGpsMeta("Runner GPS: waiting for signal");
-        return;
-      }
-      setGpsMeta(
-        isLocationFresh(loc.updatedAt)
-          ? `Runner GPS: ${formatLocationFreshness(loc.updatedAt)}`
-          : "Runner GPS: signal stale",
-      );
-    });
-  }, [runnerEmail, showLiveGps]);
-
-  const meta = [buildJobMeta(job), gpsMeta].filter(Boolean).join(" · ");
+  const meta = buildJobMeta(job);
 
   return (
     <ActivityRow

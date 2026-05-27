@@ -643,13 +643,13 @@ export function getCurrentBusinessId(): string | null {
 }
 
 export function listJobsForBusiness(businessEmail: string): MarketplaceJob[] {
+  const key = businessEmail.trim().toLowerCase();
   return readJobs()
-    .filter(
-      (j) =>
-        j.businessEmail === businessEmail ||
-        j.businessId === businessEmail ||
-        (j.source === "business" && j.customerEmail === businessEmail),
-    )
+    .filter((j) => {
+      const businessKey = (j.businessEmail ?? j.businessId ?? "").trim().toLowerCase();
+      const customerKey = (j.customerEmail ?? j.customerId ?? "").trim().toLowerCase();
+      return businessKey === key || (j.source === "business" && customerKey === key);
+    })
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 

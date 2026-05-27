@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { getCurrentBusinessId, listJobsForBusiness, subscribeToJobs } from "./jobs-service";
+import {
+  getCurrentBusinessId,
+  hydrateJobsFromRemote,
+  listJobsForBusiness,
+  subscribeToJobs,
+} from "./jobs-service";
+import { isSupabaseConfigured } from "./supabase/config";
 import type { MarketplaceJob } from "./jobs-types";
 
 export function useBusinessJobs(): MarketplaceJob[] {
@@ -14,10 +20,14 @@ export function useBusinessJobs(): MarketplaceJob[] {
       return;
     }
 
-    setJobs(listJobsForBusiness(businessId));
-    return subscribeToJobs(() => {
-      setJobs(listJobsForBusiness(businessId));
-    });
+    const refresh = () => setJobs(listJobsForBusiness(businessId));
+
+    refresh();
+    if (isSupabaseConfigured()) {
+      void hydrateJobsFromRemote().then(() => refresh());
+    }
+
+    return subscribeToJobs(refresh);
   }, [businessId]);
 
   return jobs;
