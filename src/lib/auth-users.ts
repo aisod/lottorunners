@@ -24,8 +24,10 @@ import {
   ensureBootstrapAdmin,
   rowToStoredShape,
   signInRemote,
+  requestPasswordResetRemote,
   signOutRemote,
   signUpRemote,
+  updatePasswordRemote,
   upsertRemoteProfile,
 } from "./supabase/profiles-remote";
 import { applyRoleSetup, getRoleHomePath, setRunnerAccess, setRunnerApproved, type RunnerStage } from "./store";
@@ -386,6 +388,65 @@ function syncProfileCacheForUser(user: StoredUser): void {
 
   users[index] = { ...users[index], phone: normalized };
   writeUsers(users);
+}
+
+export async function requestPasswordReset(emailInput: string): Promise<AuthResult> {
+  const email = normalizeEmail(emailInput);
+
+  if (!email || !email.includes("@")) {
+    return { ok: false, error: "Enter the email address for your account." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    if (!isLocalDevAuthAllowed()) {
+      return {
+        ok: false,
+        error:
+          "Password reset requires Lovable Cloud. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to .env.",
+      };
+    }
+    return {
+      ok: false,
+      error: "Password reset is not available in offline dev mode. Use your existing password.",
+    };
+  }
+
+  const result = await requestPasswordResetRemote(email);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  return { ok: true, homePath: "/customer/signin" };
+}
+
+export async function completePasswordReset(input: {
+  password: string;
+  confirmPassword: string;
+}): Promise<AuthResult> {
+  const password = input.password;
+
+  if (password.length < 6) {
+    return { ok: false, error: "Password must be at least 6 characters." };
+  }
+
+  if (password !== input.confirmPassword) {
+    return { ok: false, error: "Passwords do not match." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: "Password reset requires Lovable Cloud." };
+  }
+
+  const result = await updatePasswordRemote(password);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  await signOutRemote();
+  resetSupabaseAuthCache();
+  clearAuthSession();
+
+  return { ok: true, homePath: "/customer/signin" };
 }
 
 export async function loginUser(input: { email: string; password: string }): Promise<AuthResult> {

@@ -403,6 +403,51 @@ export async function restoreSupabaseSession(): Promise<boolean> {
   return Boolean(data.session);
 }
 
+function getPasswordResetRedirectUrl(): string {
+  if (typeof window === "undefined") return "/customer/reset-password";
+  return `${window.location.origin}/customer/reset-password`;
+}
+
+export async function requestPasswordResetRemote(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: getPasswordResetRedirectUrl(),
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function updatePasswordRemote(
+  password: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
+
+  const ready = await waitForSupabaseSession(8000);
+  if (!ready) {
+    return {
+      ok: false,
+      error: "Reset link expired or invalid. Request a new password reset email from sign in.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function signOutRemote(): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) return;

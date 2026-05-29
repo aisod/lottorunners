@@ -46,6 +46,7 @@ import { Route as CustomerSigninRouteImport } from './routes/customer.signin'
 import { Route as CustomerScheduledBookingRouteImport } from './routes/customer.scheduled-booking'
 import { Route as CustomerSavedAddressesRouteImport } from './routes/customer.saved-addresses'
 import { Route as CustomerReviewScheduleRouteImport } from './routes/customer.review-schedule'
+import { Route as CustomerResetPasswordRouteImport } from './routes/customer.reset-password'
 import { Route as CustomerRateRunnerRouteImport } from './routes/customer.rate-runner'
 import { Route as CustomerProfileSetupRouteImport } from './routes/customer.profile-setup'
 import { Route as CustomerProfileRouteImport } from './routes/customer.profile'
@@ -272,6 +273,11 @@ const CustomerSavedAddressesRoute = CustomerSavedAddressesRouteImport.update({
 const CustomerReviewScheduleRoute = CustomerReviewScheduleRouteImport.update({
   id: '/review-schedule',
   path: '/review-schedule',
+  getParentRoute: () => CustomerRoute,
+} as any)
+const CustomerResetPasswordRoute = CustomerResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => CustomerRoute,
 } as any)
 const CustomerRateRunnerRoute = CustomerRateRunnerRouteImport.update({
@@ -532,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/profile-setup': typeof CustomerProfileSetupRoute
   '/customer/rate-runner': typeof CustomerRateRunnerRoute
+  '/customer/reset-password': typeof CustomerResetPasswordRoute
   '/customer/review-schedule': typeof CustomerReviewScheduleRoute
   '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
   '/customer/scheduled-booking': typeof CustomerScheduledBookingRoute
@@ -611,6 +618,7 @@ export interface FileRoutesByTo {
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/profile-setup': typeof CustomerProfileSetupRoute
   '/customer/rate-runner': typeof CustomerRateRunnerRoute
+  '/customer/reset-password': typeof CustomerResetPasswordRoute
   '/customer/review-schedule': typeof CustomerReviewScheduleRoute
   '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
   '/customer/scheduled-booking': typeof CustomerScheduledBookingRoute
@@ -691,6 +699,7 @@ export interface FileRoutesById {
   '/customer/profile': typeof CustomerProfileRoute
   '/customer/profile-setup': typeof CustomerProfileSetupRoute
   '/customer/rate-runner': typeof CustomerRateRunnerRoute
+  '/customer/reset-password': typeof CustomerResetPasswordRoute
   '/customer/review-schedule': typeof CustomerReviewScheduleRoute
   '/customer/saved-addresses': typeof CustomerSavedAddressesRoute
   '/customer/scheduled-booking': typeof CustomerScheduledBookingRoute
@@ -772,6 +781,7 @@ export interface FileRouteTypes {
     | '/customer/profile'
     | '/customer/profile-setup'
     | '/customer/rate-runner'
+    | '/customer/reset-password'
     | '/customer/review-schedule'
     | '/customer/saved-addresses'
     | '/customer/scheduled-booking'
@@ -851,6 +861,7 @@ export interface FileRouteTypes {
     | '/customer/profile'
     | '/customer/profile-setup'
     | '/customer/rate-runner'
+    | '/customer/reset-password'
     | '/customer/review-schedule'
     | '/customer/saved-addresses'
     | '/customer/scheduled-booking'
@@ -930,6 +941,7 @@ export interface FileRouteTypes {
     | '/customer/profile'
     | '/customer/profile-setup'
     | '/customer/rate-runner'
+    | '/customer/reset-password'
     | '/customer/review-schedule'
     | '/customer/saved-addresses'
     | '/customer/scheduled-booking'
@@ -1238,6 +1250,13 @@ declare module '@tanstack/react-router' {
       path: '/review-schedule'
       fullPath: '/customer/review-schedule'
       preLoaderRoute: typeof CustomerReviewScheduleRouteImport
+      parentRoute: typeof CustomerRoute
+    }
+    '/customer/reset-password': {
+      id: '/customer/reset-password'
+      path: '/reset-password'
+      fullPath: '/customer/reset-password'
+      preLoaderRoute: typeof CustomerResetPasswordRouteImport
       parentRoute: typeof CustomerRoute
     }
     '/customer/rate-runner': {
@@ -1592,6 +1611,7 @@ interface CustomerRouteChildren {
   CustomerProfileRoute: typeof CustomerProfileRoute
   CustomerProfileSetupRoute: typeof CustomerProfileSetupRoute
   CustomerRateRunnerRoute: typeof CustomerRateRunnerRoute
+  CustomerResetPasswordRoute: typeof CustomerResetPasswordRoute
   CustomerReviewScheduleRoute: typeof CustomerReviewScheduleRoute
   CustomerSavedAddressesRoute: typeof CustomerSavedAddressesRoute
   CustomerScheduledBookingRoute: typeof CustomerScheduledBookingRoute
@@ -1621,6 +1641,7 @@ const CustomerRouteChildren: CustomerRouteChildren = {
   CustomerProfileRoute: CustomerProfileRoute,
   CustomerProfileSetupRoute: CustomerProfileSetupRoute,
   CustomerRateRunnerRoute: CustomerRateRunnerRoute,
+  CustomerResetPasswordRoute: CustomerResetPasswordRoute,
   CustomerReviewScheduleRoute: CustomerReviewScheduleRoute,
   CustomerSavedAddressesRoute: CustomerSavedAddressesRoute,
   CustomerScheduledBookingRoute: CustomerScheduledBookingRoute,
