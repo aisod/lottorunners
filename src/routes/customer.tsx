@@ -9,6 +9,7 @@ import { getRoleHomePath } from "@/lib/store";
 const PUBLIC_CUSTOMER_AUTH_PATHS = new Set([
   "/customer/welcome",
   "/customer/signin",
+  "/customer/forgot-password",
   "/customer/reset-password",
   "/customer/onboarding-login",
   "/customer/verify",

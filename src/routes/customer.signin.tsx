@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { canRunClientAuthGuard } from "@/lib/auth/client-only-guard";
 import { ensureSupabaseAuthSession, isCloudAuthAbsent } from "@/lib/auth/ensure-session";
 import { clearAuthSession, clearPendingAuth, getAuthSession } from "@/lib/auth-session";
-import { loginUser, requestPasswordReset } from "@/lib/auth-users";
+import { loginUser } from "@/lib/auth-users";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getRoleHomePath } from "@/lib/store";
 
@@ -16,7 +16,6 @@ export const Route = createFileRoute("/customer/signin")({
   validateSearch: (search: Record<string, unknown>) => ({
     reason: typeof search.reason === "string" ? search.reason : undefined,
     role: typeof search.role === "string" ? search.role : undefined,
-    reset: search.reset === "success" ? ("success" as const) : undefined,
   }),
   beforeLoad: async ({ search }) => {
     if (!canRunClientAuthGuard()) return;
@@ -47,38 +46,17 @@ export const Route = createFileRoute("/customer/signin")({
 
 function CustomerSignInPage() {
   const navigate = useNavigate();
-  const { reason, reset } = Route.useSearch();
+  const { reason } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [resetMessage, setResetMessage] = useState<string | null>(null);
-  const [resetSending, setResetSending] = useState(false);
   const sessionNotice =
     reason === "session_expired"
       ? "Your server session expired. Sign in again to accept jobs and share live location."
-      : reset === "success"
-        ? "Your password was updated. Sign in with your new password."
-        : null;
-
-  const sendPasswordReset = () => {
-    setError(null);
-    setResetMessage(null);
-    setResetSending(true);
-    void requestPasswordReset(email).then((result) => {
-      setResetSending(false);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setResetMessage(
-        "If an account exists for that email, we sent a link to reset your password. Check your inbox and spam folder.",
-      );
-    });
-  };
+      : null;
 
   const signIn = () => {
     setError(null);
-    setResetMessage(null);
     void loginUser({ email, password }).then((result) => {
       if (!result.ok) {
         setError(result.error);
@@ -130,18 +108,11 @@ function CustomerSignInPage() {
               <button
                 type="button"
                 className="text-sm font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={resetSending}
-                onClick={sendPasswordReset}
+                onClick={() => navigate({ to: "/customer/forgot-password" })}
               >
-                {resetSending ? "Sending reset link…" : "Forgot your password?"}
+                Forgot your password?
               </button>
             </div>
-
-            {resetMessage ? (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-950">
-                {resetMessage}
-              </p>
-            ) : null}
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

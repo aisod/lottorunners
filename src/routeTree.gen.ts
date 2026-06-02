@@ -57,6 +57,7 @@ import { Route as CustomerMovingDetailsRouteImport } from './routes/customer.mov
 import { Route as CustomerMatchingRunnerRouteImport } from './routes/customer.matching-runner'
 import { Route as CustomerLiveJobTrackingRouteImport } from './routes/customer.live-job-tracking'
 import { Route as CustomerHomeRouteImport } from './routes/customer.home'
+import { Route as CustomerForgotPasswordRouteImport } from './routes/customer.forgot-password'
 import { Route as CustomerErrandTaskRequestRouteImport } from './routes/customer.errand-task-request'
 import { Route as CustomerErrandDetailsRouteImport } from './routes/customer.errand-details'
 import { Route as CustomerDeliveryRequestRouteImport } from './routes/customer.delivery-request'
@@ -330,6 +331,11 @@ const CustomerHomeRoute = CustomerHomeRouteImport.update({
   path: '/home',
   getParentRoute: () => CustomerRoute,
 } as any)
+const CustomerForgotPasswordRoute = CustomerForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => CustomerRoute,
+} as any)
 const CustomerErrandTaskRequestRoute =
   CustomerErrandTaskRequestRouteImport.update({
     id: '/errand-task-request',
@@ -528,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/customer/delivery-request': typeof CustomerDeliveryRequestRoute
   '/customer/errand-details': typeof CustomerErrandDetailsRoute
   '/customer/errand-task-request': typeof CustomerErrandTaskRequestRoute
+  '/customer/forgot-password': typeof CustomerForgotPasswordRoute
   '/customer/home': typeof CustomerHomeRoute
   '/customer/live-job-tracking': typeof CustomerLiveJobTrackingRoute
   '/customer/matching-runner': typeof CustomerMatchingRunnerRoute
@@ -608,6 +615,7 @@ export interface FileRoutesByTo {
   '/customer/delivery-request': typeof CustomerDeliveryRequestRoute
   '/customer/errand-details': typeof CustomerErrandDetailsRoute
   '/customer/errand-task-request': typeof CustomerErrandTaskRequestRoute
+  '/customer/forgot-password': typeof CustomerForgotPasswordRoute
   '/customer/home': typeof CustomerHomeRoute
   '/customer/live-job-tracking': typeof CustomerLiveJobTrackingRoute
   '/customer/matching-runner': typeof CustomerMatchingRunnerRoute
@@ -689,6 +697,7 @@ export interface FileRoutesById {
   '/customer/delivery-request': typeof CustomerDeliveryRequestRoute
   '/customer/errand-details': typeof CustomerErrandDetailsRoute
   '/customer/errand-task-request': typeof CustomerErrandTaskRequestRoute
+  '/customer/forgot-password': typeof CustomerForgotPasswordRoute
   '/customer/home': typeof CustomerHomeRoute
   '/customer/live-job-tracking': typeof CustomerLiveJobTrackingRoute
   '/customer/matching-runner': typeof CustomerMatchingRunnerRoute
@@ -771,6 +780,7 @@ export interface FileRouteTypes {
     | '/customer/delivery-request'
     | '/customer/errand-details'
     | '/customer/errand-task-request'
+    | '/customer/forgot-password'
     | '/customer/home'
     | '/customer/live-job-tracking'
     | '/customer/matching-runner'
@@ -851,6 +861,7 @@ export interface FileRouteTypes {
     | '/customer/delivery-request'
     | '/customer/errand-details'
     | '/customer/errand-task-request'
+    | '/customer/forgot-password'
     | '/customer/home'
     | '/customer/live-job-tracking'
     | '/customer/matching-runner'
@@ -931,6 +942,7 @@ export interface FileRouteTypes {
     | '/customer/delivery-request'
     | '/customer/errand-details'
     | '/customer/errand-task-request'
+    | '/customer/forgot-password'
     | '/customer/home'
     | '/customer/live-job-tracking'
     | '/customer/matching-runner'
@@ -1329,6 +1341,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomerHomeRouteImport
       parentRoute: typeof CustomerRoute
     }
+    '/customer/forgot-password': {
+      id: '/customer/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/customer/forgot-password'
+      preLoaderRoute: typeof CustomerForgotPasswordRouteImport
+      parentRoute: typeof CustomerRoute
+    }
     '/customer/errand-task-request': {
       id: '/customer/errand-task-request'
       path: '/errand-task-request'
@@ -1601,6 +1620,7 @@ interface CustomerRouteChildren {
   CustomerDeliveryRequestRoute: typeof CustomerDeliveryRequestRoute
   CustomerErrandDetailsRoute: typeof CustomerErrandDetailsRoute
   CustomerErrandTaskRequestRoute: typeof CustomerErrandTaskRequestRoute
+  CustomerForgotPasswordRoute: typeof CustomerForgotPasswordRoute
   CustomerHomeRoute: typeof CustomerHomeRoute
   CustomerLiveJobTrackingRoute: typeof CustomerLiveJobTrackingRoute
   CustomerMatchingRunnerRoute: typeof CustomerMatchingRunnerRoute
@@ -1631,6 +1651,7 @@ const CustomerRouteChildren: CustomerRouteChildren = {
   CustomerDeliveryRequestRoute: CustomerDeliveryRequestRoute,
   CustomerErrandDetailsRoute: CustomerErrandDetailsRoute,
   CustomerErrandTaskRequestRoute: CustomerErrandTaskRequestRoute,
+  CustomerForgotPasswordRoute: CustomerForgotPasswordRoute,
   CustomerHomeRoute: CustomerHomeRoute,
   CustomerLiveJobTrackingRoute: CustomerLiveJobTrackingRoute,
   CustomerMatchingRunnerRoute: CustomerMatchingRunnerRoute,
@@ -1723,3 +1744,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

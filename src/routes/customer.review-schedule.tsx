@@ -11,7 +11,7 @@ import { formatWalletBalance } from "@/lib/customer-wallet";
 import { ERRAND_CATEGORIES } from "@/lib/errand-categories";
 import { getUserPhone } from "@/lib/auth-users";
 import { validateBooking } from "@/lib/booking-validation";
-import { createJobFromCustomerBooking, getCurrentCustomerId } from "@/lib/jobs-service";
+import { createJobFromCustomerBooking, getCurrentCustomerId, getCustomerActiveJob } from "@/lib/jobs-service";
 import { useCustomerApp } from "@/lib/customer-store";
 import {
   getServices,
@@ -196,6 +196,15 @@ function CustomerReviewSchedulePage() {
 
     if (!getUserPhone(customerId)) {
       navigate({ to: "/customer/profile-setup" });
+      return;
+    }
+
+    const activeTrip = getCustomerActiveJob(customerId);
+    if (activeTrip) {
+      setFormErrors({
+        submit:
+          "You already have an active trip. Please wait until it is completed or cancelled before requesting another trip.",
+      });
       return;
     }
 

@@ -72,7 +72,7 @@ function CustomerResetPasswordPage() {
         setError(result.error);
         return;
       }
-      navigate({ to: "/customer/signin", search: { reset: "success" } });
+      navigate({ to: "/customer/signin" });
     });
   };
 

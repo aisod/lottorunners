@@ -290,6 +290,25 @@ export function listCompletedJobsForCustomer(customerId: string): MarketplaceJob
   return listJobsForCustomer(customerId).filter((j) => j.status === "completed");
 }
 
+/** Statuses that mean a customer's trip is still open (not finished). */
+export const CUSTOMER_ACTIVE_STATUSES: ReadonlySet<string> = new Set([
+  "pending",
+  "accepted",
+  "en_route",
+  "arrived",
+  "in_progress",
+]);
+
+export function getCustomerActiveJob(customerId: string): MarketplaceJob | null {
+  return (
+    readJobs().find(
+      (j) =>
+        (j.customerId === customerId || j.customerEmail === customerId) &&
+        CUSTOMER_ACTIVE_STATUSES.has(j.status),
+    ) ?? null
+  );
+}
+
 export function getRunnerActiveJob(runnerId: string): MarketplaceJob | null {
   return (
     readJobs().find(
