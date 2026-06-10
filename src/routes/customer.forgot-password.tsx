@@ -22,6 +22,9 @@ function CustomerForgotPasswordPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const sendResetLink = () => {
+    // Hard guard against double-submit (button re-click, form re-submit, Enter spam)
+    if (sending) return;
+
     setError(null);
     setSuccessMessage(null);
 
@@ -33,8 +36,8 @@ function CustomerForgotPasswordPage() {
 
     setSending(true);
     void requestPasswordReset(trimmed).then((result) => {
-      setSending(false);
       if (!result.ok) {
+        setSending(false);
         setError(result.error);
         return;
       }
@@ -42,6 +45,9 @@ function CustomerForgotPasswordPage() {
       setSuccessMessage(
         "If an account exists for this email address, a password reset link has been sent. Please check your inbox and spam folder.",
       );
+      // Keep button disabled for 60s — matches Supabase per-email rate window so
+      // users can't trigger the "wait 59 seconds" error by re-clicking.
+      setTimeout(() => setSending(false), 60_000);
     });
   };
 
