@@ -15,17 +15,17 @@ export function PortalPageIntro({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div className="space-y-2">
+    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <div className="min-w-0 flex-1 space-y-2">
         {eyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{eyebrow}</p>
         ) : null}
         <div className="space-y-2">
-          <h2 className="text-3xl font-black tracking-tight text-primary">{title}</h2>
+          <h2 className="text-2xl font-black tracking-tight text-primary sm:text-3xl">{title}</h2>
           {description ? <p className="max-w-3xl text-sm text-muted-foreground">{description}</p> : null}
         </div>
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="w-full shrink-0 sm:w-auto">{action}</div> : null}
     </div>
   );
 }
@@ -56,7 +56,7 @@ export function PortalStatTile({
       )}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
+        <div className="min-w-0 flex-1 space-y-2">
           <p
             className={cn(
               "text-xs font-semibold uppercase tracking-[0.18em]",
@@ -66,7 +66,7 @@ export function PortalStatTile({
           >
             {label}
           </p>
-          <p className={cn("text-3xl font-black tracking-tight", tone === "danger" ? "text-destructive" : "")}>{value}</p>
+          <p className={cn("truncate text-2xl font-black tracking-tight sm:text-3xl", tone === "danger" ? "text-destructive" : "")}>{value}</p>
           {meta ? (
             <p className={cn("text-xs", tone === "primary" ? "text-primary-foreground/80" : "text-muted-foreground")}>{meta}</p>
           ) : null}
@@ -104,13 +104,13 @@ export function PortalSection({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("overflow-hidden rounded-2xl border border-border bg-card/90 shadow-sm", className)}>
-      <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
+    <section className={cn("rounded-2xl border border-border bg-card/90 shadow-sm", className)}>
+      <div className="flex flex-col gap-3 border-b border-border/80 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
+        <div className="min-w-0 flex-1 space-y-1">
           <h3 className="text-lg font-bold text-foreground">{title}</h3>
           {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className="flex w-full flex-wrap gap-2 sm:w-auto">{action}</div> : null}
       </div>
       <div className={cn("px-5 py-5", bodyClassName)}>{children}</div>
     </section>
@@ -129,7 +129,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
+        "inline-flex max-w-full items-center gap-1 truncate rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
         tone === "neutral" && "bg-secondary text-foreground",
         tone === "primary" && "bg-primary/10 text-primary",
         tone === "success" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",

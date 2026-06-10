@@ -3,7 +3,7 @@ import { Bike, CarTaxiFront, PackageCheck, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
+import { PortalPageIntro, PortalSection } from "@/components/portal-primitives";
 import {
   getPlatformPricing,
   savePlatformPricing,
@@ -50,7 +50,7 @@ function AdminServicePricingPage() {
       <PortalPageIntro
         eyebrow="Pricing controls"
         title="Service & pricing configuration"
-        description="Edit marketplace fares here. Values are stored in Supabase app_config (marketplace_pricing) and applied on every device after save."
+        description="Fares are saved to the database and apply to new bookings after save."
         action={
           <Button type="button" onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save pricing"}
@@ -79,9 +79,9 @@ function AdminServicePricingPage() {
         />
       </PortalSection>
 
-      <div className="grid gap-6 xl:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <ServiceCard
-          title="Taxi / ride"
+          title="Ride"
           description={services.ride.tagline}
           icon={<CarTaxiFront className="h-5 w-5" />}
           fields={config.ride}
@@ -113,7 +113,7 @@ function AdminServicePricingPage() {
               {(["small", "medium", "large"] as TruckSizeId[]).map((size) => (
                 <PricingField
                   key={size}
-                  label={size}
+                  label={size.charAt(0).toUpperCase() + size.slice(1)}
                   value={config.truckSizeBase[size]}
                   onChange={(v) =>
                     setConfig((c) => ({
@@ -157,14 +157,11 @@ function ServiceCard({
   extra?: React.ReactNode;
 }) {
   return (
-    <PortalSection title={title} description={description} className="xl:col-span-1" bodyClassName="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</div>
-        <StatusPill tone="primary">Active</StatusPill>
-      </div>
+    <PortalSection title={title} description={description} className="min-w-0" bodyClassName="space-y-4">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</div>
       <PricingField label="Base fare (N$)" value={fields.baseFare} onChange={(v) => onChange({ ...fields, baseFare: v })} />
       <PricingField label="Per km (N$)" value={fields.perKm} onChange={(v) => onChange({ ...fields, perKm: v })} />
-      <PricingField label="ETA base (min)" value={fields.etaMin} onChange={(v) => onChange({ ...fields, etaMin: v })} />
+      <PricingField label="Base ETA (minutes)" value={fields.etaMin} onChange={(v) => onChange({ ...fields, etaMin: v })} />
       {extra}
     </PortalSection>
   );

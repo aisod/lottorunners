@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Clock3, MapPin, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { waitForSupabaseSessionWithBackoff } from "@/lib/auth/ensure-session";
 import { getVerifiedRunnerId } from "@/lib/auth/get-verified-runner-id";
 import {
   acceptJob,
@@ -110,6 +111,12 @@ function RunnerIncomingJobAlertPage() {
     setAccepting(true);
     setError(null);
     void (async () => {
+      const sessionReady = await waitForSupabaseSessionWithBackoff();
+      if (!sessionReady) {
+        setAccepting(false);
+        setError("Your session is still loading. Wait a moment, then try again.");
+        return;
+      }
       const currentRunnerId = await getVerifiedRunnerId();
       if (!currentRunnerId) {
         setAccepting(false);
@@ -133,13 +140,13 @@ function RunnerIncomingJobAlertPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(0,93,152,0.18),transparent_38%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)] px-5 py-8">
-      <div className="mx-auto max-w-lg">
-        <div className="rounded-[2rem] border bg-card p-6 shadow-xl">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(0,93,152,0.18),transparent_38%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)] px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:px-5 sm:py-8">
+      <div className="mx-auto w-full max-w-lg">
+        <div className="rounded-[2rem] border bg-card p-4 shadow-xl sm:p-6">
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Incoming job alert</p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight">{serviceLabel}</h1>
+              <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{serviceLabel}</h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 Review the request and accept or decline before the timer ends.
               </p>
@@ -157,12 +164,12 @@ function RunnerIncomingJobAlertPage() {
           </div>
 
           <div className="mt-6 rounded-3xl bg-primary p-5 text-primary-foreground">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-80">Customer</p>
-                <p className="mt-1 text-2xl font-bold">{job.customerName}</p>
+                <p className="mt-1 truncate text-xl font-bold sm:text-2xl">{job.customerName}</p>
               </div>
-              <div className="rounded-2xl bg-primary-foreground/10 px-4 py-3 text-center">
+              <div className="shrink-0 rounded-2xl bg-primary-foreground/10 px-4 py-3 text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-75">
                   {accepting ? "Accepting…" : "Expires in"}
                 </p>
@@ -221,7 +228,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border bg-secondary/20 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

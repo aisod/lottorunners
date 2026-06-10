@@ -23,6 +23,7 @@ import {
   fetchProfileByEmail,
   fetchProfileByUserId,
   ensureBootstrapAdmin,
+  hydrateRunnerRideCategoriesFromProfile,
   rowToStoredShape,
   signInRemote,
   requestPasswordResetRemote,
@@ -412,29 +413,21 @@ export async function requestPasswordReset(emailInput: string): Promise<AuthResu
     };
   }
 
-  let serverFnFailed = false;
   try {
-    console.info("[requestPasswordReset] calling server fn", { email });
     const serverResult = await requestPasswordResetServer({ data: { email } });
-    console.info("[requestPasswordReset] server fn result", serverResult);
     if (!serverResult.ok) {
       return { ok: false, error: serverResult.error };
     }
     return { ok: true, homePath: "/customer/signin" };
-  } catch (err) {
-    serverFnFailed = true;
-    console.error("[requestPasswordReset] server fn threw", err);
+  } catch {
+    // Server function unavailable (e.g. offline dev) — fall back to browser client.
   }
 
-  console.warn("[requestPasswordReset] falling back to browser client (server fn failed)");
   const result = await requestPasswordResetRemote(email);
-  console.info("[requestPasswordReset] browser fallback result", result);
   if (!result.ok) {
-    return {
-      ok: false,
-      error: `${result.error} (server fn ${serverFnFailed ? "failed" : "skipped"}; browser fallback also failed)`,
-    };
+    return { ok: false, error: result.error };
   }
+
   return { ok: true, homePath: "/customer/signin" };
 }
 
@@ -592,6 +585,8 @@ export async function refreshAuthSessionFromProfile(force = false): Promise<bool
 
   const row = await fetchProfileByUserId(userId);
   if (!row) return false;
+
+  hydrateRunnerRideCategoriesFromProfile(row);
 
   applyRemoteProfileToLocalSession(rowToStoredShape(row), userId);
   lastProfileRefreshAt = Date.now();

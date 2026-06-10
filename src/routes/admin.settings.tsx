@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PortalPageIntro, PortalSection, StatusPill } from "@/components/portal-primitives";
+import { PortalPageIntro, PortalSection } from "@/components/portal-primitives";
 import {
   loadAdminPlatformSettings,
   saveAdminPlatformSettings,
@@ -60,7 +60,7 @@ function AdminSettingsPage() {
         setError(result.error);
         return;
       }
-      setMessage("Platform settings saved to app_config.");
+      setMessage("Settings saved.");
     });
   };
 
@@ -69,7 +69,7 @@ function AdminSettingsPage() {
       <PortalPageIntro
         eyebrow="Security posture"
         title="Settings & security"
-        description="Platform flags stored in Supabase app_config (admins only). Synced across admin consoles."
+        description="Platform settings saved to the database and shared across admin sessions."
         action={
           <Button type="button" onClick={save} disabled={loading || saving}>
             {saving ? "Saving…" : "Save settings"}
@@ -89,32 +89,27 @@ function AdminSettingsPage() {
       ) : null}
 
       <div className="rounded-2xl border border-border bg-secondary/20 px-4 py-3 text-sm text-muted-foreground">
-        Live snapshot: {stats.activeJobs} active jobs · {stats.pendingVerifications} runners awaiting
-        verification · {formatNadInline(stats.revenueToday)} revenue today.
+        Live snapshot: {stats.activeJobs} active jobs · {stats.pendingVerifications} runners pending
+        approval · {formatNadInline(stats.revenueToday)} revenue today.
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card/90 p-2 shadow-sm">
-        <StatusPill tone="primary">Platform flags</StatusPill>
-        <StatusPill>app_config</StatusPill>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-12">
+      <div className="grid gap-6 lg:grid-cols-12">
         <PortalSection
           title="Maintenance"
-          description="Broadcast state to clients when maintenance mode is enabled in your edge layer."
-          className="xl:col-span-7"
+          description="Saved for future use. Does not block the app today."
+          className="lg:col-span-7"
           bodyClassName="space-y-4"
         >
           <ToggleRow
             label="Maintenance window"
-            description="Signal that non-critical writes should be degraded during deploys."
+            description="Mark maintenance periods. Not enforced by the app yet."
             checked={settings.maintenanceWindow}
             onChange={(v) => setSettings((s) => ({ ...s, maintenanceWindow: v }))}
             disabled={loading}
           />
           <ToggleRow
             label="API read-only mode"
-            description="Advisory flag for mutating admin and partner endpoints."
+            description="Mark API as read-only. Not enforced by the app yet."
             checked={settings.apiReadOnly}
             onChange={(v) => setSettings((s) => ({ ...s, apiReadOnly: v }))}
             disabled={loading}
@@ -123,13 +118,13 @@ function AdminSettingsPage() {
 
         <PortalSection
           title="Access control"
-          description="Staff authentication policy (stored for future enforcement)."
-          className="xl:col-span-5"
+          description="Admin sign-in policy. Not enforced by the app yet."
+          className="lg:col-span-5"
           bodyClassName="space-y-4"
         >
           <ToggleRow
-            label="Enforce MFA for L3+ admins"
-            description="Require step-up auth on next console login when enforced server-side."
+            label="Require MFA for admins"
+            description="Require multi-factor authentication for admin sign-in. Not enforced yet."
             checked={settings.enforceMfa}
             onChange={(v) => setSettings((s) => ({ ...s, enforceMfa: v }))}
             disabled={loading}
@@ -143,7 +138,7 @@ function AdminSettingsPage() {
               completed jobs
             </p>
             <p className="mt-2 text-sm text-primary-foreground/80">
-              Export tooling can read marketplace_jobs directly from Supabase for now.
+              For exports, use the Supabase dashboard or your reporting tools.
             </p>
           </div>
         </PortalSection>

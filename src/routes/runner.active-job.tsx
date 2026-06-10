@@ -241,12 +241,12 @@ function RunnerActiveJobPage() {
       </div>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-[800] border-b border-border/60 bg-background/95 px-5 py-3 shadow-sm backdrop-blur">
-        <div className="pointer-events-auto mx-auto flex w-full max-w-xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-primary/10 text-primary">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-primary/10 text-primary">
               <User className="h-5 w-5" />
             </div>
-            <h1 className="text-[22px] font-semibold text-primary">Runner Dashboard</h1>
+            <h1 className="truncate text-lg font-semibold text-primary sm:text-[22px]">Active job</h1>
           </div>
           <button
             type="button"
@@ -260,15 +260,15 @@ function RunnerActiveJobPage() {
         </div>
       </header>
 
-      <div className="pointer-events-none absolute inset-x-5 top-20 z-[800] flex items-start justify-between gap-4">
-        <div className="pointer-events-auto max-w-sm rounded-2xl border border-border/50 bg-white/90 p-4 shadow-xl backdrop-blur-md">
+      <div className="pointer-events-none absolute inset-x-4 top-20 z-[800] mx-auto flex max-w-5xl items-start justify-between gap-3 sm:inset-x-5">
+        <div className="pointer-events-auto min-w-0 max-w-[min(100%,20rem)] flex-1 rounded-2xl border border-border/50 bg-white/90 p-3 shadow-xl backdrop-blur-md sm:p-4">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
               <Navigation className="h-6 w-6" />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{phaseContent.turnLabel}</p>
-              <h2 className="text-[22px] font-semibold leading-7 text-foreground">{phaseContent.turnValue}</h2>
+              <h2 className="line-clamp-2 text-lg font-semibold leading-7 text-foreground sm:text-[22px]">{phaseContent.turnValue}</h2>
             </div>
           </div>
         </div>
@@ -292,16 +292,16 @@ function RunnerActiveJobPage() {
         </div>
       </div>
 
-      <section className="pointer-events-auto fixed inset-x-0 bottom-16 z-[900] mx-auto w-full max-w-xl rounded-t-[28px] border-t border-border/50 bg-white shadow-[0_-4px_24px_-1px_rgba(0,0,0,0.15)]">
+      <section className="pointer-events-auto fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-[900] mx-auto w-full max-w-5xl rounded-t-[28px] border-t border-border/50 bg-white shadow-[0_-4px_24px_-1px_rgba(0,0,0,0.15)]">
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-border/70" />
-        <div className="space-y-4 px-6 pb-6 pt-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
+        <div className="space-y-4 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] pt-5 sm:px-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
                 <User className="h-7 w-7" />
               </div>
               <div>
-                <h2 className="text-[22px] font-semibold leading-7 text-foreground">{job.customerName}</h2>
+                <h2 className="truncate text-lg font-semibold leading-7 text-foreground sm:text-[22px]">{job.customerName}</h2>
                 <p className="text-base text-muted-foreground">Order #{job.id.slice(-8)}</p>
               </div>
             </div>
@@ -311,7 +311,7 @@ function RunnerActiveJobPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
             {phaseContent.cards.map((card) => (
               <PhaseMetricCard key={card.label} label={card.label} value={card.value} icon={card.icon} />
             ))}

@@ -6,16 +6,33 @@ import {
   LayoutDashboard,
   LineChart,
   Menu,
-  Search,
   Settings,
   SlidersHorizontal,
   Users,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { RoleSwitcher } from "@/components/role-switcher";
 import { Button } from "@/components/ui/button";
+import { getAuthSession } from "@/lib/auth-session";
+import { getUserDisplayName } from "@/lib/auth-users";
 import { cn } from "@/lib/utils";
+
+function adminDisplayName(): string {
+  const session = getAuthSession();
+  return getUserDisplayName() ?? session?.email?.split("@")[0] ?? "Admin";
+}
+
+function initialsFromLabel(label: string): string {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return "AD";
+}
 
 type NavItem = {
   to: string;
@@ -93,19 +110,21 @@ function ShellNav({
 function AdminChrome({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const adminName = useMemo(() => adminDisplayName(), []);
+  const adminInitials = useMemo(() => initialsFromLabel(adminName), [adminName]);
 
   return (
     <div className="min-h-dvh bg-[linear-gradient(180deg,rgba(0,93,152,0.06)_0%,rgba(249,249,255,1)_18%)] text-foreground">
       <div
         className={cn(
-          "fixed inset-0 z-[1000] bg-foreground/40 backdrop-blur-sm transition-opacity md:hidden",
+          "fixed inset-0 z-[1000] bg-foreground/40 backdrop-blur-sm transition-opacity lg:hidden",
           mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         aria-hidden={!mobileNavOpen}
         onClick={() => setMobileNavOpen(false)}
       />
-      <aside className={cn("fixed left-0 top-0 z-[1001] flex h-full w-64 min-h-0 flex-col border-r border-border bg-[#eef3ff] p-4 shadow-lg transition-transform md:translate-x-0", mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0")}>
-        <div className="mb-4 flex shrink-0 items-center justify-between md:hidden">
+      <aside className={cn("fixed left-0 top-0 z-[1001] flex h-full w-64 min-h-0 flex-col border-r border-border bg-[#eef3ff] p-4 shadow-lg transition-transform lg:translate-x-0", mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
+        <div className="mb-4 flex shrink-0 items-center justify-between lg:hidden">
           <span className="text-sm font-bold text-primary">Menu</span>
           <Button
             variant="ghost"
@@ -140,11 +159,11 @@ function AdminChrome({ children }: { children: ReactNode }) {
         <div className="mt-6 rounded-2xl border border-border bg-white/90 p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-              AU
+              {adminInitials}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">Admin User</p>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Level 4 Access</p>
+              <p className="truncate text-sm font-semibold">{adminName}</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Administrator</p>
             </div>
           </div>
           <Link
@@ -158,34 +177,23 @@ function AdminChrome({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="md:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur sm:gap-4 md:px-6">
+          <div className="flex min-w-0 shrink-0 items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="lg:hidden"
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="truncate text-lg font-black text-primary">Lotto Runners Admin</h1>
+            <h1 className="truncate text-base font-black text-primary sm:text-lg">Admin</h1>
           </div>
-          <div className="hidden max-w-xs flex-1 lg:block">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="Search runners, jobs, or IDs..."
-                className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-3 text-sm outline-none ring-primary/30 focus:ring-2"
-              />
-            </div>
-          </div>
-          <div className="w-0" />
         </header>
 
-        <main className="min-h-[calc(100dvh-4rem)] p-4 md:p-6">{children}</main>
+        <main className="min-h-[calc(100dvh-4rem)] p-4 sm:p-5 lg:p-6">{children}</main>
       </div>
     </div>
   );

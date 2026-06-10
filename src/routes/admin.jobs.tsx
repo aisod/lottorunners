@@ -10,8 +10,11 @@ import {
   Truck,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
-import { jobStatusLabel } from "@/lib/jobs-service";
+import { adminAssignJob, jobStatusLabel } from "@/lib/jobs-service";
+import { RIDE_CATEGORY_LABELS, type RideCategoryId } from "@/lib/ride-categories";
+import { useAdminProfiles } from "@/lib/use-admin-profiles";
 import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
 import { SERVICES } from "@/lib/services";
 import type { MarketplaceJob } from "@/lib/jobs-types";
@@ -29,6 +32,7 @@ function statusTone(status: MarketplaceJob["status"]): "neutral" | "primary" | "
 
 function AdminJobsPage() {
   const allJobs = useAllMarketplaceJobs();
+  const { profiles } = useAdminProfiles();
   const jobs = useMemo(
     () =>
       allJobs.filter(
@@ -38,6 +42,17 @@ function AdminJobsPage() {
   );
 
   const [selectedJobId, setSelectedJobId] = useState("");
+  const [assignRunnerEmail, setAssignRunnerEmail] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  const approvedRunners = useMemo(
+    () =>
+      profiles.filter(
+        (p) => (p.roles ?? []).includes("runner") && p.runner_status === "approved",
+      ),
+    [profiles],
+  );
   const selectedJob = useMemo(
     () => jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null,
     [jobs, selectedJobId],
@@ -48,6 +63,11 @@ function AdminJobsPage() {
       setSelectedJobId(jobs[0].id);
     }
   }, [jobs, selectedJobId]);
+
+  useEffect(() => {
+    setAssignRunnerEmail("");
+    setAssignError(null);
+  }, [selectedJobId]);
 
   const pendingCount = jobs.filter((j) => j.status === "pending").length;
   const inProgressCount = jobs.filter((j) =>
@@ -60,33 +80,33 @@ function AdminJobsPage() {
   return (
     <div className="space-y-6">
       <PortalPageIntro
-        eyebrow="Global monitoring"
-        title="Active jobs command center"
-        description="Live marketplace jobs from customer requests and runner assignments."
+        eyebrow="Jobs"
+        title="Active jobs"
+        description="Open and in-progress jobs from customer bookings."
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <PortalStatTile icon={ClipboardList} label="Active jobs" value={String(jobs.length)} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <PortalStatTile icon={ClipboardList} label="Open jobs" value={String(jobs.length)} />
         <PortalStatTile icon={Clock} label="Pending" value={String(pendingCount)} />
         <PortalStatTile icon={Truck} label="In progress" value={String(inProgressCount)} />
         <PortalStatTile
           icon={AlertTriangle}
           label="Delayed pending"
           value={String(delayedCount)}
-          meta="Pending > 20 minutes"
+          meta="Waiting over 20 min"
           tone={delayedCount > 0 ? "danger" : "default"}
         />
       </div>
 
       {jobs.length === 0 ? (
-        <PortalSection title="No active jobs">
+        <PortalSection title="No open jobs">
           <p className="text-sm text-muted-foreground">
-            When customers create requests, they will appear here in real time.
+            New customer jobs will appear here as they are created.
           </p>
         </PortalSection>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <PortalSection title="Live job board">
+          <PortalSection title="Job list">
             <div className="space-y-3">
               {jobs.map((job) => (
                 <button
@@ -103,10 +123,10 @@ function AdminJobsPage() {
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {SERVICES[job.serviceType].label} · #{job.id.slice(-8)}
                       </p>
-                      <h3 className="mt-1 font-semibold">{job.description ?? SERVICES[job.serviceType].label}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <h3 className="mt-1 line-clamp-2 font-semibold">{job.description ?? SERVICES[job.serviceType].label}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                         {job.customerName}
-                        {job.runnerName ? ` → ${job.runnerName}` : " · awaiting runner"}
+                        {job.runnerName ? ` → ${job.runnerName}` : " · No runner assigned"}
                       </p>
                     </div>
                     <StatusPill tone={statusTone(job.status)}>{jobStatusLabel(job.status)}</StatusPill>
@@ -130,13 +150,65 @@ function AdminJobsPage() {
                   <Detail icon={<MessageSquareText className="h-4 w-4" />} label="Runner" value={selectedJob.runnerName} />
                 ) : null}
                 <p className="text-sm text-muted-foreground">
-                  Fare N$ {selectedJob.estimatedFare} · {selectedJob.distanceKm.toFixed(1)} km
+                  Estimated fare: N$ {selectedJob.estimatedFare} · {selectedJob.distanceKm.toFixed(1)} km
                 </p>
+                {selectedJob.serviceType === "ride" && selectedJob.subType ? (
+                  <p className="text-sm text-muted-foreground">
+                    Ride category:{" "}
+                    {RIDE_CATEGORY_LABELS[selectedJob.subType as RideCategoryId] ?? selectedJob.subType}
+                  </p>
+                ) : null}
+                {selectedJob.status === "pending" && !selectedJob.runnerId ? (
+                  <div className="space-y-2 rounded-xl border border-border bg-secondary/20 p-4">
+                    <p className="text-sm font-semibold">Assign runner (admin override)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Manually assign an approved runner. Bypasses ride-category matching.
+                    </p>
+                    <select
+                      value={assignRunnerEmail}
+                      onChange={(e) => setAssignRunnerEmail(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                    >
+                      <option value="">Select runner…</option>
+                      {approvedRunners.map((runner) => (
+                        <option key={runner.id} value={runner.email}>
+                          {runner.display_name?.trim() || runner.email}
+                        </option>
+                      ))}
+                    </select>
+                    {assignError ? <p className="text-sm text-destructive">{assignError}</p> : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!assignRunnerEmail || assigning}
+                      onClick={() => {
+                        const runner = approvedRunners.find((r) => r.email === assignRunnerEmail);
+                        if (!runner) return;
+                        setAssigning(true);
+                        setAssignError(null);
+                        void adminAssignJob(
+                          selectedJob.id,
+                          runner.email,
+                          runner.display_name?.trim() || runner.email.split("@")[0],
+                        ).then((result) => {
+                          setAssigning(false);
+                          if (!result.ok) {
+                            setAssignError(result.message);
+                            return;
+                          }
+                          setAssignRunnerEmail("");
+                        });
+                      }}
+                    >
+                      {assigning ? "Assigning…" : "Assign runner"}
+                    </Button>
+                  </div>
+                ) : null}
                 {selectedJob.proofPhotoUrl ? (
                   <img src={selectedJob.proofPhotoUrl} alt="Proof" className="max-h-48 w-full rounded-xl object-cover" />
                 ) : null}
                 {selectedJob.cargoPhotoUrls ? (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {Object.entries(selectedJob.cargoPhotoUrls).map(([slot, url]) =>
                       url ? (
                         <img key={slot} src={url} alt={slot} className="aspect-square w-full rounded-lg object-cover" />
@@ -158,7 +230,7 @@ function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; 
     <div className="rounded-xl border bg-card p-3">
       <div className="flex items-center gap-2 text-primary">{icon}</div>
       <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm font-semibold">{value}</p>
+      <p className="break-words text-sm font-semibold">{value}</p>
     </div>
   );
 }

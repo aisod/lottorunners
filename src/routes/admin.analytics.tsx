@@ -54,15 +54,15 @@ function AdminAnalyticsPage() {
   return (
     <div className="space-y-6">
       <PortalPageIntro
-        eyebrow="Strategic audit"
+        eyebrow="Analytics"
         title="Platform analytics"
-        description="Derived from live marketplace_jobs sync — updates as jobs complete or change status."
+        description="Calculated from live job data. Updates as jobs change."
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <PortalStatTile
           icon={Users}
-          label="Active accounts (profiles)"
+          label="Registered accounts"
           value={String(profiles.length)}
           meta={`${stats.uniqueCustomersMonth} customers with jobs this month`}
         />
@@ -70,11 +70,11 @@ function AdminAnalyticsPage() {
           icon={Activity}
           label="Completion rate"
           value={`${stats.completionRatePct}%`}
-          meta="Completed vs terminal outcomes"
+          meta="Completed vs cancelled or declined"
         />
         <PortalStatTile
           icon={TrendingUp}
-          label="GMV (month)"
+          label="Revenue (month)"
           value={formatNad(stats.gmvMonth, true)}
           meta="Sum of completed fares"
         />
@@ -100,8 +100,8 @@ function AdminAnalyticsPage() {
         </div>
       </PortalSection>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-        <PortalSection title="Quality & risk" description="From completed job ratings and cancellations.">
+      <div className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
+        <PortalSection title="Quality" description="From job ratings and cancellation counts.">
           <div className="grid gap-4 md:grid-cols-2 text-sm">
             <div className="rounded-2xl border border-border bg-secondary/20 p-4">
               <p className="font-semibold">Avg job rating</p>
@@ -110,13 +110,13 @@ function AdminAnalyticsPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/20 p-4">
-              <p className="font-semibold">Cancel / decline rate</p>
+              <p className="font-semibold">Cancellation rate</p>
               <p className="mt-2 text-3xl font-black text-primary">{chargebackPct}%</p>
             </div>
           </div>
         </PortalSection>
 
-        <PortalSection title="Executive flags" description="Auto-generated from current job board.">
+        <PortalSection title="Alerts" description="Based on the current job board.">
           <div className="space-y-3">
             <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/80">
@@ -125,18 +125,18 @@ function AdminAnalyticsPage() {
               <p className="mt-2 text-sm text-primary-foreground/90">
                 {stats.pendingJobs > 0
                   ? `${stats.pendingJobs} jobs are waiting for runner assignment.`
-                  : "No pending jobs in the marketplace."}
+                  : "No jobs waiting for a runner."}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/20 p-5">
               <div className="flex items-center gap-2 font-semibold">
                 <ShieldAlert className="h-4 w-4 text-primary" />
-                Runner pipeline
+                Runner approvals
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
                 {pendingVerifications > 0
-                  ? `${pendingVerifications} runner profiles need verification review.`
-                  : "No runners pending verification."}
+                  ? `${pendingVerifications} runners pending approval.`
+                  : "No runners pending approval."}
               </p>
             </div>
           </div>

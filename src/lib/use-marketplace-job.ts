@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
-import { waitForSupabaseSession } from "@/lib/auth/ensure-session";
+import {
+  waitForSupabaseSession,
+  waitForSupabaseSessionWithBackoff,
+} from "@/lib/auth/ensure-session";
 import {
   getCurrentRunnerId,
   getJob,
@@ -102,7 +105,7 @@ export function useRunnerJobFeed(): { jobs: MarketplaceJob[]; syncError: string 
     };
 
     void (async () => {
-      await waitForSupabaseSession(5000);
+      await waitForSupabaseSessionWithBackoff();
       await refreshAuthSessionFromProfile(true);
       await pullRemote();
     })();

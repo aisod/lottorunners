@@ -1,6 +1,8 @@
 import type { AccountRole, PublicRole } from "../auth-session";
 import { markSupabaseAuthVerified, waitForSupabaseSession } from "../auth/ensure-session";
+import { normalizeRideCategories, type RideCategoryId } from "../ride-categories";
 import type { RunnerOnboardingStatus } from "../runner-account";
+import { useRunnerSettings } from "../runner-settings";
 import type { RunnerStage } from "../store";
 import { getSupabaseClient } from "./client";
 import { getAdminBootstrapEmails, getAppPublicOrigin, isSupabaseConfigured } from "./config";
@@ -14,6 +16,7 @@ export type RemoteProfileRow = {
   primary_role: string | null;
   runner_status: string | null;
   runner_stage: string | null;
+  ride_categories?: string[] | null;
   updated_at?: string | null;
 };
 
@@ -142,6 +145,67 @@ export async function fetchProfilesForAdmin(): Promise<FetchProfilesForAdminResu
 
   if (!data) return { ok: true, rows: [] };
   return { ok: true, rows: data as RemoteProfileRow[] };
+}
+
+export async function fetchApprovedRunnersForMatching(): Promise<RemoteProfileRow[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, display_name, roles, runner_status, ride_categories")
+    .eq("runner_status", "approved")
+    .contains("roles", ["runner"]);
+
+  if (error || !data) return [];
+  return data as RemoteProfileRow[];
+}
+
+export function hydrateRunnerRideCategoriesFromProfile(row: RemoteProfileRow | null): void {
+  if (!row?.roles?.includes("runner")) return;
+  useRunnerSettings.getState().setRideCategories(normalizeRideCategories(row.ride_categories ?? undefined));
+}
+
+export async function updateRemoteRideCategories(
+  userId: string,
+  categories: RideCategoryId[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
+
+  const cleaned = normalizeRideCategories(categories);
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      ride_categories: cleaned,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+
+  if (error) return { ok: false, error: error.message };
+  useRunnerSettings.getState().setRideCategories(cleaned);
+  return { ok: true };
+}
+
+export async function adminSetRunnerRideCategories(
+  userId: string,
+  categories: RideCategoryId[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
+
+  await ensureBootstrapAdmin();
+
+  const cleaned = normalizeRideCategories(categories);
+  const { error } = await supabase.rpc("admin_set_runner_ride_categories", {
+    p_target_user_id: userId,
+    p_ride_categories: cleaned,
+  });
+
+  if (error) {
+    return { ok: false, error: formatAdminModerationError(error.message, error.code) };
+  }
+  return { ok: true };
 }
 
 export async function updateRemoteRunnerStatus(
@@ -418,7 +482,7 @@ function mapResetPasswordError(message: string): string {
     return "Too many reset attempts. Wait a few minutes and try again.";
   }
   if (lower.includes("redirect") || lower.includes("url")) {
-    return "Password reset link is misconfigured. Contact support@lottorunners.na.";
+    return "Password reset link is misconfigured. Contact support@lottoerunners.com.";
   }
   return message;
 }

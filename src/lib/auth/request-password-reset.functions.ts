@@ -21,7 +21,7 @@ function mapResetPasswordError(message: string): string {
     return "Too many reset attempts. Wait a few minutes and try again.";
   }
   if (lower.includes("redirect") || lower.includes("url")) {
-    return "Password reset is misconfigured. Contact support@lottorunners.na.";
+    return "Password reset is misconfigured. Contact support@lottoerunners.com.";
   }
   if (lower.includes("user not found") || lower.includes("not found")) {
     return "No account found for this email. Sign up first or check the spelling.";

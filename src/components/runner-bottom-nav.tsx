@@ -13,7 +13,8 @@ const ITEMS: { key: RunnerNavKey; label: string; to: string; icon: typeof Layout
 
 export function RunnerBottomNav({ active }: { active?: RunnerNavKey }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border/80 bg-background/95 px-2 py-2.5 shadow-sheet backdrop-blur-md">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 shadow-sheet backdrop-blur-md">
+      <div className="mx-auto flex max-w-5xl items-center justify-around px-2 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))]">
       {ITEMS.map((item) => {
         const Icon = item.icon;
         const isActive = item.key === active;
@@ -31,6 +32,7 @@ export function RunnerBottomNav({ active }: { active?: RunnerNavKey }) {
           </Link>
         );
       })}
+      </div>
     </nav>
   );
 }

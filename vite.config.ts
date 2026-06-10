@@ -20,16 +20,43 @@ const CLIENT = "client";
 
 /** Single Workbox config for both vite-plugin-pwa and the client-only `generateSW` emit. */
 const lottoRunnersWorkbox: Partial<GenerateSWOptions> = {
-  navigateFallback: null,
-  globPatterns: ["**/*.{js,css,ico,png,svg,webp,woff2}"],
+  navigateFallback: "/offline.html",
+  navigateFallbackDenylist: [/^\/api\//, /^\/sw\.js$/, /^\/manifest\.webmanifest$/],
+  globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2,webmanifest}"],
   maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
   skipWaiting: true,
   clientsClaim: true,
   additionalManifestEntries: [
+    { url: "/offline.html", revision: "offline-v1" },
+    { url: "/manifest.webmanifest", revision: "manifest-v1" },
     { url: "/customer/welcome", revision: "auth-flow-v2" },
     { url: "/customer/onboarding-login", revision: "auth-flow-v2" },
   ],
   runtimeCaching: [
+    {
+      urlPattern: /\/assets\/.*\.(?:js|css|woff2)$/i,
+      handler: "CacheFirst",
+      options: {
+        cacheName: "static-assets",
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 60 * 60 * 24 * 30,
+        },
+      },
+    },
+    {
+      urlPattern: ({ url }) =>
+        url.hostname.includes("supabase.co") || url.hostname.includes("supabase.in"),
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "supabase-api",
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 80,
+          maxAgeSeconds: 60 * 60 * 6,
+        },
+      },
+    },
     {
       urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
       handler: "StaleWhileRevalidate",

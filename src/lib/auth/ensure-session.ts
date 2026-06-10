@@ -135,3 +135,35 @@ export async function ensureSupabaseAuthSession(): Promise<boolean> {
 
   return false;
 }
+
+export type SessionReadyOptions = {
+  maxAttempts?: number;
+  initialDelayMs?: number;
+  waitPerAttemptMs?: number;
+};
+
+/**
+ * Waits for a usable Supabase JWT with exponential backoff between attempts.
+ * Use before RPC/REST calls right after sign-in or page load.
+ */
+export async function waitForSupabaseSessionWithBackoff(
+  options: SessionReadyOptions = {},
+): Promise<boolean> {
+  const maxAttempts = options.maxAttempts ?? 5;
+  const initialDelayMs = options.initialDelayMs ?? 250;
+  const waitPerAttemptMs = options.waitPerAttemptMs ?? 6000;
+  let delay = initialDelayMs;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const ready =
+      (await ensureSupabaseAuthSession()) || (await waitForSupabaseSession(waitPerAttemptMs));
+    if (ready) return true;
+    if (!hasSupabaseAuthStorage() && !getAuthSession()) return false;
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay = Math.min(Math.round(delay * 1.6), 3000);
+    }
+  }
+
+  return hasSupabaseAccessToken();
+}

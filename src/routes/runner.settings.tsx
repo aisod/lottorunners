@@ -6,7 +6,8 @@ import { RoleSwitcher } from "@/components/role-switcher";
 import { RunnerProfileAvatar } from "@/components/runner-profile-avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { type RunnerOfferedServiceId, useRunnerSettings } from "@/lib/runner-settings";
+import { RunnerRideCategoryPicker } from "@/components/runner-ride-category-picker";
+import { runnerOffersTaxi, type RunnerOfferedServiceId, useRunnerSettings } from "@/lib/runner-settings";
 import { getRunnerBankDetails, maskAccountNumber } from "@/lib/runner-workflow";
 
 const SERVICES: {
@@ -95,6 +96,8 @@ function RunnerSettingsPage() {
             })}
           </div>
         </section>
+
+        {runnerOffersTaxi(selectedServiceIds) ? <RunnerRideCategoryPicker /> : null}
 
         <section className="rounded-3xl border bg-card p-5">
           <div className="flex items-start justify-between gap-3">

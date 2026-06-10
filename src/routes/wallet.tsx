@@ -12,7 +12,7 @@ export const Route = createFileRoute("/wallet")({
 
 export function CustomerWalletPage() {
   return (
-    <CustomerPageShell width="md" variant="plain" tabBar className="pb-24">
+    <CustomerPageShell width="md" variant="plain" tabBar>
       <header className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6">
         <Link to="/customer/home" className="flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-secondary">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>

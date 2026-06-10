@@ -112,14 +112,16 @@ function RunnerDashboardPage() {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      <header className="fixed inset-x-0 top-0 z-20 flex h-16 items-center justify-between border-b bg-background px-5">
-        <div className="flex items-center gap-3">
-          <RunnerProfileAvatar size="md" />
-          <h1 className="text-lg font-bold text-primary">Runner Dashboard</h1>
+      <header className="fixed inset-x-0 top-0 z-20 border-b bg-background">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-2 px-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <RunnerProfileAvatar size="md" />
+            <h1 className="truncate text-base font-bold text-primary sm:text-lg">Runner Dashboard</h1>
+          </div>
+          <Button variant="ghost" asChild className="h-9 shrink-0 px-2 text-sm font-semibold text-primary sm:px-3">
+            <Link to="/logout">Sign out</Link>
+          </Button>
         </div>
-        <Button variant="ghost" asChild className="h-9 px-3 text-sm font-semibold text-primary">
-          <Link to="/logout">Sign out</Link>
-        </Button>
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-5 pb-28 pt-20">
@@ -252,7 +254,7 @@ function RunnerDashboardPage() {
                 </span>
               ) : null}
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-3 border-t pt-4">
+            <div className="mt-4 grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-3">
               <Stat label="This week" value={`N$ ${earnings.week.toFixed(2)}`} />
               <Stat label="This month" value={`N$ ${earnings.month.toFixed(2)}`} />
               <Stat label="Avg per trip" value={`N$ ${earnings.avgPerTrip.toFixed(2)}`} highlight />

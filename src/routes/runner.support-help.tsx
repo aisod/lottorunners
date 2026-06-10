@@ -4,7 +4,7 @@ import { RunnerBottomNav } from "@/components/runner-bottom-nav";
 import { notifyUnavailable, UNAVAILABLE } from "@/lib/user-feedback";
 
 const SUPPORT_PHONE = "+264610000000";
-const SUPPORT_EMAIL = "support@lottorunners.na";
+const SUPPORT_EMAIL = "support@lottoerunners.com";
 
 export const Route = createFileRoute("/runner/support-help")({
   component: RunnerSupportHelpPage,

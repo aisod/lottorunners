@@ -9,7 +9,7 @@ export const Route = createFileRoute("/saved-addresses")({
 
 export function CustomerSavedAddressesPage() {
   return (
-    <div className="min-h-dvh bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-4 py-3">
         <Link to="/customer/profile" className="flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-secondary">←</Link>
         <h1 className="flex-1 text-center font-display text-lg font-bold text-primary">Saved addresses</h1>

@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cancelJob, getCurrentCustomerId, jobStatusLabel } from "@/lib/jobs-service";
+import { cancelJob, getCurrentCustomerId, jobStatusLabel, rideJobHasEligibleRunner } from "@/lib/jobs-service";
+import { RIDE_CATEGORY_LABELS, type RideCategoryId } from "@/lib/ride-categories";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { fetchApprovedRunnersForMatching } from "@/lib/supabase/profiles-remote";
 import { useCustomerMarketplaceJob } from "@/lib/use-marketplace-job";
 import { useCustomerApp } from "@/lib/customer-store";
 
@@ -189,6 +192,9 @@ function CustomerMatchingRunnerPage() {
   const [statusIndex, setStatusIndex] = useState(0);
   const [honkVisible, setHonkVisible] = useState(false);
   const [wiggle, setWiggle] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [noRideRunnersAvailable, setNoRideRunnersAvailable] = useState(false);
 
   useEffect(() => {
     if (!activeJobId) {
@@ -214,11 +220,43 @@ function CustomerMatchingRunnerPage() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!job || job.serviceType !== "ride" || job.status !== "pending") {
+      setNoRideRunnersAvailable(false);
+      return;
+    }
+
+    const checkEligibility = async () => {
+      if (!isSupabaseConfigured()) {
+        setNoRideRunnersAvailable(false);
+        return;
+      }
+      const profiles = await fetchApprovedRunnersForMatching();
+      setNoRideRunnersAvailable(!rideJobHasEligibleRunner(job, profiles));
+    };
+
+    void checkEligibility();
+    const interval = window.setInterval(() => void checkEligibility(), 12_000);
+    return () => window.clearInterval(interval);
+  }, [job?.id, job?.serviceType, job?.status, job?.subType]);
+
   const handleCancelRequest = () => {
+    if (cancelling) return;
     const customerId = getCurrentCustomerId();
     void (async () => {
-      if (activeJobId && customerId) {
-        await cancelJob(activeJobId, customerId);
+      if (!activeJobId || !customerId) {
+        setActiveJobId(null);
+        reset();
+        navigate({ to: "/customer/home" });
+        return;
+      }
+      setCancelling(true);
+      setCancelError(null);
+      const result = await cancelJob(activeJobId, customerId);
+      setCancelling(false);
+      if (!result.ok) {
+        setCancelError(result.error);
+        return;
       }
       setActiveJobId(null);
       reset();
@@ -304,9 +342,9 @@ function CustomerMatchingRunnerPage() {
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col justify-between px-6 pb-8 pt-5">
+      <div className="flex flex-1 flex-col justify-between px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-5 sm:px-6">
         <div className="text-center">
-          <h1 className="text-2xl font-black tracking-tight text-foreground">Finding your runner</h1>
+          <h1 className="text-xl font-black tracking-tight text-foreground sm:text-2xl">Finding your runner</h1>
           <p className="mt-1 text-sm font-medium text-primary">{liveStatus}</p>
           <p
             key={statusIndex}
@@ -318,6 +356,16 @@ function CustomerMatchingRunnerPage() {
             <p className="mt-2 text-xs text-muted-foreground">
               Request #{job.id.slice(-8)} · N$ {job.estimatedFare.toFixed(2)}
             </p>
+          ) : null}
+          {noRideRunnersAvailable && job?.serviceType === "ride" ? (
+            <div className="mx-auto mt-4 max-w-md rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-950">
+              <p className="font-semibold">No runners available for this ride type</p>
+              <p className="mt-1 text-amber-900/90">
+                {job.subType
+                  ? `No approved runners are currently set up for ${RIDE_CATEGORY_LABELS[job.subType as RideCategoryId] ?? job.subType}. Try another ride type or cancel and try again later.`
+                  : "No approved runners are currently available for this ride. Cancel and try again later."}
+              </p>
+            </div>
           ) : null}
           <div className="mt-5 flex items-center justify-center gap-2">
             <LoadingDot delay={0} />
@@ -344,8 +392,19 @@ function CustomerMatchingRunnerPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="h-11 w-full" onClick={handleCancelRequest}>
-            Cancel Request
+          {cancelError ? (
+            <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {cancelError}
+            </p>
+          ) : null}
+
+          <Button
+            variant="outline"
+            className="h-11 w-full"
+            onClick={handleCancelRequest}
+            disabled={cancelling}
+          >
+            {cancelling ? "Cancelling…" : "Cancel Request"}
           </Button>
         </div>
       </div>

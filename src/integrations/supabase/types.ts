@@ -55,6 +55,7 @@ export type Database = {
           id: string
           phone: string | null
           primary_role: string | null
+          ride_categories: string[] | null
           roles: string[]
           runner_stage: string | null
           runner_status: string | null
@@ -67,6 +68,7 @@ export type Database = {
           id: string
           phone?: string | null
           primary_role?: string | null
+          ride_categories?: string[] | null
           roles?: string[]
           runner_stage?: string | null
           runner_status?: string | null
@@ -79,6 +81,7 @@ export type Database = {
           id?: string
           phone?: string | null
           primary_role?: string | null
+          ride_categories?: string[] | null
           roles?: string[]
           runner_stage?: string | null
           runner_status?: string | null
@@ -126,6 +129,14 @@ export type Database = {
       admin_set_runner_status: {
         Args: { p_runner_status: string; p_target_user_id: string }
         Returns: undefined
+      }
+      admin_set_runner_ride_categories: {
+        Args: { p_ride_categories: string[]; p_target_user_id: string }
+        Returns: undefined
+      }
+      admin_assign_marketplace_job: {
+        Args: { p_job_id: string; p_runner_email: string; p_runner_name?: string }
+        Returns: Json
       }
       admin_upsert_app_config: {
         Args: { p_key: string; p_value: string }

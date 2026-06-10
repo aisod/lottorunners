@@ -14,6 +14,7 @@ import {
   buildSettlementBatches,
   computeAdminPaymentsStats,
 } from "@/lib/portal-analytics";
+import { getPlatformFeePercent } from "@/lib/platform-pricing";
 import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
 
 export const Route = createFileRoute("/admin/payments")({
@@ -30,17 +31,19 @@ function AdminPaymentsPage() {
   const series = useMemo(() => buildMonthlyRevenueBuckets(jobs), [jobs]);
   const batches = useMemo(() => buildSettlementBatches(jobs), [jobs]);
 
-  const openDisputes = jobs.filter((j) => j.status === "declined").length;
+  const cancelledOrDeclined = jobs.filter(
+    (j) => j.status === "declined" || j.status === "cancelled",
+  ).length;
 
   return (
     <div className="space-y-6">
       <PortalPageIntro
         eyebrow="Finance oversight"
         title="Payments & financial analytics"
-        description="Settlement batches and revenue from completed marketplace jobs (15% platform fee on fares)."
+        description={`Revenue summaries from completed jobs (platform fee: ${getPlatformFeePercent()}%).`}
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <PortalStatTile
           icon={TrendingUp}
           label="Revenue (MTD)"
@@ -49,7 +52,7 @@ function AdminPaymentsPage() {
         />
         <PortalStatTile
           icon={CreditCard}
-          label="Runner payouts (MTD est.)"
+          label="Runner share (MTD)"
           value={paymentStats.pendingPayouts}
           meta="Net to runners after platform fee"
         />
@@ -57,7 +60,7 @@ function AdminPaymentsPage() {
           icon={Users}
           label="Runners with activity"
           value={paymentStats.activeRunners}
-          meta="Assigned or completed recently"
+          meta="Runners on active or completed jobs"
         />
         <PortalStatTile
           icon={Percent}
@@ -67,8 +70,8 @@ function AdminPaymentsPage() {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.5fr,0.9fr]">
-        <PortalSection title="Monthly revenue trends" description="Completed job GMV · last six months (N$ thousands).">
+      <div className="grid gap-6 lg:grid-cols-[1.5fr,0.9fr]">
+        <PortalSection title="Monthly revenue trends" description="Completed job revenue · last 6 months (N$ thousands).">
           <ChartContainer config={chartConfig} className="aspect-[16/9] w-full">
             <AreaChart accessibilityLayer data={series} margin={{ left: 8, right: 8 }}>
               <CartesianGrid vertical={false} />
@@ -86,7 +89,7 @@ function AdminPaymentsPage() {
           </ChartContainer>
         </PortalSection>
 
-        <PortalSection title="Key signals" description="From live job outcomes.">
+        <PortalSection title="Key signals" description="From completed and cancelled jobs.">
           <div className="space-y-4">
             <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/80">
@@ -95,24 +98,27 @@ function AdminPaymentsPage() {
               <p className="mt-2 text-2xl font-black">
                 {jobs.filter((j) => j.status === "completed").length}
               </p>
-              <p className="mt-1 text-sm text-primary-foreground/80">Jobs in synced marketplace data.</p>
+              <p className="mt-1 text-sm text-primary-foreground/80">Completed jobs this month.</p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/20 p-5">
               <div className="flex items-center justify-between">
-                <p className="font-semibold">Declined / cancelled</p>
+                <p className="font-semibold">Cancelled or declined</p>
                 <ArrowUpRight className="h-4 w-4 text-primary" />
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                {openDisputes} jobs declined or cancelled in the dataset.
+                {cancelledOrDeclined} jobs cancelled or declined.
               </p>
             </div>
           </div>
         </PortalSection>
       </div>
 
-      <PortalSection title="Daily settlement batches" description="Grouped completed fares by day (synthetic batches from job data).">
+      <PortalSection
+        title="Daily revenue summary"
+        description="Completed fares grouped by day. For reporting only — not actual bank settlements."
+      >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-sm">
+          <table className="w-full min-w-[28rem] text-sm lg:min-w-0">
             <thead className="bg-secondary/50 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Batch</th>
@@ -126,7 +132,7 @@ function AdminPaymentsPage() {
               {batches.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                    No completed jobs to settle yet.
+                    No completed jobs yet.
                   </td>
                 </tr>
               ) : (
@@ -137,7 +143,7 @@ function AdminPaymentsPage() {
                     <td className="px-4 py-3">{batch.net}</td>
                     <td className="px-4 py-3">{batch.runners}</td>
                     <td className="px-4 py-3">
-                      <StatusPill tone={batch.status === "Settled" ? "success" : "warning"}>
+                      <StatusPill tone={batch.status === "Complete" ? "success" : "warning"}>
                         {batch.status}
                       </StatusPill>
                     </td>

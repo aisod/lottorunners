@@ -2,6 +2,7 @@ import {
   ensureSupabaseAuthSession,
   resetSupabaseAuthCache,
   waitForSupabaseSession,
+  waitForSupabaseSessionWithBackoff,
 } from "@/lib/auth/ensure-session";
 import type { MarketplaceJob } from "../jobs-types";
 import { getSupabaseClient } from "./client";
@@ -80,9 +81,9 @@ export async function fetchRemoteJobById(
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };
 
-  const ready = await waitForSupabaseSession(6000);
+  const ready = await waitForSupabaseSessionWithBackoff();
   if (!ready) {
-    return { ok: false, error: "Server session not ready." };
+    return { ok: false, error: "Server session not ready. Wait a moment and try again." };
   }
 
   const { data, error } = await supabase
@@ -121,9 +122,12 @@ export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };
 
-  const ready = await waitForSupabaseSession(6000);
+  const ready = await waitForSupabaseSessionWithBackoff();
   if (!ready) {
-    return { ok: false, error: "Server session not ready. Sign out, sign in again, then refresh." };
+    return {
+      ok: false,
+      error: "Server session not ready. Wait a moment, then refresh or sign in again.",
+    };
   }
 
   const { data, error } = await supabase
@@ -158,6 +162,11 @@ export type UpsertRemoteJobResult = { ok: true } | { ok: false; error: string };
 export async function upsertRemoteJob(job: MarketplaceJob): Promise<UpsertRemoteJobResult> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase client unavailable." };
+
+  const ready = await waitForSupabaseSessionWithBackoff();
+  if (!ready) {
+    return { ok: false, error: "Server session not ready. Wait a moment and try again." };
+  }
 
   // Assigned / in-flight jobs must UPDATE (runners are blocked by jobs_insert RLS on upsert-insert).
   if (job.runnerId || job.status !== "pending") {
@@ -232,11 +241,11 @@ export async function acceptJobRemote(
     return { ok: false, message: "Could not connect to the server." };
   }
 
-  const authed = await ensureSupabaseAuthSession();
+  const authed = await waitForSupabaseSessionWithBackoff();
   if (!authed) {
     return {
       ok: false,
-      message: "Your session expired. Sign out and sign in again.",
+      message: "Your session is still loading. Wait a moment, then try again.",
     };
   }
 
@@ -274,6 +283,48 @@ export async function acceptJobRemote(
   }
 
   return { ok: true, job: { ...job, runnerId: job.runnerId ?? runnerId, runnerEmail: job.runnerEmail ?? runnerId } };
+}
+
+export type AdminAssignJobRemoteResult =
+  | { ok: true; job: MarketplaceJob }
+  | { ok: false; message: string };
+
+/** Admin override: assign a pending job to an approved runner (ignores ride-category filter). */
+export async function adminAssignJobRemote(
+  jobId: string,
+  runnerEmail: string,
+  runnerName?: string,
+): Promise<AdminAssignJobRemoteResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { ok: false, message: "Could not connect to the server." };
+  }
+
+  const authed = await ensureSupabaseAuthSession();
+  if (!authed) {
+    return { ok: false, message: "Your session expired. Sign out and sign in again." };
+  }
+
+  const { data, error } = await supabase.rpc("admin_assign_marketplace_job", {
+    p_job_id: jobId,
+    p_runner_email: runnerEmail.trim().toLowerCase(),
+    p_runner_name: runnerName?.trim() || null,
+  });
+
+  if (error) {
+    return { ok: false, message: error.message || "Could not assign this job." };
+  }
+
+  if (!data || typeof data !== "object") {
+    return { ok: false, message: "Could not assign this job." };
+  }
+
+  const job = data as MarketplaceJob;
+  if (!job.id) {
+    return { ok: false, message: "Could not assign this job." };
+  }
+
+  return { ok: true, job };
 }
 
 export function subscribeRemoteJobs(onChange: () => void): () => void {

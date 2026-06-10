@@ -34,7 +34,7 @@ const DEFAULT_LABELS: Record<ServiceType, Omit<ServiceConfig, "id">> = {
   },
   ride: {
     label: "Ride",
-    tagline: "Get picked up by a driver",
+    tagline: "Point-to-point rides",
     icon: "🚗",
     baseFare: 30,
     perKm: 12,

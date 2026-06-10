@@ -15,14 +15,17 @@ import {
   countPendingHiddenByServiceFilter,
   filterPendingJobsForRunner,
   isJobUnassigned,
+  runnerCanSeePendingJob,
   runnerOfferedIdsToServiceTypes,
 } from "./jobs-runner-feed";
+import { profileEligibleForRideJob } from "./ride-categories";
 import { useRunnerSettings } from "./runner-settings";
 import type { ServiceType, TripRequest } from "./types";
 import { canRunnerAcceptJobs } from "./runner-account";
 import { isSupabaseConfigured } from "./supabase/config";
 import {
   acceptJobRemote,
+  adminAssignJobRemote,
   fetchRemoteJobById,
   fetchRemoteJobs,
   upsertRemoteJob,
@@ -142,10 +145,25 @@ function normalizeJob(job: MarketplaceJob): MarketplaceJob {
 
 export async function hydrateJobsFromRemote(): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!isSupabaseConfigured()) return { ok: true };
-  const result = await fetchRemoteJobs();
-  if (!result.ok) return { ok: false, error: result.error };
-  notifyJobsChanged(result.rows);
-  return { ok: true };
+
+  const maxAttempts = 4;
+  let delayMs = 400;
+  let lastError = "Could not load jobs from the server.";
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const result = await fetchRemoteJobs();
+    if (result.ok) {
+      notifyJobsChanged(result.rows);
+      return { ok: true };
+    }
+    lastError = result.error;
+    const retryable = result.error.toLowerCase().includes("session not ready");
+    if (!retryable || attempt === maxAttempts - 1) break;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    delayMs = Math.min(Math.round(delayMs * 1.6), 2500);
+  }
+
+  return { ok: false, error: lastError };
 }
 
 /** Refresh a single active customer job from Supabase (runner accept, status changes). */
@@ -257,9 +275,10 @@ export function listPendingJobs(): MarketplaceJob[] {
 /** Pending jobs excluded from this runner's feed because of offered-service settings. */
 export function countRunnerHiddenPendingJobs(runnerId?: string | null): number {
   if (!canRunnerAcceptJobs(runnerId ?? undefined)) return 0;
-  const offered = runnerOfferedIdsToServiceTypes(useRunnerSettings.getState().selectedServiceIds);
+  const settings = useRunnerSettings.getState();
+  const offered = runnerOfferedIdsToServiceTypes(settings.selectedServiceIds);
   const declined = runnerId ? readDeclinedJobIds(runnerId) : new Set<string>();
-  return countPendingHiddenByServiceFilter(readJobs(), offered, declined);
+  return countPendingHiddenByServiceFilter(readJobs(), offered, declined, settings.rideCategories);
 }
 
 /**
@@ -269,9 +288,10 @@ export function countRunnerHiddenPendingJobs(runnerId?: string | null): number {
  */
 export function listAvailableJobsForRunner(runnerId?: string | null): MarketplaceJob[] {
   if (!canRunnerAcceptJobs(runnerId ?? undefined)) return [];
-  const offered = runnerOfferedIdsToServiceTypes(useRunnerSettings.getState().selectedServiceIds);
+  const settings = useRunnerSettings.getState();
+  const offered = runnerOfferedIdsToServiceTypes(settings.selectedServiceIds);
   const declined = runnerId ? readDeclinedJobIds(runnerId) : new Set<string>();
-  return filterPendingJobsForRunner(listPendingJobs(), offered, declined);
+  return filterPendingJobsForRunner(listPendingJobs(), offered, declined, settings.rideCategories);
 }
 
 export function listJobsForCustomer(customerId: string): MarketplaceJob[] {
@@ -488,6 +508,17 @@ export async function acceptJob(
   if (!fresh) {
     return { ok: false, message: "Job not found on this device." };
   }
+
+  const settings = useRunnerSettings.getState();
+  const offered = runnerOfferedIdsToServiceTypes(settings.selectedServiceIds);
+  const declined = readDeclinedJobIds(runnerKey);
+  if (
+    !runnerCanSeePendingJob(fresh, offered, declined, settings.rideCategories) &&
+    fresh.serviceType === "ride"
+  ) {
+    return { ok: false, message: "This ride category is not in your offered ride types." };
+  }
+
   if (fresh.status !== "pending" || fresh.runnerId) {
     return {
       ok: false,
@@ -507,6 +538,72 @@ export async function acceptJob(
     return { ok: false, message: "Could not accept this job locally." };
   }
   return { ok: true, job: patched };
+}
+
+export type AdminAssignJobResult =
+  | { ok: true; job: MarketplaceJob }
+  | { ok: false; message: string };
+
+/** Admin manual assignment — bypasses ride-category matching. */
+export async function adminAssignJob(
+  jobId: string,
+  runnerEmail: string,
+  runnerName: string,
+): Promise<AdminAssignJobResult> {
+  const email = runnerEmail.trim().toLowerCase();
+  if (!email) {
+    return { ok: false, message: "Select a runner to assign." };
+  }
+
+  if (isSupabaseConfigured()) {
+    const remote = await adminAssignJobRemote(jobId, email, runnerName);
+    if (!remote.ok) return remote;
+
+    const normalized = normalizeJob({
+      ...remote.job,
+      serverUpdatedAt: Date.now(),
+    });
+    const jobs = readJobs();
+    const index = jobs.findIndex((j) => j.id === jobId);
+    if (index === -1) {
+      writeJobs([normalized, ...jobs], { skipRemote: true });
+    } else {
+      jobs[index] = normalized;
+      writeJobs(jobs, { skipRemote: true });
+    }
+    return { ok: true, job: normalized };
+  }
+
+  const fresh = getJob(jobId);
+  if (!fresh || fresh.status !== "pending" || fresh.runnerId) {
+    return { ok: false, message: "This job is no longer available for assignment." };
+  }
+
+  const patched = patchJob(jobId, {
+    runnerId: email,
+    runnerEmail: email,
+    runnerName,
+    status: "accepted",
+    acceptedAt: Date.now(),
+  });
+  if (!patched) {
+    return { ok: false, message: "Could not assign this job locally." };
+  }
+  return { ok: true, job: patched };
+}
+
+export function rideJobHasEligibleRunner(
+  job: MarketplaceJob,
+  runnerProfiles: Array<{
+    runner_status?: string | null;
+    roles?: string[] | null;
+    ride_categories?: string[] | null;
+  }>,
+): boolean {
+  if (job.serviceType !== "ride") {
+    return true;
+  }
+  return runnerProfiles.some((profile) => profileEligibleForRideJob(profile, job));
 }
 
 export function listActiveJobs(): MarketplaceJob[] {
@@ -539,11 +636,44 @@ export function declineJob(jobId: string, runnerId: string): void {
   notifyListeners();
 }
 
-export async function cancelJob(jobId: string, customerId: string): Promise<MarketplaceJob | null> {
+export type CancelJobResult =
+  | { ok: true; job: MarketplaceJob }
+  | { ok: false; error: string };
+
+export async function cancelJob(jobId: string, customerId: string): Promise<CancelJobResult> {
   const job = getJob(jobId);
-  if (!job || (job.customerId !== customerId && job.customerEmail !== customerId)) return null;
-  if (job.status !== "pending" && job.status !== "accepted") return null;
-  return patchJobAwait(jobId, { status: "cancelled" });
+  if (!job || (job.customerId !== customerId && job.customerEmail !== customerId)) {
+    return { ok: false, error: "Trip not found." };
+  }
+  if (job.status !== "pending" && job.status !== "accepted") {
+    return { ok: false, error: "This trip can no longer be cancelled." };
+  }
+
+  const previous = { ...job };
+  const patched = applyJobPatchLocal(jobId, { status: "cancelled" });
+  if (!patched) return { ok: false, error: "Trip not found." };
+
+  if (isSupabaseConfigured()) {
+    const synced = await syncJobToRemoteAwait(patched);
+    if (!synced) {
+      applyJobPatchLocal(jobId, {
+        status: previous.status,
+        completedAt: previous.completedAt,
+        runnerId: previous.runnerId,
+        runnerEmail: previous.runnerEmail,
+        runnerName: previous.runnerName,
+        runnerPhone: previous.runnerPhone,
+      });
+      return {
+        ok: false,
+        error: "Could not cancel your trip on the server. Check your connection and try again.",
+      };
+    }
+    const confirmed = getJob(jobId);
+    return confirmed ? { ok: true, job: confirmed } : { ok: true, job: patched };
+  }
+
+  return { ok: true, job: patched };
 }
 
 const RUNNER_STATUS_FLOW: MarketplaceJobStatus[] = [

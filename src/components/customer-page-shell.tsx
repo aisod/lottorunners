@@ -35,8 +35,8 @@ export function CustomerPageShell({
       <div
         className={cn(
           "flex min-h-dvh w-full flex-col px-4 py-8 sm:px-6 md:[background:var(--gradient-auth)]",
-          tabBar && "pb-24",
           className,
+          tabBar && "pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]",
         )}
       >
         <div className={cn("mx-auto flex w-full flex-1 flex-col justify-center py-4", widthClass)}>{children}</div>
@@ -49,11 +49,12 @@ export function CustomerPageShell({
       className={cn(
         "min-h-dvh w-full bg-background",
         variant === "plain" ? "" : "md:bg-muted/20",
-        tabBar && "pb-24",
         className,
+        // Applied last so tab-bar clearance is not overridden by page-level padding classes.
+        tabBar && "pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]",
       )}
     >
-      <div className={cn("mx-auto w-full px-4 sm:px-6", widthClass)}>{children}</div>
+      <div className={cn("mx-auto w-full min-w-0 px-4 sm:px-6", widthClass)}>{children}</div>
     </div>
   );
 }
@@ -77,7 +78,14 @@ export function CustomerFixedFooter({ children, width = "md", className }: Custo
         className,
       )}
     >
-      <div className={cn("mx-auto w-full px-4 py-4 sm:px-6", WIDTH_CLASS[width])}>{children}</div>
+      <div
+        className={cn(
+          "mx-auto w-full min-w-0 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:px-6",
+          WIDTH_CLASS[width],
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

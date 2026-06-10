@@ -119,7 +119,7 @@ function CustomerTrackingRunnerPage() {
         />
       </div>
 
-      <BottomSheet className="max-w-3xl">
+      <BottomSheet>
         <div className="space-y-4">
           <div>
             <div className="mb-3 flex items-center justify-between">
@@ -139,11 +139,11 @@ function CustomerTrackingRunnerPage() {
             ) : null}
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-14 w-14 rounded-2xl bg-secondary" />
-              <div>
-                <p className="font-semibold">{job?.runnerName ?? "Your runner"}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-14 w-14 shrink-0 rounded-2xl bg-secondary" />
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{job?.runnerName ?? "Your runner"}</p>
                 <p className="text-sm text-muted-foreground">Lotto Runner • assigned</p>
               </div>
             </div>
@@ -176,7 +176,7 @@ function CustomerTrackingRunnerPage() {
             </div>
             <div className="rounded-xl border bg-secondary/40 p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Pickup</p>
-              <p className="text-sm font-semibold">{job?.pickupAddress ?? "Pickup set"}</p>
+              <p className="line-clamp-2 text-sm font-semibold">{job?.pickupAddress ?? "Pickup set"}</p>
             </div>
           </div>
 

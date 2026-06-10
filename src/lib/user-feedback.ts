@@ -7,7 +7,7 @@ export function notifyUnavailable(message: string): void {
 
 export const UNAVAILABLE = {
   passwordReset:
-    "Password reset is not available in the app yet. Contact support@lottorunners.na for help signing in.",
+    "Password reset is not available in the app yet. Contact support@lottoerunners.com for help signing in.",
   privacySettings: "Privacy and security settings are not available in this release.",
   walletTopUp: "Wallet top-up is not available yet. Pay for jobs at checkout instead.",
   walletSend: "Sending money from your wallet is not available yet.",
@@ -19,7 +19,7 @@ export const UNAVAILABLE = {
   adminDigest: "Security digest export is not available yet.",
   adminPricingSave: "Saving service pricing from the console is not available yet.",
   adminSupportSearch: "Knowledge base search is not available yet. Use the operations desk contacts below.",
-  adminSupportArticle: "Internal runbooks are not hosted in the app yet. Contact ops@lottorunners.na.",
+  adminSupportArticle: "Internal runbooks are not hosted in the app yet. Contact ops@lottoerunners.com.",
   analyticsExport: "Exporting spending reports is not available yet.",
   analyticsDateRange: "Changing the date range is not available yet. This page shows sample data.",
   adminNotifications: "Admin notifications are not available yet.",

@@ -1,12 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Eye, Filter, Plus, ShieldCheck, Star, UserRoundX, Users } from "lucide-react";
+import { ShieldCheck, Star, UserRoundX, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PortalPageIntro, PortalSection, PortalStatTile, StatusPill } from "@/components/portal-primitives";
 import { listUsersForDirectory } from "@/lib/auth-users";
 import { approveRunnerAccount, rejectRunnerAccount } from "@/lib/runner-account";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { fetchProfilesForAdmin, type RemoteProfileRow } from "@/lib/supabase/profiles-remote";
+import {
+  adminSetRunnerRideCategories,
+  fetchProfilesForAdmin,
+  type RemoteProfileRow,
+} from "@/lib/supabase/profiles-remote";
+import {
+  formatRideCategoriesList,
+  normalizeRideCategories,
+  RIDE_CATEGORY_IDS,
+  RIDE_CATEGORY_LABELS,
+  type RideCategoryId,
+} from "@/lib/ride-categories";
 import { refreshAuthSessionFromProfile } from "@/lib/auth-users";
 import { runnerAvgRatingFromJobs } from "@/lib/portal-analytics";
 import { useAllMarketplaceJobs } from "@/lib/use-all-marketplace-jobs";
@@ -25,6 +36,7 @@ type Row = {
   rating: string;
   lastActive: string;
   flag: string;
+  rideCategories: RideCategoryId[] | null;
 };
 
 function mapRunnerStatus(status?: string | null): Row["status"] {
@@ -65,8 +77,12 @@ function profileToRows(
         kind === "Runner" && profile.runner_status === "rejected"
           ? "Application rejected"
           : kind === "Runner" && profile.runner_status !== "approved"
-            ? "Onboarding review"
+            ? "Pending approval"
             : "—",
+      rideCategories:
+        kind === "Runner"
+          ? normalizeRideCategories(profile.ride_categories ?? undefined)
+          : null,
     };
 
     if (row.status === "Pending") pending.push(row);
@@ -91,8 +107,9 @@ function localUsersToRows(jobs: MarketplaceJob[]): { pending: Row[]; active: Row
         kind: "Runner",
         status,
         rating: status === "Active" ? runnerAvgRatingFromJobs(user.email, jobs) : "N/A",
-        lastActive: "This device",
-        flag: status === "Pending" ? "Onboarding review" : "—",
+        lastActive: "Local session",
+        flag: status === "Pending" ? "Pending approval" : "—",
+        rideCategories: normalizeRideCategories(),
       };
       if (status === "Pending") pending.push(row);
       else active.push(row);
@@ -107,8 +124,9 @@ function localUsersToRows(jobs: MarketplaceJob[]): { pending: Row[]; active: Row
         kind: "Business",
         status: "Active",
         rating: "N/A",
-        lastActive: "This device",
+        lastActive: "Local session",
         flag: "—",
+        rideCategories: null,
       });
       continue;
     }
@@ -120,8 +138,9 @@ function localUsersToRows(jobs: MarketplaceJob[]): { pending: Row[]; active: Row
       kind: "Customer",
       status: "Active",
       rating: "N/A",
-      lastActive: "This device",
+      lastActive: "Local session",
       flag: "—",
+      rideCategories: null,
     });
   }
 
@@ -136,6 +155,8 @@ function AdminUsersPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [editingRideCategoriesId, setEditingRideCategoriesId] = useState<string | null>(null);
+  const [savingRideCategoriesId, setSavingRideCategoriesId] = useState<string | null>(null);
   const rows = useMemo(() => [...pending, ...activeRows], [pending, activeRows]);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"All roles" | Row["kind"]>("All roles");
@@ -195,7 +216,7 @@ function AdminUsersPage() {
     return {
       ok: false,
       error:
-        "Runner status was saved, but Supabase returned stale data. Refresh once and retry if needed.",
+        "Update saved. Refresh the page if the status looks wrong.",
     };
   };
 
@@ -263,40 +284,40 @@ function AdminUsersPage() {
 
   const runnerCount = rows.filter((row) => row.kind === "Runner" && row.status === "Active").length;
 
+  const saveRideCategories = (row: Row, categories: RideCategoryId[]) => {
+    if (row.kind !== "Runner") return;
+    setSavingRideCategoriesId(row.id);
+    setActionError(null);
+    void adminSetRunnerRideCategories(row.id, categories).then((result) => {
+      setSavingRideCategoriesId(null);
+      if (!result.ok) {
+        setActionError(result.error);
+        return;
+      }
+      setEditingRideCategoriesId(null);
+      void reload();
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PortalPageIntro
         eyebrow="Identity & trust"
         title="User management"
-        description="Review runner approvals, suspend risky accounts, and track user health across the platform."
-        action={
-          <Button type="button" className="gap-2" disabled title="User creation is managed through sign-up flows">
-            <Plus className="h-4 w-4" />
-            Add new user
-          </Button>
-        }
+        description="Approve runners and review account status."
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <PortalStatTile icon={Users} label="Total users" value={String(rows.length)} meta="Registered accounts in your environment" />
-        <PortalStatTile icon={ShieldCheck} label="Active runners" value={String(runnerCount)} meta="Approved for dispatch" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <PortalStatTile icon={Users} label="Total users" value={String(rows.length)} meta="All accounts in this project" />
+        <PortalStatTile icon={ShieldCheck} label="Active runners" value={String(runnerCount)} meta="Approved to accept jobs" />
         <PortalStatTile icon={UserRoundX} label="Pending approvals" value={String(pending.length)} meta="Awaiting review or documents" />
       </div>
 
-      <PortalSection
-        title="Directory controls"
-        description="Filter by persona, approval status, and quality signals."
-        action={
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            More filters
-          </div>
-        }
-      >
-        <div className="grid gap-3 md:grid-cols-[1.3fr,0.8fr,0.8fr]">
+      <PortalSection title="Filters" description="Filter by role, status, or search.">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <input
             type="search"
-            placeholder="Search runners, customers, or companies..."
+            placeholder="Search by name or email…"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="h-11 rounded-xl border border-border bg-background px-4 text-sm outline-none ring-primary/30 focus:ring-2"
@@ -327,7 +348,7 @@ function AdminUsersPage() {
         </div>
       </PortalSection>
 
-      <PortalSection title="Platform directory" description="Moderate access and review each account’s current state.">
+      <PortalSection title="Accounts" description="Review accounts and approve pending runners.">
         {actionError ? <p className="mb-3 text-sm text-destructive">{actionError}</p> : null}
         {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
         {loading ? (
@@ -337,32 +358,33 @@ function AdminUsersPage() {
             {searchQuery || roleFilter !== "All roles" || statusFilter !== "All statuses"
               ? "No accounts match your current filters."
               : loadError
-              ? "Could not load accounts from Supabase."
-              : "No accounts yet. Users appear here after they sign up on this device or in your Supabase project."}
+              ? "Could not load accounts. Check your connection and try again."
+              : "Accounts appear here after users sign up."}
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-sm">
+            <table className="w-full min-w-[36rem] text-sm lg:min-w-0">
               <thead className="bg-secondary/50 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Rating</th>
-                  <th className="px-4 py-3">Last active</th>
-                  <th className="px-4 py-3">Flag</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-3 py-3 sm:px-4">Name</th>
+                  <th className="px-3 py-3 sm:px-4">Role</th>
+                  <th className="px-3 py-3 sm:px-4">Status</th>
+                  <th className="hidden px-3 py-3 md:table-cell sm:px-4">Rating</th>
+                  <th className="hidden px-3 py-3 lg:table-cell sm:px-4">Last active</th>
+                  <th className="hidden px-3 py-3 xl:table-cell sm:px-4">Note</th>
+                  <th className="hidden px-3 py-3 lg:table-cell sm:px-4">Ride categories</th>
+                  <th className="px-3 py-3 sm:px-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredRows.map((row) => (
                   <tr key={row.id} className="bg-white/80 hover:bg-secondary/30">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold">{row.name}</p>
-                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                    <td className="max-w-[12rem] px-3 py-3 sm:max-w-none sm:px-4">
+                      <p className="truncate font-semibold">{row.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{row.email}</p>
                     </td>
-                    <td className="px-4 py-3">{row.kind}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3 sm:px-4">{row.kind}</td>
+                    <td className="px-3 py-3 sm:px-4">
                       <StatusPill
                         tone={
                           row.status === "Active"
@@ -377,15 +399,68 @@ function AdminUsersPage() {
                         {row.status}
                       </StatusPill>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.rating}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.lastActive}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.flag}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" size="sm" className="gap-1" disabled>
-                          <Eye className="h-3.5 w-3.5" />
-                          View
-                        </Button>
+                    <td className="hidden px-3 py-3 text-muted-foreground md:table-cell sm:px-4">{row.rating}</td>
+                    <td className="hidden px-3 py-3 text-muted-foreground lg:table-cell sm:px-4">{row.lastActive}</td>
+                    <td className="hidden px-3 py-3 text-muted-foreground xl:table-cell sm:px-4">{row.flag}</td>
+                    <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
+                      {row.kind === "Runner" && row.rideCategories ? (
+                        editingRideCategoriesId === row.id ? (
+                          <div className="space-y-2">
+                            {RIDE_CATEGORY_IDS.map((id) => {
+                              const active = row.rideCategories?.includes(id);
+                              return (
+                                <label key={id} className="flex items-center gap-2 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={active}
+                                    disabled={savingRideCategoriesId === row.id}
+                                    onChange={() => {
+                                      const cur = new Set(row.rideCategories ?? []);
+                                      if (cur.has(id)) {
+                                        if (cur.size <= 1) return;
+                                        cur.delete(id);
+                                      } else {
+                                        cur.add(id);
+                                      }
+                                      saveRideCategories(row, Array.from(cur) as RideCategoryId[]);
+                                    }}
+                                  />
+                                  {RIDE_CATEGORY_LABELS[id]}
+                                </label>
+                              );
+                            })}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setEditingRideCategoriesId(null)}
+                            >
+                              Done
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              {formatRideCategoriesList(row.rideCategories)}
+                            </p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setEditingRideCategoriesId(row.id)}
+                            >
+                              Edit categories
+                            </Button>
+                          </div>
+                        )
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 sm:px-4">
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {row.status === "Pending" && row.kind === "Runner" ? (
                           <>
                             <Button
@@ -396,7 +471,7 @@ function AdminUsersPage() {
                               onClick={() => approve(row.id)}
                             >
                               <Star className="h-3.5 w-3.5" />
-                              {actingId === row.id ? "Saving…" : "Approve"}
+                              {actingId === row.id ? "Saving…" : "Approve runner"}
                             </Button>
                             <Button
                               type="button"
@@ -407,7 +482,7 @@ function AdminUsersPage() {
                               onClick={() => reject(row.id)}
                             >
                               <UserRoundX className="h-3.5 w-3.5" />
-                              Reject
+                              Reject runner
                             </Button>
                           </>
                         ) : null}

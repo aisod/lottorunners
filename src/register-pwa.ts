@@ -9,8 +9,8 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       .then((registration) => {
         void registration.update();
       })
-      .catch(() => {
-        // Missing sw.js: ignore so the app still runs.
+      .catch((error: unknown) => {
+        console.warn("[PWA] Service worker registration failed:", error);
       });
   } else {
     void navigator.serviceWorker.getRegistrations().then((registrations) => {

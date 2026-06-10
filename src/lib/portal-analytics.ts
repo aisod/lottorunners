@@ -1,6 +1,7 @@
 import type { MarketplaceJob } from "./jobs-types";
-import { readJobs } from "./jobs-service";
+import { jobStatusLabel, readJobs } from "./jobs-service";
 import { getPlatformFeePercent } from "./platform-pricing";
+import { getServices } from "./services";
 
 function platformFeeRate(): number {
   return getPlatformFeePercent() / 100;
@@ -140,23 +141,25 @@ export function buildAdminActivityFeed(jobs: MarketplaceJob[], limit = 12): Admi
         actor: actor ? `${actor} (Runner)` : "Runner",
         time: relativeTime(ts),
         tone: "success",
-        statusLabel: "Finalized",
+        statusLabel: "Completed",
       };
     }
     if (job.status === "cancelled" || job.status === "declined") {
+      const closedLabel = job.status === "cancelled" ? "Cancelled" : "Declined";
       return {
         id: job.id,
-        event: `Job ${job.status} · ${shortId}`,
+        event: `Job ${closedLabel.toLowerCase()} · ${shortId}`,
         actor: job.customerName ?? job.customerEmail,
         time: relativeTime(ts),
         tone: "danger",
-        statusLabel: "Closed",
+        statusLabel: closedLabel,
       };
     }
     if (job.status === "pending") {
+      const serviceLabel = getServices()[job.serviceType]?.label ?? job.serviceType;
       return {
         id: job.id,
-        event: `New request · ${job.serviceType} · ${shortId}`,
+        event: `New job · ${serviceLabel} · ${shortId}`,
         actor: job.customerName ?? job.customerEmail,
         time: relativeTime(job.createdAt),
         tone: "primary",
@@ -165,11 +168,11 @@ export function buildAdminActivityFeed(jobs: MarketplaceJob[], limit = 12): Admi
     }
     return {
       id: job.id,
-      event: `Job ${job.status.replace("_", " ")} · ${shortId}`,
+      event: `Job in progress · ${shortId}`,
       actor: actor ? `${actor}` : "Assigned",
       time: relativeTime(ts),
       tone: "warning",
-      statusLabel: "In progress",
+      statusLabel: jobStatusLabel(job.status),
     };
   });
 }
@@ -319,7 +322,7 @@ export function buildSettlementBatches(jobs: MarketplaceJob[], days = 7): Settle
       gross: formatNad(gross),
       net: formatNad(net),
       runners,
-      status: i === 0 ? "Processing" : "Settled",
+      status: i === 0 ? "Today" : "Complete",
     });
   }
 

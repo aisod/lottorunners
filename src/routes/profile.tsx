@@ -43,7 +43,7 @@ export function CustomerProfilePage() {
   };
 
   return (
-    <CustomerPageShell width="md" variant="plain" tabBar className="pb-24">
+    <CustomerPageShell width="md" variant="plain" tabBar>
       <header className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-border bg-card px-4 py-3 sm:-mx-6 sm:px-6">
         <Link
           to="/customer/home"
@@ -122,7 +122,7 @@ export function CustomerProfilePage() {
           <Row label="Email" value={sessionEmail || "Not signed in"} />
           <Row
             label="Privacy & security"
-            disabled
+            muted
             title={UNAVAILABLE.privacySettings}
             onPress={() => notifyUnavailable(UNAVAILABLE.privacySettings)}
           />
@@ -202,6 +202,7 @@ function Row({
   destructive,
   onPress,
   disabled,
+  muted,
   title,
 }: {
   label: string;
@@ -209,6 +210,8 @@ function Row({
   destructive?: boolean;
   onPress?: () => void;
   disabled?: boolean;
+  /** Visually subdued but still tappable (e.g. shows a coming-soon toast). */
+  muted?: boolean;
   title?: string;
 }) {
   if (value) {
@@ -227,7 +230,7 @@ function Row({
         onClick={onPress}
         disabled={disabled}
         title={title}
-        className={`flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left disabled:cursor-not-allowed disabled:opacity-60 ${destructive ? "text-destructive" : ""}`}
+        className={`flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left disabled:cursor-not-allowed disabled:opacity-60 ${muted ? "opacity-80" : ""} ${destructive ? "text-destructive" : ""}`}
       >
       <span className="font-semibold">{label}</span>
       <svg

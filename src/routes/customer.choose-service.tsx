@@ -125,16 +125,16 @@ function CustomerChooseServicePage() {
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-lg p-3 ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-primary"}`}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className={`shrink-0 rounded-lg p-3 ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-primary"}`}>
                     <Icon className="h-6 w-6" />
                   </div>
-                  <div>
-                    <p className="font-semibold">{option.label}</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{option.label}</p>
                     <p className="text-sm text-muted-foreground">{option.eta}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="shrink-0 text-right">
                   <p className="font-semibold">N$ {option.price.toFixed(2)}</p>
                   {"oldPrice" in option && option.oldPrice ? (
                     <p className="text-xs text-muted-foreground line-through">N$ {option.oldPrice.toFixed(2)}</p>
@@ -149,12 +149,12 @@ function CustomerChooseServicePage() {
       <CustomerFixedFooter width="md">
         <div className="flex flex-col gap-3">
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-          <div className="flex items-center justify-between rounded-xl border bg-card px-4 py-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Wallet className="h-4 w-4 text-primary" />
-              <span>Wallet ({formatWalletBalance()})</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <Wallet className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate">Wallet ({formatWalletBalance()})</span>
             </div>
-            <span className="text-sm text-muted-foreground">Estimated total: N$ {selectedFare.toFixed(2)}</span>
+            <span className="shrink-0 text-sm text-muted-foreground">Est. N$ {selectedFare.toFixed(2)}</span>
           </div>
           <Button className="h-12 text-base" onClick={confirm} disabled={submitting}>
             {submitting ? "Confirming locations…" : "Confirm Selection"}

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { persistRunnerOnboardingStage } from "@/lib/runner-account";
 import { getStoredRunnerStage } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { type RunnerOfferedServiceId, useRunnerSettings } from "@/lib/runner-settings";
+import { RunnerRideCategoryPicker } from "@/components/runner-ride-category-picker";
+import { runnerOffersTaxi, type RunnerOfferedServiceId, useRunnerSettings } from "@/lib/runner-settings";
 
 type ServiceId = RunnerOfferedServiceId;
 
@@ -122,6 +123,10 @@ function RunnerServiceSelectionPage() {
             );
           })}
         </div>
+
+        {runnerOffersTaxi(selectedServiceIds) ? (
+          <RunnerRideCategoryPicker description="Select the ride types you want to receive. Changes apply immediately when you go online." />
+        ) : null}
 
         <section className="rounded-xl border bg-secondary/40 p-5">
           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">

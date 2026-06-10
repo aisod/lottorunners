@@ -82,25 +82,25 @@ function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <PortalPageIntro
-        eyebrow="Global monitoring"
-        title="Operations command center"
-        description="Live fleet supervision, recent marketplace activity, and trust signals from synced jobs."
+        eyebrow="Operations"
+        title="Overview"
+        description="Live runner map, recent job activity, and platform health."
       />
 
-      <div className="grid gap-6 xl:grid-cols-12">
-        <div className="space-y-6 xl:col-span-8">
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-8">
           <PortalSection
-            title="Live fleet · marketplace"
-            description="Runner GPS (when online) and active job demand from synced marketplace_jobs."
+            title="Live map & activity"
+            description="Runner locations when online, plus open job demand."
             action={
               <div className="flex flex-wrap gap-2">
                 <StatusPill tone="primary">{stats.uniqueRunnersActive} runners on jobs</StatusPill>
-                <StatusPill>{stats.pendingJobs} pending</StatusPill>
+                <StatusPill>{stats.pendingJobs} jobs pending</StatusPill>
               </div>
             }
             bodyClassName="space-y-5"
           >
-            <div className="relative z-0 h-[420px] overflow-hidden rounded-2xl border border-border isolate">
+            <div className="relative z-0 min-h-[240px] h-[min(50vh,420px)] overflow-hidden rounded-2xl border border-border isolate sm:min-h-[320px]">
               <LiveMapClient
                 userLocation={mapCenter}
                 runners={runners}
@@ -109,38 +109,38 @@ function AdminOverviewPage() {
             </div>
 
             <div className="rounded-2xl border border-border bg-secondary/20 px-4 py-3 text-sm">
-              <p className="font-semibold text-primary">Demand signal</p>
+              <p className="font-semibold text-primary">Open demand</p>
               <p className="mt-1 text-muted-foreground">
                 {pendingHotspot > 0
-                  ? `${pendingHotspot} open customer or business requests awaiting a runner.`
-                  : "No pending requests in the marketplace right now."}
+                  ? `${pendingHotspot} jobs waiting for a runner.`
+                  : "No jobs waiting for a runner."}
               </p>
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-border">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[32rem] text-sm lg:min-w-0">
                 <thead className="bg-secondary/50 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Event</th>
-                    <th className="px-4 py-3">Runner / User</th>
-                    <th className="px-4 py-3">Time</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-3 py-3 sm:px-4">Event</th>
+                    <th className="hidden px-3 py-3 sm:table-cell sm:px-4">Person</th>
+                    <th className="hidden px-3 py-3 md:table-cell sm:px-4">Time</th>
+                    <th className="px-3 py-3 sm:px-4">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {activity.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                        No marketplace activity yet.
+                        No job activity yet.
                       </td>
                     </tr>
                   ) : (
                     activity.map((row) => (
                       <tr key={row.id} className="bg-white/80 hover:bg-secondary/30">
-                        <td className="px-4 py-3 font-semibold">{row.event}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{row.actor}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{row.time}</td>
-                        <td className="px-4 py-3">
+                        <td className="max-w-[10rem] truncate px-3 py-3 font-semibold sm:max-w-none sm:px-4">{row.event}</td>
+                        <td className="hidden px-3 py-3 text-muted-foreground sm:table-cell sm:px-4">{row.actor}</td>
+                        <td className="hidden px-3 py-3 text-muted-foreground md:table-cell sm:px-4">{row.time}</td>
+                        <td className="px-3 py-3 sm:px-4">
                           <StatusPill tone={row.tone}>{row.statusLabel}</StatusPill>
                         </td>
                       </tr>
@@ -152,7 +152,7 @@ function AdminOverviewPage() {
           </PortalSection>
         </div>
 
-        <div className="space-y-6 xl:col-span-4">
+        <div className="space-y-6 lg:col-span-4">
           <PortalStatTile
             icon={Truck}
             label="Active jobs"
@@ -164,7 +164,7 @@ function AdminOverviewPage() {
             icon={CreditCard}
             label="Revenue today"
             value={formatNad(stats.revenueToday)}
-            meta="Completed job fares"
+            meta="From completed jobs today"
           />
           <PortalStatTile
             icon={UserCheck}
@@ -174,10 +174,10 @@ function AdminOverviewPage() {
             tone="danger"
           />
 
-          <PortalSection title="Top performing runners" description="By completed jobs in synced data.">
+          <PortalSection title="Top performing runners" description="By completed jobs.">
             <div className="space-y-3">
               {topRunners.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No completed runner jobs yet.</p>
+                <p className="text-sm text-muted-foreground">No completed jobs yet.</p>
               ) : (
                 topRunners.map((runner) => (
                   <div
@@ -212,7 +212,7 @@ function AdminOverviewPage() {
             {stats.pendingJobs > 5 ? (
               <p className="mt-2 flex items-center gap-2 text-amber-800">
                 <ShieldAlert className="h-4 w-4 shrink-0" />
-                Elevated pending queue — consider runner supply.
+                High pending count — check runner availability.
               </p>
             ) : null}
           </div>
