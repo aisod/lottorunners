@@ -38,39 +38,50 @@ export const requestPasswordResetServer = createServerFn({ method: "POST" })
     return { email };
   })
   .handler(async ({ data }) => {
+    console.info("[reset-pw fn] entry", { email: data.email });
+
     const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const anonKey =
       process.env.SUPABASE_PUBLISHABLE_KEY ??
       process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
       process.env.VITE_SUPABASE_ANON_KEY;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const redirectTo = getPasswordResetRedirectUrl();
 
+    console.info("[reset-pw fn] env", {
+      hasUrl: Boolean(supabaseUrl),
+      hasAnon: Boolean(anonKey),
+      hasServiceKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      redirectTo,
+    });
+
     if (!supabaseUrl || !anonKey) {
+      console.error("[reset-pw fn] missing supabase env");
       return { ok: false as const, error: "Supabase is not configured on the server." };
     }
 
-    if (serviceKey) {
-      const admin = createClient(supabaseUrl, serviceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const { error: verifyError } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email: data.email,
-        options: { redirectTo },
-      });
-      if (verifyError) {
-        return { ok: false as const, error: mapResetPasswordError(verifyError.message) };
-      }
-    }
+    // NOTE: removed admin.generateLink pre-check — it actually generates a recovery
+    // link (side effect, consumes rate limit) and was returning early on any error,
+    // blocking the real email send. resetPasswordForEmail already handles unknown
+    // users silently by design (anti-enumeration).
 
     const anon = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false, flowType: "pkce" },
     });
-    const { error } = await anon.auth.resetPasswordForEmail(data.email, { redirectTo });
+
+    console.info("[reset-pw fn] calling resetPasswordForEmail", { redirectTo });
+    const { data: resetData, error } = await anon.auth.resetPasswordForEmail(data.email, {
+      redirectTo,
+    });
+
     if (error) {
+      console.error("[reset-pw fn] resetPasswordForEmail error", {
+        message: error.message,
+        status: (error as { status?: number }).status,
+        name: error.name,
+      });
       return { ok: false as const, error: mapResetPasswordError(error.message) };
     }
 
+    console.info("[reset-pw fn] resetPasswordForEmail success", resetData);
     return { ok: true as const };
   });

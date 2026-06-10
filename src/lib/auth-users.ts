@@ -412,21 +412,29 @@ export async function requestPasswordReset(emailInput: string): Promise<AuthResu
     };
   }
 
+  let serverFnFailed = false;
   try {
+    console.info("[requestPasswordReset] calling server fn", { email });
     const serverResult = await requestPasswordResetServer({ data: { email } });
+    console.info("[requestPasswordReset] server fn result", serverResult);
     if (!serverResult.ok) {
       return { ok: false, error: serverResult.error };
     }
     return { ok: true, homePath: "/customer/signin" };
-  } catch {
-    // Server function unavailable (e.g. offline dev) — fall back to browser client.
+  } catch (err) {
+    serverFnFailed = true;
+    console.error("[requestPasswordReset] server fn threw", err);
   }
 
+  console.warn("[requestPasswordReset] falling back to browser client (server fn failed)");
   const result = await requestPasswordResetRemote(email);
+  console.info("[requestPasswordReset] browser fallback result", result);
   if (!result.ok) {
-    return { ok: false, error: result.error };
+    return {
+      ok: false,
+      error: `${result.error} (server fn ${serverFnFailed ? "failed" : "skipped"}; browser fallback also failed)`,
+    };
   }
-
   return { ok: true, homePath: "/customer/signin" };
 }
 
