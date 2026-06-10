@@ -40,7 +40,7 @@ function CustomerForgotPasswordPage() {
       }
 
       setSuccessMessage(
-        "If an account exists for this email address, a password reset link has been sent. Please check your inbox.",
+        "If an account exists for this email address, a password reset link has been sent. Please check your inbox and spam folder.",
       );
     });
   };

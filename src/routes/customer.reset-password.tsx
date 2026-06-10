@@ -39,21 +39,35 @@ function CustomerResetPasswordPage() {
 
     let cancelled = false;
 
-    const checkSession = () => {
-      void supabase.auth.getSession().then(({ data }) => {
+    const bootstrap = async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
-        setSessionReady(Boolean(data.session?.access_token));
-        setCheckingSession(false);
-      });
+        if (exchangeError) {
+          setError(exchangeError.message);
+          setCheckingSession(false);
+          return;
+        }
+        url.searchParams.delete("code");
+        const nextSearch = url.searchParams.toString();
+        window.history.replaceState({}, "", `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}`);
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      setSessionReady(Boolean(data.session?.access_token));
+      setCheckingSession(false);
     };
 
-    checkSession();
+    void bootstrap();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
-      if (session?.access_token) {
+      if (event === "PASSWORD_RECOVERY" || session?.access_token) {
         setSessionReady(true);
         setCheckingSession(false);
       }
@@ -95,10 +109,10 @@ function CustomerResetPasswordPage() {
               <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
                 <p>This reset link is invalid or has expired.</p>
                 <p>
-                  <Link to="/customer/signin" className="font-semibold text-primary hover:underline">
+                  <Link to="/customer/forgot-password" className="font-semibold text-primary hover:underline">
                     Request a new reset email
-                  </Link>{" "}
-                  from the sign-in page.
+                  </Link>
+                  .
                 </p>
               </div>
             ) : (

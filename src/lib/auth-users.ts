@@ -15,6 +15,7 @@ import {
   syncRunnerDeviceStateFromUser,
 } from "./runner-account";
 import { isValidPhone, normalizePhone } from "./phone-utils";
+import { requestPasswordResetServer } from "./auth/request-password-reset.server";
 import { resetSupabaseAuthCache } from "./auth/ensure-session";
 import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
 import { getSupabaseClient } from "./supabase/client";
@@ -409,6 +410,16 @@ export async function requestPasswordReset(emailInput: string): Promise<AuthResu
       ok: false,
       error: "Password reset is not available in offline dev mode. Use your existing password.",
     };
+  }
+
+  try {
+    const serverResult = await requestPasswordResetServer({ data: { email } });
+    if (!serverResult.ok) {
+      return { ok: false, error: serverResult.error };
+    }
+    return { ok: true, homePath: "/customer/signin" };
+  } catch {
+    // Server function unavailable (e.g. offline dev) — fall back to browser client.
   }
 
   const result = await requestPasswordResetRemote(email);

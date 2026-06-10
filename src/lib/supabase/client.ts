@@ -11,6 +11,7 @@ export function getSupabaseClient(): SupabaseClient | null {
   const anonKey = getSupabaseAnonKey()!;
   client = createClient(url, anonKey, {
     auth: {
+      flowType: "pkce",
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,

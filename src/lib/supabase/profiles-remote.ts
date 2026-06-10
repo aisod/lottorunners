@@ -3,7 +3,7 @@ import { markSupabaseAuthVerified, waitForSupabaseSession } from "../auth/ensure
 import type { RunnerOnboardingStatus } from "../runner-account";
 import type { RunnerStage } from "../store";
 import { getSupabaseClient } from "./client";
-import { getAdminBootstrapEmails, isSupabaseConfigured } from "./config";
+import { getAdminBootstrapEmails, getAppPublicOrigin, isSupabaseConfigured } from "./config";
 
 export type RemoteProfileRow = {
   id: string;
@@ -404,8 +404,23 @@ export async function restoreSupabaseSession(): Promise<boolean> {
 }
 
 function getPasswordResetRedirectUrl(): string {
-  if (typeof window === "undefined") return "/customer/reset-password";
-  return `${window.location.origin}/customer/reset-password`;
+  const origin = getAppPublicOrigin();
+  if (origin) return `${origin}/customer/reset-password`;
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/customer/reset-password`;
+  }
+  return "/customer/reset-password";
+}
+
+function mapResetPasswordError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("rate limit") || lower.includes("too many")) {
+    return "Too many reset attempts. Wait a few minutes and try again.";
+  }
+  if (lower.includes("redirect") || lower.includes("url")) {
+    return "Password reset link is misconfigured. Contact support@lottorunners.na.";
+  }
+  return message;
 }
 
 export async function requestPasswordResetRemote(
@@ -421,7 +436,7 @@ export async function requestPasswordResetRemote(
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: getPasswordResetRedirectUrl(),
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: mapResetPasswordError(error.message) };
   return { ok: true };
 }
 
