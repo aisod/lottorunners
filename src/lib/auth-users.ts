@@ -15,7 +15,7 @@ import {
   syncRunnerDeviceStateFromUser,
 } from "./runner-account";
 import { isValidPhone, normalizePhone } from "./phone-utils";
-import { requestPasswordResetServer } from "./auth/request-password-reset.server";
+import { requestPasswordResetServer } from "./auth/request-password-reset.functions";
 import { resetSupabaseAuthCache } from "./auth/ensure-session";
 import { isLocalDevAuthAllowed, isSupabaseConfigured } from "./supabase/config";
 import { getSupabaseClient } from "./supabase/client";
