@@ -98,7 +98,7 @@ export function CustomerHomePage() {
         </div>
       )}
 
-      <BottomSheet>
+      <BottomSheet aboveTabBar>
         <ServiceSelector />
       </BottomSheet>
 
