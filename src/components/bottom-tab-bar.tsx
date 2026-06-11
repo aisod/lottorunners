@@ -63,8 +63,7 @@ export function BottomTabBar() {
   };
 
   return (
-    <nav className="pointer-events-auto fixed inset-x-0 bottom-0 z-[1200] border-t border-border bg-card shadow-[0_-8px_24px_-12px_oklch(0.18_0.04_265/0.15)]">
-      <div className="mx-auto flex w-full max-w-2xl items-stretch justify-around px-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pt-2">
+    <nav className="pointer-events-auto fixed inset-x-0 bottom-0 z-[1200] mx-auto flex w-full max-w-xl items-stretch justify-around border-t border-border bg-card px-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pt-2 shadow-[0_-8px_24px_-12px_oklch(0.18_0.04_265/0.15)] lg:max-w-2xl">
       {TABS.map((t) => {
         const active = activeFor(t.to);
         return (
@@ -83,7 +82,6 @@ export function BottomTabBar() {
           </Link>
         );
       })}
-      </div>
     </nav>
   );
 }
