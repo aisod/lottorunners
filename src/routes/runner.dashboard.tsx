@@ -36,7 +36,7 @@ export const Route = createFileRoute("/runner/dashboard")({
 
 function RunnerDashboardPage() {
   const navigate = useNavigate();
-  const [online, setOnlineState] = useState(() => getRunnerOnline());
+  const [online, setOnlineState] = useState(false);
   const geo = useGeolocation({ fallbackOnError: false, watch: true });
   const geoRef = useRef(geo);
   geoRef.current = geo;
@@ -108,6 +108,7 @@ function RunnerDashboardPage() {
 
   useEffect(() => {
     setStoredRunnerStage("dashboard");
+    setOnlineState(getRunnerOnline());
   }, []);
 
   return (

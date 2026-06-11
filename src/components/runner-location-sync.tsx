@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 /** Mount under /runner layout to publish live GPS while online or on an active job. */
 export function RunnerLocationSync() {
   const { error } = useRunnerLocationPublisher();
-  const [online, setOnline] = useState(() => getRunnerOnline());
+  const [online, setOnline] = useState(false);
 
   useEffect(() => {
+    setOnline(getRunnerOnline());
     const refresh = () => setOnline(getRunnerOnline());
     window.addEventListener("storage", refresh);
     window.addEventListener("lr-runner-online-changed", refresh);

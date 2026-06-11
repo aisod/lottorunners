@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { waitForSupabaseSession } from "./auth/ensure-session";
+import { isSupabaseAuthRateLimited, waitForSupabaseSession } from "./auth/ensure-session";
 import { hydrateJobsFromRemote, readJobs, subscribeToJobs } from "./jobs-service";
 import { isSupabaseConfigured } from "./supabase/config";
 import type { MarketplaceJob } from "./jobs-types";
@@ -8,7 +8,7 @@ const ADMIN_JOBS_POLL_MS = 15_000;
 
 /** Live marketplace jobs for admin dashboards (local store + remote sync). */
 export function useAllMarketplaceJobs(): MarketplaceJob[] {
-  const [jobs, setJobs] = useState<MarketplaceJob[]>(() => readJobs());
+  const [jobs, setJobs] = useState<MarketplaceJob[]>([]);
 
   useEffect(() => {
     const refresh = () => setJobs(readJobs());
@@ -19,7 +19,8 @@ export function useAllMarketplaceJobs(): MarketplaceJob[] {
     if (!isSupabaseConfigured()) return unsub;
 
     const pullRemote = async () => {
-      await waitForSupabaseSession(4000);
+      if (isSupabaseAuthRateLimited()) return;
+      await waitForSupabaseSession(2500);
       const result = await hydrateJobsFromRemote();
       if (result.ok) refresh();
     };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { waitForSupabaseSession } from "./auth/ensure-session";
+import { isSupabaseAuthRateLimited, waitForSupabaseSession } from "./auth/ensure-session";
 import {
   getCurrentBusinessId,
   hydrateJobsFromRemote,
@@ -13,9 +13,7 @@ const BUSINESS_JOBS_POLL_MS = 15_000;
 
 export function useBusinessJobs(): MarketplaceJob[] {
   const businessId = getCurrentBusinessId();
-  const [jobs, setJobs] = useState<MarketplaceJob[]>(() =>
-    businessId ? listJobsForBusiness(businessId) : [],
-  );
+  const [jobs, setJobs] = useState<MarketplaceJob[]>([]);
 
   useEffect(() => {
     if (!businessId) {
@@ -31,7 +29,8 @@ export function useBusinessJobs(): MarketplaceJob[] {
     if (!isSupabaseConfigured()) return unsub;
 
     const pullRemote = async () => {
-      await waitForSupabaseSession(4000);
+      if (isSupabaseAuthRateLimited()) return;
+      await waitForSupabaseSession(2500);
       const result = await hydrateJobsFromRemote();
       if (result.ok) refresh();
     };

@@ -19,7 +19,7 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
   const { session: supabaseSession } = useSupabaseSession();
   const [error, setError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const [online, setOnline] = useState(() => getRunnerOnline());
+  const [online, setOnline] = useState(false);
 
   const runnerId = useMemo(() => {
     const email = supabaseSession?.user?.email ?? getAuthSession()?.email;
@@ -30,6 +30,7 @@ export function useRunnerLocationPublisher(): { publishing: boolean; error: stri
   }, [supabaseSession?.user?.email]);
 
   useEffect(() => {
+    setOnline(getRunnerOnline());
     const refresh = () => setOnline(getRunnerOnline());
     window.addEventListener("storage", refresh);
     window.addEventListener("lr-runner-online-changed", refresh);

@@ -3,7 +3,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const SESSION_CACHE_MS = 45_000;
-const RATE_LIMIT_BACKOFF_MS = 90_000;
+const RATE_LIMIT_BACKOFF_MS = 120_000;
 
 let lastVerifiedAt = 0;
 let rateLimitedUntil = 0;
@@ -47,6 +47,37 @@ function storageHasSupabaseAuthKey(storage: Storage): boolean {
     );
 }
 
+type StoredSupabaseAuth = {
+  access_token?: string;
+  expires_at?: number;
+  currentSession?: { access_token?: string; expires_at?: number };
+};
+
+/** Read JWT from localStorage without triggering Supabase auto-refresh (avoids 429 loops). */
+export function readAccessTokenFromSupabaseStorage(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key?.startsWith("sb-") || !key.includes("auth-token")) continue;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as StoredSupabaseAuth;
+      const session = parsed.currentSession ?? parsed;
+      const token = session.access_token;
+      if (!token) continue;
+      const expiresAt = session.expires_at;
+      if (typeof expiresAt === "number" && expiresAt * 1000 < Date.now() + 60_000) {
+        continue;
+      }
+      return token;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 /** Whether Supabase auth tokens are persisted (refresh may still be in flight). */
 export function hasSupabaseAuthStorage(): boolean {
   if (typeof window === "undefined") return false;
@@ -63,6 +94,9 @@ export function hasSupabaseAuthStorage(): boolean {
 
 /** True when a JWT access token is available for REST/RPC calls. */
 export async function hasSupabaseAccessToken(): Promise<boolean> {
+  if (isSupabaseAuthRateLimited()) {
+    return Boolean(readAccessTokenFromSupabaseStorage());
+  }
   const supabase = getSupabaseClient();
   if (!supabase) return false;
   const { data: { session } } = await supabase.auth.getSession();
@@ -91,6 +125,10 @@ export async function waitForSupabaseSession(maxMs = 4000): Promise<boolean> {
 
   const deadline = Date.now() + maxMs;
   while (Date.now() < deadline) {
+    if (isSupabaseAuthRateLimited()) {
+      return Boolean(readAccessTokenFromSupabaseStorage());
+    }
+
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (session?.access_token) {
@@ -124,7 +162,7 @@ export async function ensureSupabaseAuthSession(): Promise<boolean> {
   }
 
   if (isSupabaseAuthRateLimited()) {
-    return hasSupabaseAccessToken();
+    return Boolean(readAccessTokenFromSupabaseStorage());
   }
 
   const supabase = getSupabaseClient();
@@ -164,9 +202,16 @@ export async function waitForSupabaseSessionWithBackoff(
   let delay = initialDelayMs;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (isSupabaseAuthRateLimited()) {
+      return Boolean(readAccessTokenFromSupabaseStorage());
+    }
+
     const ready =
       (await ensureSupabaseAuthSession()) || (await waitForSupabaseSession(waitPerAttemptMs));
     if (ready) return true;
+    if (isSupabaseAuthRateLimited()) {
+      return Boolean(readAccessTokenFromSupabaseStorage());
+    }
     if (!hasSupabaseAuthStorage() && !getAuthSession()) return false;
     if (attempt < maxAttempts - 1) {
       await new Promise((resolve) => setTimeout(resolve, delay));

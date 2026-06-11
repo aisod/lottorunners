@@ -79,20 +79,27 @@ export function useCustomerMarketplaceJob(jobId: string | null | undefined): Cus
         setSyncError(
           `${supabaseAuthRateLimitMessage()} Your trip status will update once sign-in recovers.`,
         );
-        schedule(Math.max(pollMs, 15_000));
+        schedule(60_000);
         return;
       }
 
       const ready = await waitForSupabaseSessionWithBackoff({
-        maxAttempts: 4,
-        waitPerAttemptMs: 4000,
+        maxAttempts: 2,
+        waitPerAttemptMs: 2500,
       });
       if (cancelled) return;
 
       if (!ready) {
-        setSyncError("Server session not ready. Retrying…");
-        pollMs = Math.min(Math.round(pollMs * 1.5), CUSTOMER_JOB_POLL_MAX_MS);
-        schedule(pollMs);
+        if (isSupabaseAuthRateLimited()) {
+          setSyncError(
+            `${supabaseAuthRateLimitMessage()} Your trip status will update once sign-in recovers.`,
+          );
+          schedule(60_000);
+        } else {
+          setSyncError("Server session not ready. Retrying…");
+          pollMs = Math.min(Math.round(pollMs * 1.5), CUSTOMER_JOB_POLL_MAX_MS);
+          schedule(pollMs);
+        }
         return;
       }
 
@@ -165,8 +172,10 @@ export function useRunnerJobFeed(): { jobs: MarketplaceJob[]; syncError: string 
     };
 
     void (async () => {
-      await waitForSupabaseSessionWithBackoff();
-      await refreshAuthSessionFromProfile(true);
+      if (!isSupabaseAuthRateLimited()) {
+        await waitForSupabaseSessionWithBackoff({ maxAttempts: 2, waitPerAttemptMs: 2500 });
+        await refreshAuthSessionFromProfile(true);
+      }
       await pullRemote();
     })();
 

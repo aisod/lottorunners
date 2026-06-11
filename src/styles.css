@@ -301,3 +301,65 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Customer matching-runner animations (global to avoid SSR hydration mismatch from inline <style>). */
+@keyframes lr-radar-pulse {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes lr-road-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes lr-runner-drive {
+  0% { transform: translateX(-30vw) translateY(0); }
+  25% { transform: translateX(25vw) translateY(-4px); }
+  50% { transform: translateX(55vw) translateY(0); }
+  75% { transform: translateX(85vw) translateY(-3px); }
+  100% { transform: translateX(calc(100vw + 30vw)) translateY(0); }
+}
+@keyframes lr-wheel-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes lr-speed-line {
+  0% { opacity: 0; transform: translateX(0) scaleX(0.3); }
+  30% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateX(-40px) scaleX(1); }
+}
+@keyframes lr-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-8px); opacity: 1; }
+}
+@keyframes lr-progress-fill {
+  0% { width: 12%; }
+  50% { width: 72%; }
+  100% { width: 88%; }
+}
+@keyframes lr-progress-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+@keyframes lr-car-wiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  20% { transform: rotate(-4deg) scale(1.05); }
+  40% { transform: rotate(4deg) scale(1.05); }
+  60% { transform: rotate(-2deg) scale(1.02); }
+}
+@keyframes lr-toast-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.95); }
+  15% { opacity: 1; transform: translateY(0) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lr-animate-drive,
+  .lr-animate-road,
+  .lr-animate-radar,
+  .lr-animate-wheel,
+  .lr-animate-speed,
+  .lr-animate-progress,
+  .lr-animate-shimmer,
+  .lr-animate-dot {
+    animation: none !important;
+  }
+}
