@@ -12,7 +12,7 @@ export const Route = createFileRoute("/customer/live-job-tracking")({
 function CustomerLiveJobTrackingPage() {
   const navigate = useNavigate();
   const activeJobId = useCustomerApp((s) => s.activeJobId);
-  const job = useCustomerMarketplaceJob(activeJobId);
+  const { job } = useCustomerMarketplaceJob(activeJobId);
 
   useEffect(() => {
     if (!activeJobId) {

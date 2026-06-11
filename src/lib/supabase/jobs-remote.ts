@@ -74,30 +74,10 @@ async function fetchRemoteJobsViaRpc(
   return { ok: true, rows: mapFeedRows(data as Array<{ id?: string; payload: unknown; updated_at?: string | null }>) };
 }
 
-/** Pull one job by id (for customer tracking while waiting for runner accept). */
-export async function fetchRemoteJobById(
-  jobId: string,
-): Promise<{ ok: true; row: RemoteJobRow } | { ok: false; error: string }> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return { ok: false, error: "Supabase client unavailable." };
-
-  const ready = await waitForSupabaseSessionWithBackoff();
-  if (!ready) {
-    return { ok: false, error: "Server session not ready. Wait a moment and try again." };
-  }
-
-  const { data, error } = await supabase
-    .from("marketplace_jobs")
-    .select("id, payload, updated_at")
-    .eq("id", jobId)
-    .maybeSingle();
-
-  if (error) {
-    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
-    return { ok: false, error: formatJobsFetchError(error.message, error.code) };
-  }
-
-  if (!data?.payload || typeof data.payload !== "object") {
+function mapRemoteJobRow(
+  data: { payload: unknown; updated_at?: string | null },
+): { ok: true; row: RemoteJobRow } | { ok: false; error: string } {
+  if (!data.payload || typeof data.payload !== "object") {
     return { ok: false, error: "Job not found on server." };
   }
 
@@ -116,6 +96,55 @@ export async function fetchRemoteJobById(
             : new Date().toISOString(),
     },
   };
+}
+
+async function fetchRemoteJobByIdViaFeed(
+  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  jobId: string,
+): Promise<{ ok: true; row: RemoteJobRow } | { ok: false; error: string }> {
+  const feed = await fetchRemoteJobsViaRpc(supabase);
+  if (!feed.ok) return { ok: false, error: feed.error };
+
+  const match = feed.rows.find((row) => row.job.id === jobId);
+  if (!match) return { ok: false, error: "Job not found on server." };
+  return { ok: true, row: match };
+}
+
+/** Pull one job by id (for customer tracking while waiting for runner accept). */
+export async function fetchRemoteJobById(
+  jobId: string,
+): Promise<{ ok: true; row: RemoteJobRow } | { ok: false; error: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: "Supabase client unavailable." };
+
+  const ready = await waitForSupabaseSessionWithBackoff();
+  if (!ready) {
+    return { ok: false, error: "Server session not ready. Wait a moment and try again." };
+  }
+
+  const { data, error } = await supabase
+    .from("marketplace_jobs")
+    .select("id, payload, updated_at")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (!error && data?.payload) {
+    const mapped = mapRemoteJobRow(data);
+    if (mapped.ok) return mapped;
+  }
+
+  if (error) {
+    if (isUnauthorizedSupabaseError(error)) resetSupabaseAuthCache();
+    if (shouldTryJobsFeedRpc(error.message, error.code)) {
+      return fetchRemoteJobByIdViaFeed(supabase, jobId);
+    }
+    return { ok: false, error: formatJobsFetchError(error.message, error.code) };
+  }
+
+  const feedResult = await fetchRemoteJobByIdViaFeed(supabase, jobId);
+  if (feedResult.ok) return feedResult;
+
+  return { ok: false, error: "Job not found on server." };
 }
 
 export async function fetchRemoteJobs(): Promise<FetchRemoteJobsResult> {

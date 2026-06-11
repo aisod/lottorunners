@@ -169,17 +169,27 @@ export async function hydrateJobsFromRemote(): Promise<{ ok: true } | { ok: fals
 /** Refresh a single active customer job from Supabase (runner accept, status changes). */
 export async function syncCustomerJobFromRemote(
   jobId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!isSupabaseConfigured()) return { ok: true };
+): Promise<
+  | { ok: true; status: MarketplaceJobStatus | null }
+  | { ok: false; error: string }
+> {
+  if (!isSupabaseConfigured()) {
+    return { ok: true, status: getJob(jobId)?.status ?? null };
+  }
+
+  const beforeStatus = getJob(jobId)?.status ?? null;
 
   const single = await fetchRemoteJobById(jobId);
   if (single.ok) {
     notifyJobsChanged([single.row]);
-    return { ok: true };
+    return { ok: true, status: getJob(jobId)?.status ?? beforeStatus };
   }
 
   const bulk = await hydrateJobsFromRemote();
-  if (bulk.ok) return { ok: true };
+  const afterStatus = getJob(jobId)?.status ?? null;
+  if (bulk.ok) {
+    return { ok: true, status: afterStatus };
+  }
   return { ok: false, error: single.error };
 }
 

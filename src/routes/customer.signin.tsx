@@ -50,14 +50,18 @@ function CustomerSignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const sessionNotice =
     reason === "session_expired"
       ? "Your server session expired. Sign in again to accept jobs and share live location."
       : null;
 
   const signIn = () => {
+    if (submitting) return;
     setError(null);
+    setSubmitting(true);
     void loginUser({ email, password }).then((result) => {
+      setSubmitting(false);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -116,8 +120,12 @@ function CustomerSignInPage() {
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-            <Button className="h-12 w-full rounded-xl text-base font-semibold" onClick={signIn}>
-              Sign in
+            <Button
+              className="h-12 w-full rounded-xl text-base font-semibold"
+              onClick={signIn}
+              disabled={submitting}
+            >
+              {submitting ? "Signing in…" : "Sign in"}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">

@@ -188,7 +188,7 @@ function CustomerMatchingRunnerPage() {
   const activeJobId = useCustomerApp((s) => s.activeJobId);
   const setActiveJobId = useCustomerApp((s) => s.setActiveJobId);
   const reset = useCustomerApp((s) => s.reset);
-  const job = useCustomerMarketplaceJob(activeJobId);
+  const { job, syncError, retrySync } = useCustomerMarketplaceJob(activeJobId);
   const [statusIndex, setStatusIndex] = useState(0);
   const [honkVisible, setHonkVisible] = useState(false);
   const [wiggle, setWiggle] = useState(false);
@@ -391,6 +391,21 @@ function CustomerMatchingRunnerPage() {
               />
             </div>
           </div>
+
+          {syncError ? (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-3 text-left text-sm text-amber-950">
+              <p>{syncError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 h-9 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
+                onClick={retrySync}
+              >
+                Retry sync
+              </Button>
+            </div>
+          ) : null}
 
           {cancelError ? (
             <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

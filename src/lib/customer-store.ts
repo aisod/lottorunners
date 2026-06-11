@@ -32,7 +32,7 @@ import {
   jobToTripRequest,
 } from "./jobs-service";
 
-const initialDraft = typeof window !== "undefined" ? loadCustomerBookingDraft() : null;
+/** Defaults only — draft/history hydrate in CustomerLayout useEffect to avoid SSR mismatch. */
 
 function draftSnapshot(state: CustomerAppState): CustomerBookingDraft {
   return {
@@ -131,39 +131,39 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
   userLocation: null,
   setUserLocation: (l) => set({ userLocation: l }),
 
-  selectedService: initialDraft?.selectedService ?? null,
+  selectedService: null,
   setSelectedService: (s) => set({ selectedService: s }),
 
-  pickup: initialDraft?.pickup ?? null,
-  destination: initialDraft?.destination ?? null,
+  pickup: null,
+  destination: null,
   setPickup: (p) => set({ pickup: p }),
   setDestination: (d) => set({ destination: d }),
 
-  errandDescription: initialDraft?.errandDescription ?? "",
+  errandDescription: "",
   setErrandDescription: (s) => set({ errandDescription: s }),
 
-  errandCategory: initialDraft?.errandCategory ?? null,
+  errandCategory: null,
   setErrandCategory: (c) => set({ errandCategory: c }),
-  storePreference: initialDraft?.storePreference ?? "",
+  storePreference: "",
   setStorePreference: (s) => set({ storePreference: s }),
 
-  basketValue: initialDraft?.basketValue ?? 0,
+  basketValue: 0,
   setBasketValue: (n) => set({ basketValue: n }),
 
-  durationMin: initialDraft?.durationMin ?? 30,
+  durationMin: 30,
   setDurationMin: (n) => set({ durationMin: n }),
 
-  truckSizeId: initialDraft?.truckSizeId ?? "small",
+  truckSizeId: "small",
   setTruckSizeId: (id) => set({ truckSizeId: id }),
-  truckLabour: initialDraft?.truckLabour ?? false,
+  truckLabour: false,
   setTruckLabour: (on) => set({ truckLabour: on }),
-  truckExtraHelpers: initialDraft?.truckExtraHelpers ?? 0,
+  truckExtraHelpers: 0,
   setTruckExtraHelpers: (n) =>
     set({ truckExtraHelpers: Math.max(0, Math.min(2, Math.round(n))) }),
-  movingNotes: initialDraft?.movingNotes ?? "",
+  movingNotes: "",
   setMovingNotes: (s) => set({ movingNotes: s }),
 
-  cargoPhotos: initialDraft?.cargoPhotos ?? {},
+  cargoPhotos: {},
   setCargoPhoto: (slot, url) =>
     set((s) => {
       const next = { ...s.cargoPhotos };
@@ -172,18 +172,18 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
       return { cargoPhotos: next };
     }),
 
-  paymentMethod: initialDraft?.paymentMethod ?? "momo",
+  paymentMethod: "momo",
   setPaymentMethod: (p) => set({ paymentMethod: p }),
 
-  rideSubType: initialDraft?.rideSubType ?? null,
+  rideSubType: null,
   setRideSubType: (id) => set({ rideSubType: id }),
 
   activeJobId: null,
   setActiveJobId: (id) => set({ activeJobId: id }),
 
-  scheduleMode: initialDraft?.scheduleMode ?? "now",
+  scheduleMode: "now",
   setScheduleMode: (mode) => set({ scheduleMode: mode, ...(mode === "now" ? { scheduledAt: null } : {}) }),
-  scheduledAt: initialDraft?.scheduledAt ?? null,
+  scheduledAt: null,
   setScheduledAt: (at) => set({ scheduledAt: at }),
 
   status: "idle",
@@ -202,7 +202,7 @@ export const useCustomerApp = create<CustomerAppState>((set, get) => ({
       };
     }),
 
-  history: typeof window !== "undefined" ? loadCustomerTripHistory() : [],
+  history: [],
   pushHistory: (t) =>
     set((st) => {
       const history = [t, ...st.history];

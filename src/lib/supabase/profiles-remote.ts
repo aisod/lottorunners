@@ -1,5 +1,9 @@
 import type { AccountRole, PublicRole } from "../auth-session";
-import { markSupabaseAuthVerified, waitForSupabaseSession } from "../auth/ensure-session";
+import {
+  markSupabaseAuthRateLimited,
+  markSupabaseAuthVerified,
+  waitForSupabaseSession,
+} from "../auth/ensure-session";
 import { normalizeRideCategories, type RideCategoryId } from "../ride-categories";
 import type { RunnerOnboardingStatus } from "../runner-account";
 import { useRunnerSettings } from "../runner-settings";
@@ -432,7 +436,17 @@ export async function signInRemote(
   if (!supabase) return { ok: false, error: "Could not connect to Supabase." };
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const lower = error.message.toLowerCase();
+    if (lower.includes("rate limit") || lower.includes("too many") || lower.includes("429")) {
+      markSupabaseAuthRateLimited();
+      return { ok: false, error: "Too many sign-in attempts. Wait about a minute and try again." };
+    }
+    if (lower.includes("invalid login credentials") || lower.includes("invalid credentials")) {
+      return { ok: false, error: "Incorrect email or password." };
+    }
+    return { ok: false, error: error.message };
+  }
   if (!data.user) return { ok: false, error: "Sign in failed." };
   if (!data.session?.access_token) {
     return {

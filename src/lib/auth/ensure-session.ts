@@ -23,6 +23,15 @@ export function markSupabaseAuthVerified(): void {
   rateLimitedUntil = 0;
 }
 
+/** Call when Supabase auth returns HTTP 429 (refresh/sign-in rate limit). */
+export function markSupabaseAuthRateLimited(durationMs = RATE_LIMIT_BACKOFF_MS): void {
+  rateLimitedUntil = Date.now() + durationMs;
+}
+
+export function supabaseAuthRateLimitMessage(): string {
+  return "Too many sign-in requests. Wait about a minute, then try again.";
+}
+
 export function resetSupabaseAuthCache(): void {
   lastVerifiedAt = 0;
   rateLimitedUntil = 0;
@@ -90,7 +99,7 @@ export async function waitForSupabaseSession(maxMs = 4000): Promise<boolean> {
     }
 
     if (error && isRateLimitError(error.message)) {
-      rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
+      markSupabaseAuthRateLimited();
       return hasSupabaseAccessToken();
     }
 
@@ -124,7 +133,7 @@ export async function ensureSupabaseAuthSession(): Promise<boolean> {
   const { data: { session }, error } = await supabase.auth.getSession();
 
   if (error && isRateLimitError(error.message)) {
-    rateLimitedUntil = now + RATE_LIMIT_BACKOFF_MS;
+    markSupabaseAuthRateLimited();
     return hasSupabaseAccessToken();
   }
 

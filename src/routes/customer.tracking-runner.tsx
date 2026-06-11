@@ -22,7 +22,7 @@ function CustomerTrackingRunnerPage() {
   const geo = useGeolocation({ fallbackOnError: false });
   const activeJobId = useCustomerApp((s) => s.activeJobId);
   const { userLocation, setUserLocation, pickup, destination } = useCustomerApp();
-  const job = useCustomerMarketplaceJob(activeJobId);
+  const { job } = useCustomerMarketplaceJob(activeJobId);
   const { runner: assignedRunner, freshnessLabel, waitingForGps } = useAssignedRunnerLocation(job);
   const [completionReady, setCompletionReady] = useState(false);
 
