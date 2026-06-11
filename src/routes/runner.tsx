@@ -3,7 +3,10 @@ import { RunnerLocationSync } from "@/components/runner-location-sync";
 import { canRunClientAuthGuard } from "@/lib/auth/client-only-guard";
 import { getAuthSession } from "@/lib/auth-session";
 import { getRunnerOnboardingStatus } from "@/lib/runner-account";
-import { isSupabaseAuthRateLimited, waitForSupabaseSession } from "@/lib/auth/ensure-session";
+import {
+  isSupabaseAuthRateLimited,
+  waitForSupabaseSessionWithBackoff,
+} from "@/lib/auth/ensure-session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   getRoleHomePath,
@@ -51,7 +54,10 @@ export const Route = createFileRoute("/runner")({
     const path = location.pathname.replace(/\/$/, "") || "/";
 
     if (isSupabaseConfigured() && RUNNER_CONSOLE_PATHS.has(path)) {
-      const cloudSession = await waitForSupabaseSession(3500);
+      const cloudSession = await waitForSupabaseSessionWithBackoff({
+        maxAttempts: 4,
+        waitPerAttemptMs: 3500,
+      });
       if (!cloudSession && !isSupabaseAuthRateLimited()) {
         throw redirect({
           to: "/customer/signin",

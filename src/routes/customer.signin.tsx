@@ -44,17 +44,30 @@ export const Route = createFileRoute("/customer/signin")({
   component: CustomerSignInPage,
 });
 
+function sessionExpiredNotice(role?: string): string {
+  switch (role) {
+    case "admin":
+      return "Your server session expired. Sign in again to access the admin console.";
+    case "business":
+      return "Your server session expired. Sign in again to view and manage your dispatches.";
+    case "runner":
+      return "Your server session expired. Sign in again to accept jobs and share live location.";
+    case "customer":
+      return "Your server session expired. Sign in again to continue your booking.";
+    default:
+      return "Your server session expired. Sign in again to continue.";
+  }
+}
+
 function CustomerSignInPage() {
   const navigate = useNavigate();
-  const { reason } = Route.useSearch();
+  const { reason, role } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const sessionNotice =
-    reason === "session_expired"
-      ? "Your server session expired. Sign in again to accept jobs and share live location."
-      : null;
+    reason === "session_expired" ? sessionExpiredNotice(role) : null;
 
   const signIn = () => {
     if (submitting) return;

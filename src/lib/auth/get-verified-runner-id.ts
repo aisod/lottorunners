@@ -1,11 +1,12 @@
 import { getAuthSession } from "@/lib/auth-session";
+import { waitForSupabaseSessionWithBackoff } from "@/lib/auth/ensure-session";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { normalizeRunnerId } from "@/lib/supabase/session";
 
 const RUNNER_ID_CACHE_MS = 30_000;
 
-let cached: { id: string | null; at: number } | null = null;
+let cached: { id: string; at: number } | null = null;
 
 export function invalidateVerifiedRunnerIdCache(): void {
   cached = null;
@@ -28,6 +29,8 @@ export async function getVerifiedRunnerId(): Promise<string | null> {
       id = normalizeRunnerId(session.email);
     }
   } else {
+    await waitForSupabaseSessionWithBackoff({ maxAttempts: 4, waitPerAttemptMs: 3000 });
+
     const supabase = getSupabaseClient();
     if (supabase) {
       const {
@@ -47,6 +50,8 @@ export async function getVerifiedRunnerId(): Promise<string | null> {
     }
   }
 
-  cached = { id, at: now };
+  if (id) {
+    cached = { id, at: now };
+  }
   return id;
 }

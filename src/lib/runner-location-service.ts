@@ -1,4 +1,8 @@
 import { getVerifiedRunnerId } from "./auth/get-verified-runner-id";
+import {
+  isSupabaseAuthRateLimited,
+  supabaseAuthRateLimitMessage,
+} from "./auth/ensure-session";
 import { getUserDisplayName } from "./auth-users";
 import { isWithinRadiusKm } from "./geo-utils";
 import { listPendingJobs } from "./jobs-service";
@@ -65,12 +69,20 @@ export async function upsertRunnerLocation(
   writeLocalLocation(loc);
 
   if (isSupabaseConfigured()) {
+    if (isSupabaseAuthRateLimited()) {
+      return {
+        ok: false,
+        unauthorized: false,
+        message: supabaseAuthRateLimitMessage(),
+      };
+    }
+
     const verified = await getVerifiedRunnerId();
     if (!verified) {
       return {
         ok: false,
         unauthorized: true,
-        message: "Session expired. Please sign in again.",
+        message: "Server session is still loading. Wait a moment, then refresh.",
       };
     }
     return upsertRunnerLocationRemote(verified, coord, heading);
