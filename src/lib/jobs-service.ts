@@ -339,6 +339,26 @@ export function getCustomerActiveJob(customerId: string): MarketplaceJob | null 
   );
 }
 
+export function canCustomerCancelJob(status: MarketplaceJobStatus): boolean {
+  return status === "pending" || status === "accepted";
+}
+
+/** Customer live-trip screen for a marketplace job status. */
+export function getCustomerActiveTripPath(
+  status: MarketplaceJobStatus,
+): "/customer/matching-runner" | "/customer/tracking-runner" | "/customer/rate-runner" {
+  if (status === "pending") return "/customer/matching-runner";
+  if (status === "completed") return "/customer/rate-runner";
+  return "/customer/tracking-runner";
+}
+
+export function getCustomerActiveTripActionLabel(status: MarketplaceJobStatus): string {
+  if (status === "pending") return "View matching";
+  if (status === "accepted" || status === "en_route" || status === "arrived") return "Track runner";
+  if (status === "in_progress") return "View trip";
+  return "View trip";
+}
+
 export function getRunnerActiveJob(runnerId: string): MarketplaceJob | null {
   return (
     readJobs().find(
